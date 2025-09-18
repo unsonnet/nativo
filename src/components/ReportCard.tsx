@@ -8,7 +8,7 @@ export function ReportCard({ report }: { report: Report }) {
 
   return (
     <div className="group cursor-pointer">
-      <div className="bg-card/5 backdrop-blur-sm border border-border/10 rounded-lg p-4 hover:bg-card/10 transition-all duration-200 hover:border-border/20">
+      <div className="bg-card/5 backdrop-blur-sm rounded-lg p-4 shadow-sm hover:shadow-md hover:bg-card/10 transition-all duration-200">
         <div className="space-y-3">
           {/* Date */}
           <p className="text-xs text-muted-foreground">
