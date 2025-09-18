@@ -26,13 +26,21 @@ const INITIAL_FORM_STATE = {
   thickness: '',
 };
 
+const INITIAL_TOUCHED_STATE = {
+  reportName: false,
+};
+
 export function NewReportModal({ isOpen, onClose }: NewReportModalProps) {
   const [form, setForm] = useState(INITIAL_FORM_STATE);
+  const [touched, setTouched] = useState(INITIAL_TOUCHED_STATE);
+  const [reportNameFocused, setReportNameFocused] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const reportNameRef = useRef<HTMLInputElement>(null);
 
   const resetForm = useCallback(() => {
-    setForm(INITIAL_FORM_STATE);
+    setForm(() => ({ ...INITIAL_FORM_STATE }));
+    setTouched(() => ({ ...INITIAL_TOUCHED_STATE }));
+    setReportNameFocused(false);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -117,6 +125,13 @@ export function NewReportModal({ isOpen, onClose }: NewReportModalProps) {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (form.reportName.trim() === '') {
+      setTouched((prev) => ({ ...prev, reportName: true }));
+      setReportNameFocused(false);
+      return;
+    }
+
     handleClose();
   };
 
@@ -124,31 +139,39 @@ export function NewReportModal({ isOpen, onClose }: NewReportModalProps) {
     handleClose();
   };
 
+  const handleReportNameFocus = () => {
+    setReportNameFocused(true);
+  };
+
+  const handleReportNameBlur = () => {
+    setReportNameFocused(false);
+    setTouched((prev) => ({ ...prev, reportName: true }));
+  };
+
+  const isSubmitDisabled = form.reportName.trim() === '';
+  const isReportNameMissing =
+    touched.reportName && !reportNameFocused && form.reportName.trim() === '';
+  const reportNameErrorId = isReportNameMissing ? 'report-name-error' : undefined;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      className="modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-report-title"
       ref={dialogRef}
     >
-      <div
-        className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-        onClick={handleCancel}
-      />
-      <form
-        onSubmit={handleSubmit}
-        className="relative z-10 w-full max-w-lg space-y-5 rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-2xl backdrop-blur-xl sm:p-6"
-      >
-        <div className="space-y-2 text-center">
-          <h2 id="new-report-title" className="text-xl font-semibold text-white">
+      <div className="modal__overlay" />
+      <form onSubmit={handleSubmit} className="modal__panel">
+        <header className="modal__header">
+          <h2 id="new-report-title" className="modal__title">
             New Report
           </h2>
-        </div>
+        </header>
 
-        <div className="space-y-1.5">
-          <label htmlFor="report-name" className="text-sm font-medium text-slate-200">
-            Report Name <span className="text-red-400">*</span>
+        <div className="form-field">
+          <label htmlFor="report-name" className="form-field__label">
+            Report Name <span className="form-field__required">*</span>
           </label>
           <input
             id="report-name"
@@ -161,66 +184,63 @@ export function NewReportModal({ isOpen, onClose }: NewReportModalProps) {
               }))
             }
             placeholder="Enter report name"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-base text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            onFocus={handleReportNameFocus}
+            onBlur={handleReportNameBlur}
+            aria-invalid={isReportNameMissing}
+            aria-describedby={reportNameErrorId}
+            className={`form-control${isReportNameMissing ? ' form-control--error' : ''}`}
           />
+          {isReportNameMissing && (
+            <p className="form-field__hint" id="report-name-error" role="alert">
+              Please enter a report name.
+            </p>
+          )}
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="flooring-type" className="text-sm font-medium text-slate-200">
+        <div className="form-field">
+          <label htmlFor="flooring-type" className="form-field__label">
             Flooring Type
           </label>
-          <div className="relative">
-            <select
-              id="flooring-type"
-              value={form.flooringType}
-              onChange={(event) => handleFlooringChange(event.target.value)}
-              className="w-full cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-base text-white focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            >
-              {FLOORING_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="text-slate-900">
-                  {option.value}
-                </option>
-              ))}
-            </select>
-            <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-300">
-              ▾
-            </span>
-          </div>
+          <select
+            id="flooring-type"
+            value={form.flooringType}
+            onChange={(event) => handleFlooringChange(event.target.value)}
+            className="form-control select-control"
+          >
+            {FLOORING_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.value}
+              </option>
+            ))}
+          </select>
         </div>
 
         {materialOptions.length > 0 && form.flooringType !== 'None' && (
-          <div className="space-y-1.5">
-            <label htmlFor="flooring-material" className="text-sm font-medium text-slate-200">
+          <div className="form-field">
+            <label htmlFor="flooring-material" className="form-field__label">
               Material
             </label>
-            <div className="relative">
-              <select
-                id="flooring-material"
-                value={form.material}
-                onChange={(event) => handleMaterialChange(event.target.value)}
-                className="w-full cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-base text-white focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              >
-                <option value="None" className="text-slate-900">
-                  None
+            <select
+              id="flooring-material"
+              value={form.material}
+              onChange={(event) => handleMaterialChange(event.target.value)}
+              className="form-control select-control"
+            >
+              <option value="None">None</option>
+              {materialOptions.map((material) => (
+                <option key={material} value={material}>
+                  {material}
                 </option>
-                {materialOptions.map((material) => (
-                  <option key={material} value={material} className="text-slate-900">
-                    {material}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-300">
-                ▾
-              </span>
-            </div>
+              ))}
+            </select>
           </div>
         )}
 
-        <div className="space-y-2.5">
-          <p className="text-sm font-medium text-slate-200">Dimensions</p>
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label htmlFor="length" className="text-xs font-medium text-slate-300">
+        <section className="form-section">
+          <p className="form-section__title">Dimensions</p>
+          <div className="form-grid">
+            <div className="form-field">
+              <label htmlFor="length" className="form-field__label form-field__label--secondary">
                 Length (inches)
               </label>
               <input
@@ -229,11 +249,11 @@ export function NewReportModal({ isOpen, onClose }: NewReportModalProps) {
                 min="0"
                 value={form.length}
                 onChange={(event) => handleNumericChange('length', event.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="form-control"
               />
             </div>
-            <div className="space-y-1">
-              <label htmlFor="width" className="text-xs font-medium text-slate-300">
+            <div className="form-field">
+              <label htmlFor="width" className="form-field__label form-field__label--secondary">
                 Width (inches)
               </label>
               <input
@@ -242,11 +262,11 @@ export function NewReportModal({ isOpen, onClose }: NewReportModalProps) {
                 min="0"
                 value={form.width}
                 onChange={(event) => handleNumericChange('width', event.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="form-control"
               />
             </div>
-            <div className="space-y-1 sm:col-span-2">
-              <label htmlFor="thickness" className="text-xs font-medium text-slate-300">
+            <div className="form-field form-grid__full">
+              <label htmlFor="thickness" className="form-field__label form-field__label--secondary">
                 Thickness (mm)
               </label>
               <input
@@ -255,25 +275,26 @@ export function NewReportModal({ isOpen, onClose }: NewReportModalProps) {
                 min="0"
                 value={form.thickness}
                 onChange={(event) => handleNumericChange('thickness', event.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="form-control"
               />
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+        <div className="form-actions">
           <button
             type="button"
             onClick={handleCancel}
-            className="w-full cursor-pointer rounded-lg border border-white/10 bg-white/10 px-4 py-2.5 text-base font-medium text-slate-200 transition-colors hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 sm:flex-1"
+            className="button button--secondary"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="w-full cursor-pointer rounded-lg bg-white px-4 py-2.5 text-base font-semibold text-slate-950 transition-transform hover:scale-[1.01] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 sm:flex-1"
+            className="button button--primary"
+            disabled={isSubmitDisabled}
           >
-            Create Report
+            Add Images
           </button>
         </div>
       </form>

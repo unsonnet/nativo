@@ -19,9 +19,9 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden">
+    <div className="dashboard">
       <Header />
-      <main className="flex flex-1 flex-col">
+      <main className="dashboard__main">
         <ReportsGrid />
       </main>
       <FloatingAddButton onClick={handleOpen} />

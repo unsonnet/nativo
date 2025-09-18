@@ -3,12 +3,12 @@ import { reports } from "@/data/reports";
 
 export function ReportsGrid() {
   return (
-    <div className="w-full px-8 py-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+    <section className="reports-grid">
+      <div className="reports-grid__list">
         {reports.map((r) => (
           <ReportCard key={r.id} report={r} />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
