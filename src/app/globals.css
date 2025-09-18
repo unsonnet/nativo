@@ -68,7 +68,9 @@ body::before {
   display: flex;
   min-height: 100vh;
   flex-direction: column;
-  background: transparent;
+  background: radial-gradient(circle at 12% 18%, rgba(45, 55, 72, 0.2), transparent 58%),
+    radial-gradient(circle at 60% 80%, rgba(30, 41, 59, 0.28), transparent 72%),
+    var(--background);
 }
 
 .dashboard__main {
@@ -209,45 +211,141 @@ body::before {
   outline-offset: 3px;
 }
 
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
+.report-create {
+  min-height: 100vh;
+  display: flex;
+  background: radial-gradient(circle at 15% 20%, rgba(45, 55, 72, 0.22), transparent 55%),
+    radial-gradient(circle at 55% 80%, rgba(30, 41, 59, 0.3), transparent 70%),
+    var(--background);
+}
+
+.report-create__sidebar {
+  position: relative;
+  width: min(300px, 100%);
+  padding: clamp(1.35rem, 2.6vw, 2rem) clamp(0.9rem, 2vw, 1.4rem);
+  background: rgba(9, 12, 20, 0.25);
+  border-right: 1px solid rgba(148, 163, 184, 0.08);
+  box-shadow: 8px 0 36px rgba(8, 12, 20, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  backdrop-filter: blur(20px);
+  z-index: 1;
+}
+
+.report-create__back {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+
+.report-create__back:hover {
+  color: var(--text-subtle);
+}
+
+.report-create__back-icon {
+  font-size: 1.1rem;
+}
+
+.report-create__form {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.75rem;
+}
+
+.report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.report-create__canvas {
+  position: relative;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(1.5rem, 4vw, 3.5rem) 1.25rem;
+  padding: clamp(2rem, 6vw, 5rem);
+  overflow: hidden;
 }
 
-.modal__overlay {
+.report-create__canvas::before {
+  content: '';
   position: absolute;
   inset: 0;
-  background: var(--surface-overlay);
-  backdrop-filter: blur(22px);
+  background: radial-gradient(circle at 30% 20%, rgba(59, 130, 246, 0.08), transparent 55%),
+    radial-gradient(circle at 70% 65%, rgba(15, 23, 42, 0.85), transparent 80%);
+  opacity: 0.6;
 }
 
-.modal__panel {
+.report-create__dropzone {
   position: relative;
-  width: 100%;
-  max-width: 30rem;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: clamp(1.75rem, 3vw, 2.25rem) clamp(1.5rem, 3vw, 2.5rem);
-  border-radius: 1.1rem;
-  background: var(--surface-panel-strong);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-elevated);
-}
-
-.modal__header {
+  align-items: center;
+  gap: 0.85rem;
+  padding: clamp(1.4rem, 4vw, 2rem) clamp(1.4rem, 4vw, 2.2rem);
+  max-width: 360px;
+  width: 100%;
   text-align: center;
 }
 
-.modal__title {
-  font-size: 1.25rem;
-  font-weight: 600;
+.report-create__dropzone-icon {
+  width: 48px;
+  height: 48px;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+.report-create__dropzone-text {
+  font-size: 1rem;
+  color: rgba(226, 232, 240, 0.82);
+}
+
+.report-create__dropzone-separator {
+  font-size: 0.85rem;
+  color: rgba(148, 163, 184, 0.6);
+}
+
+.report-create__choose {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1.6rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(226, 232, 240, 0.1);
   color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+  cursor: pointer;
+}
+
+.report-create__choose:hover {
+  background: rgba(226, 232, 240, 0.16);
+  border-color: rgba(226, 232, 240, 0.3);
+  transform: translateY(-1px);
+}
+
+.report-create__choose:focus-visible {
+  outline: 2px solid var(--control-ring);
+  outline-offset: 3px;
+}
+
+.report-create__choose-icon {
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 .form-field {
@@ -281,7 +379,7 @@ body::before {
 .form-control {
   width: 100%;
   border-radius: 0.5rem;
-  border: 1px solid var(--control-border);
+  border: 1px solid transparent;
   background-color: var(--control-background);
   color: var(--text-primary);
   font-size: 1rem;
@@ -301,6 +399,7 @@ body::before {
 
 .form-control:hover {
   background-color: var(--control-background-hover);
+  border-color: rgba(148, 163, 184, 0.25);
 }
 
 .form-control:focus {
@@ -365,6 +464,7 @@ body::before {
     flex-direction: row;
   }
 }
+
 
 .button {
   width: 100%;

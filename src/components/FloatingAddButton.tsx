@@ -1,14 +1,23 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 type FloatingAddButtonProps = {
   onClick?: () => void;
 };
 
 export function FloatingAddButton({ onClick }: FloatingAddButtonProps) {
+  const router = useRouter();
+
+  const handleClick = () => {
+    onClick?.();
+    router.push('/dashboard/new');
+  };
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       className="floating-add-button"
       aria-label="Add report"
     >
