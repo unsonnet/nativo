@@ -212,8 +212,9 @@ body::before {
 }
 
 .report-create {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
+  overflow: hidden;
   background: radial-gradient(circle at 15% 20%, rgba(45, 55, 72, 0.22), transparent 55%),
     radial-gradient(circle at 55% 80%, rgba(30, 41, 59, 0.3), transparent 70%),
     var(--background);
@@ -272,10 +273,17 @@ body::before {
   position: relative;
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: clamp(2rem, 6vw, 5rem);
   overflow: hidden;
+}
+
+.report-create__canvas--dragging::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(59, 130, 246, 0.12);
+  pointer-events: none;
 }
 
 .report-create__canvas::before {
@@ -293,11 +301,16 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.85rem;
   padding: clamp(1.4rem, 4vw, 2rem) clamp(1.4rem, 4vw, 2.2rem);
   max-width: 360px;
   width: 100%;
   text-align: center;
+}
+
+.report-create__dropzone--active {
+  color: rgba(226, 232, 240, 0.88);
 }
 
 .report-create__dropzone-icon {
@@ -346,6 +359,151 @@ body::before {
 .report-create__choose-icon {
   font-size: 1.1rem;
   line-height: 1;
+}
+
+.report-create__gallery {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: min(780px, 100%);
+  gap: clamp(1.25rem, 3vw, 2rem);
+  padding: clamp(1.25rem, 3.5vw, 2.5rem) clamp(1.25rem, 3.5vw, 2.5rem) clamp(0.5rem, 2vw, 1rem);
+  box-sizing: border-box;
+}
+
+.report-create__preview {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 210px);
+  border-radius: 1.2rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.5rem, 1.5vw, 1.1rem);
+}
+
+.report-create__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.report-create__thumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.26);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+  margin-top: auto;
+  align-self: center;
+  margin-bottom: clamp(0.25rem, 1vw, 0.6rem);
+}
+
+
+.report-create__thumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: inline-flex;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid transparent;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.report-create__thumb:hover {
+  transform: translateY(-2px);
+}
+
+.report-create__thumb--active {
+  border-color: rgba(226, 232, 240, 0.65);
+  box-shadow:
+    0 0 0 2px rgba(226, 232, 240, 0.75),
+    0 8px 20px rgba(8, 12, 20, 0.45);
+}
+
+.report-create__thumb-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.report-create__thumb-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.report-create__thumb-remove {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.9);
+  color: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(185, 28, 28, 0.95);
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 160ms ease, transform 160ms ease;
+  cursor: pointer;
+}
+
+.report-create__thumb:hover .report-create__thumb-remove,
+.report-create__thumb:focus-visible .report-create__thumb-remove {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+
+.report-create__thumb-remove:focus-visible {
+  outline: 2px solid rgba(248, 113, 113, 0.7);
+  outline-offset: 2px;
+}
+
+.report-create__thumb--add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+}
+
+.report-create__thumb--add:hover {
+  border-color: rgba(226, 232, 240, 0.38);
+}
+
+.report-create__thumb-add {
+  font-size: 1.5rem;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .form-field {
