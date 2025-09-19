@@ -9,7 +9,9 @@ import {
 } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Upload } from 'lucide-react';
 
+import { ImageToolbar } from '@/components/ImageToolbar';
 import { NewReportForm } from '@/components/NewReportForm';
 
 type PreviewImage = {
@@ -32,6 +34,7 @@ export default function NewReportPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrls = useRef(new Map<string, string>());
   const dragCounter = useRef(0);
+  const [activeTool, setActiveTool] = useState<'none' | 'zoom' | 'pan' | 'perspective' | 'erase'>('none');
 
   const selectedImage = useMemo(
     () => images.find((image) => image.id === selectedId) ?? images[0] ?? null,
@@ -184,27 +187,7 @@ export default function NewReportPage() {
             }`}
             role="presentation"
           >
-            <svg
-              className="report-create__dropzone-icon"
-              viewBox="0 0 48 48"
-              aria-hidden="true"
-            >
-              <path
-                d="M24 32V12m0 0-7 7m7-7 7 7"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-              <path
-                d="M16 36h16"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeWidth="2"
-              />
-            </svg>
+            <Upload className="report-create__dropzone-icon" strokeWidth={1.8} />
             <p className="report-create__dropzone-text">Drag and drop images here</p>
             <span className="report-create__dropzone-separator">or</span>
             <button type="button" className="report-create__choose" onClick={handleChooseClick}>
@@ -213,12 +196,19 @@ export default function NewReportPage() {
             </button>
           </div>
         ) : (
-          <div className="report-create__gallery">
-            {selectedImage && (
-              <figure className="report-create__preview">
-                <img src={selectedImage.url} alt={selectedImage.name} />
-              </figure>
-            )}
+          <div className="report-create__workspace">
+            <ImageToolbar
+              activeTool={activeTool}
+              onToolChange={(tool) => setActiveTool(tool as typeof activeTool)}
+              onUndo={() => undefined}
+              canUndo={false}
+            />
+            <div className="report-create__gallery">
+              {selectedImage && (
+                <figure className="report-create__preview">
+                  <img src={selectedImage.url} alt={selectedImage.name} />
+                </figure>
+              )}
 
             <div className="report-create__thumbs" role="list">
               {images.map((image) => {
@@ -271,6 +261,7 @@ export default function NewReportPage() {
               >
                 <span aria-hidden className="report-create__thumb-add">+</span>
               </button>
+            </div>
             </div>
           </div>
         )}

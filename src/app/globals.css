@@ -25,6 +25,9 @@
   --button-primary-hover: #e2e8f0;
   --button-secondary: rgba(255, 255, 255, 0.08);
   --button-secondary-hover: rgba(255, 255, 255, 0.12);
+  --text-size-sm: 0.8rem;
+  --text-size-md: 0.95rem;
+  --text-size-lg: 1.25rem;
 }
 
 body {
@@ -88,7 +91,7 @@ body::before {
 }
 
 .app-header__title {
-  font-size: 1.375rem;
+  font-size: var(--text-size-lg);
   font-weight: 500;
   color: var(--text-primary);
 }
@@ -100,7 +103,7 @@ body::before {
 }
 
 .app-header__name {
-  font-size: 0.875rem;
+  font-size: var(--text-size-sm);
   color: var(--text-muted);
 }
 
@@ -143,7 +146,7 @@ body::before {
 }
 
 .report-card__date {
-  font-size: 0.75rem;
+  font-size: var(--text-size-sm);
   color: var(--text-muted);
 }
 
@@ -173,7 +176,7 @@ body::before {
 }
 
 .report-card__title {
-  font-size: 0.95rem;
+  font-size: var(--text-size-md);
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
@@ -320,12 +323,12 @@ body::before {
 }
 
 .report-create__dropzone-text {
-  font-size: 1rem;
+  font-size: var(--text-size-md);
   color: rgba(226, 232, 240, 0.82);
 }
 
 .report-create__dropzone-separator {
-  font-size: 0.85rem;
+  font-size: var(--text-size-sm);
   color: rgba(148, 163, 184, 0.6);
 }
 
@@ -338,8 +341,8 @@ body::before {
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(226, 232, 240, 0.1);
   color: var(--text-primary);
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--text-size-md);
+  font-weight: 500;
   letter-spacing: 0.01em;
   transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
   cursor: pointer;
@@ -368,10 +371,97 @@ body::before {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  width: min(780px, 100%);
+  width: 100%;
   gap: clamp(1.25rem, 3vw, 2rem);
   padding: clamp(1.25rem, 3.5vw, 2.5rem) clamp(1.25rem, 3.5vw, 2.5rem) clamp(0.5rem, 2vw, 1rem);
   box-sizing: border-box;
+}
+
+.report-create__workspace {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem clamp(1.35rem, 3vw, 2.25rem);
+  background: rgba(9, 12, 20, 0.25);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  box-shadow: 8px 0 36px rgba(8, 12, 20, 0.35);
+  backdrop-filter: blur(20px);
+}
+
+.toolbar__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.toolbar__group-label {
+  font-size: var(--text-size-sm);
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.8);
+  margin-right: 0.35rem;
+}
+
+.toolbar__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.45);
+  color: rgba(226, 232, 240, 0.8);
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.toolbar__button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(226, 232, 240, 0.36);
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.toolbar__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar__button--active {
+  background: rgba(226, 232, 240, 0.2);
+  color: rgba(248, 250, 252, 0.98);
+  border-color: rgba(226, 232, 240, 0.45);
+}
+
+.toolbar__button:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.65);
+  outline-offset: 2px;
+}
+
+.toolbar__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.toolbar__divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(148, 163, 184, 0.25);
+}
+
+.toolbar__status {
+  margin-left: auto;
+  font-size: var(--text-size-sm);
+  color: rgba(148, 163, 184, 0.85);
+  white-space: nowrap;
 }
 
 .report-create__preview {
@@ -416,6 +506,7 @@ body::before {
   background: rgba(15, 23, 42, 0.4);
   border: 1px solid transparent;
   transition: border-color 160ms ease, transform 160ms ease;
+  user-select: none;
 }
 
 .report-create__thumb:hover {
@@ -513,14 +604,14 @@ body::before {
 }
 
 .form-field__label {
-  font-size: 0.9rem;
+  font-size: var(--text-size-sm);
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .form-field__label--secondary {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--text-size-sm);
+  font-weight: 500;
   color: var(--text-muted);
 }
 
@@ -529,7 +620,7 @@ body::before {
 }
 
 .form-field__hint {
-  font-size: 0.75rem;
+  font-size: var(--text-size-sm);
   color: #fca5a5;
   margin-top: -0.35rem;
 }
@@ -540,7 +631,7 @@ body::before {
   border: 1px solid transparent;
   background-color: var(--control-background);
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--text-size-sm);
   padding: 0.6rem 0.85rem;
   transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
 }
@@ -591,7 +682,7 @@ body::before {
 }
 
 .form-section__title {
-  font-size: 0.9rem;
+  font-size: var(--text-size-sm);
   font-weight: 500;
   color: var(--text-primary);
 }
