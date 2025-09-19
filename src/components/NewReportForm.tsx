@@ -22,7 +22,7 @@ type NewReportFormState = {
 };
 
 const FLOORING_OPTIONS: FlooringOption[] = [
-  { value: 'None', materials: [] },
+  { value: 'Any', materials: [] },
   { value: 'Tile', materials: ['Ceramic', 'Porcelain', 'Stone', 'Mosaic'] },
   { value: 'Wood', materials: ['Oak', 'Maple', 'Walnut', 'Bamboo'] },
   { value: 'Vinyl', materials: ['Luxury Vinyl', 'Sheet Vinyl', 'Rigid Core'] },
@@ -32,8 +32,8 @@ const FLOORING_OPTIONS: FlooringOption[] = [
 
 const INITIAL_FORM_STATE: NewReportFormState = {
   reportName: '',
-  flooringType: 'None',
-  material: 'None',
+  flooringType: 'Any',
+  material: 'Any',
   length: '',
   width: '',
   thickness: '',
@@ -66,7 +66,7 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
     setForm((prev) => ({
       ...prev,
       flooringType: value,
-      material: 'None',
+      material: 'Any',
     }));
   };
 
@@ -159,7 +159,7 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
         </select>
       </div>
 
-      {materialOptions.length > 0 && form.flooringType !== 'None' && (
+      {materialOptions.length > 0 && form.flooringType !== 'Any' && (
         <div className="form-field">
           <label htmlFor="flooring-material" className="form-field__label">
             Material
@@ -170,7 +170,7 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
             onChange={(event) => handleMaterialChange(event.target.value)}
             className="form-control select-control"
           >
-            <option value="None">None</option>
+            <option value="Any">Any</option>
             {materialOptions.map((material) => (
               <option key={material} value={material}>
                 {material}
