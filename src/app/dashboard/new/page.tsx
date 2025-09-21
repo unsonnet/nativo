@@ -34,7 +34,7 @@ export default function NewReportPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrls = useRef(new Map<string, string>());
   const dragCounter = useRef(0);
-  const [activeTool, setActiveTool] = useState<'none' | 'zoom' | 'pan' | 'perspective' | 'erase'>('none');
+  const [activeTool, setActiveTool] = useState<'none' | 'pan' | 'scale' | 'rotate' | 'mask-add' | 'mask-subtract'>('none');
 
   const selectedImage = useMemo(
     () => images.find((image) => image.id === selectedId) ?? images[0] ?? null,
@@ -199,7 +199,9 @@ export default function NewReportPage() {
           <div className="report-create__workspace">
             <ImageToolbar
               activeTool={activeTool}
-              onToolChange={(tool) => setActiveTool(tool as typeof activeTool)}
+              onToolChange={(tool) =>
+                setActiveTool((prev) => (prev === tool ? 'none' : tool))
+              }
               onUndo={() => undefined}
               canUndo={false}
             />

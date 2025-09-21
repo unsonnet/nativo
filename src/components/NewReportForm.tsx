@@ -38,7 +38,7 @@ const INITIAL_FORM_STATE: NewReportFormState = {
   length: '',
   width: '',
   thickness: '',
-  units: 'relative',
+  units: 'absolute',
 };
 
 const INITIAL_TOUCHED_STATE = {
@@ -240,21 +240,6 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
                 <input
                   type="radio"
                   name="units"
-                  value="relative"
-                  checked={form.units === 'relative'}
-                  onChange={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      units: 'relative',
-                    }))
-                  }
-                />
-                <span>Relative</span>
-              </label>
-              <label className="form-radio">
-                <input
-                  type="radio"
-                  name="units"
                   value="absolute"
                   checked={form.units === 'absolute'}
                   onChange={() =>
@@ -265,6 +250,21 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
                   }
                 />
                 <span>Absolute</span>
+              </label>
+              <label className="form-radio">
+                <input
+                  type="radio"
+                  name="units"
+                  value="relative"
+                  checked={form.units === 'relative'}
+                  onChange={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      units: 'relative',
+                    }))
+                  }
+                />
+                <span>Relative</span>
               </label>
             </div>
           </div>
