@@ -19,6 +19,7 @@ type NewReportFormState = {
   length: string;
   width: string;
   thickness: string;
+  units: 'relative' | 'absolute';
 };
 
 const FLOORING_OPTIONS: FlooringOption[] = [
@@ -37,6 +38,7 @@ const INITIAL_FORM_STATE: NewReportFormState = {
   length: '',
   width: '',
   thickness: '',
+  units: 'relative',
 };
 
 const INITIAL_TOUCHED_STATE = {
@@ -111,8 +113,8 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
 
   return (
     <form className="report-form" onSubmit={handleSubmit}>
-      <div className="form-field">
-        <label htmlFor="report-name" className="form-field__label">
+      <section className="form-section">
+        <label htmlFor="report-name" className="form-section__title">
           Report Name <span className="form-field__required">*</span>
         </label>
         <input
@@ -139,10 +141,10 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
             Please enter a report name.
           </p>
         )}
-      </div>
+      </section>
 
-      <div className="form-field">
-        <label htmlFor="flooring-type" className="form-field__label">
+      <section className="form-section">
+        <label htmlFor="flooring-type" className="form-section__title">
           Flooring Type
         </label>
         <select
@@ -157,11 +159,11 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
             </option>
           ))}
         </select>
-      </div>
+      </section>
 
       {materialOptions.length > 0 && form.flooringType !== 'Any' && (
-        <div className="form-field">
-          <label htmlFor="flooring-material" className="form-field__label">
+        <section className="form-section">
+          <label htmlFor="flooring-material" className="form-section__title">
             Material
           </label>
           <select
@@ -177,7 +179,7 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
               </option>
             ))}
           </select>
-        </div>
+        </section>
       )}
 
       <section className="form-section">
@@ -185,7 +187,7 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
         <div className="form-grid">
           <div className="form-field">
             <label htmlFor="length" className="form-field__label form-field__label--secondary">
-              Length (inches)
+              Length{form.units === 'absolute' ? ' (inches)' : ''}
             </label>
             <input
               id="length"
@@ -198,7 +200,7 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
           </div>
           <div className="form-field">
             <label htmlFor="width" className="form-field__label form-field__label--secondary">
-              Width (inches)
+              Width{form.units === 'absolute' ? ' (inches)' : ''}
             </label>
             <input
               id="width"
@@ -221,6 +223,50 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
               onChange={(event) => handleNumericChange('thickness', event.target.value)}
               className="form-control"
             />
+          </div>
+          <div
+            className="form-field form-field--inline form-grid__full"
+            role="radiogroup"
+            aria-labelledby="units-label"
+          >
+            <span
+              id="units-label"
+              className="form-field__label form-field__label--secondary"
+            >
+              Units
+            </span>
+            <div className="form-radio-group">
+              <label className="form-radio">
+                <input
+                  type="radio"
+                  name="units"
+                  value="relative"
+                  checked={form.units === 'relative'}
+                  onChange={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      units: 'relative',
+                    }))
+                  }
+                />
+                <span>Relative</span>
+              </label>
+              <label className="form-radio">
+                <input
+                  type="radio"
+                  name="units"
+                  value="absolute"
+                  checked={form.units === 'absolute'}
+                  onChange={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      units: 'absolute',
+                    }))
+                  }
+                />
+                <span>Absolute</span>
+              </label>
+            </div>
           </div>
         </div>
       </section>

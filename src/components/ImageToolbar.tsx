@@ -1,36 +1,38 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Hand, Move3D, Scissors, Undo2, ZoomIn } from 'lucide-react';
+import { Minus, Move, RotateCcw, Undo2, ZoomIn, Plus } from 'lucide-react';
 
 const TOOL_DESCRIPTIONS: Record<string, string> = {
-  zoom: 'Click and drag to zoom • Scroll to zoom in/out',
-  pan: 'Click and drag to move the image',
-  perspective: 'Drag corners for perspective • Center for rotation',
-  erase: 'Draw around areas to mask • Multiple selections allowed',
-  none: 'Select a tool to begin editing',
+  pan: 'Click and drag to move the grid position',
+  scale: 'Click and drag to resize the grid • Scroll to fine-tune',
+  rotate: 'Drag the sphere control to rotate grid in 3D space',
+  'mask-add': 'Draw around areas to hide • Multiple selections allowed',
+  'mask-subtract': 'Draw around masked areas to reveal them',
+  none: 'Select a tool to begin aligning the grid',
 };
 
 type ToolConfig = {
-  id: 'zoom' | 'pan' | 'perspective' | 'erase';
+  id: 'pan' | 'scale' | 'rotate' | 'mask-add' | 'mask-subtract';
   icon: LucideIcon;
   label: string;
   description: string;
 };
 
-const transformTools: ToolConfig[] = [
-  { id: 'zoom', icon: ZoomIn, label: 'Zoom', description: 'Zoom in/out on the image' },
-  { id: 'pan', icon: Hand, label: 'Pan', description: 'Move the image around' },
-  { id: 'perspective', icon: Move3D, label: 'Perspective', description: 'Adjust perspective and rotation' },
+const gridTools: ToolConfig[] = [
+  { id: 'pan', icon: Move, label: 'Pan', description: 'Move the grid position in 2D' },
+  { id: 'scale', icon: ZoomIn, label: 'Scale', description: 'Resize the grid scale' },
+  { id: 'rotate', icon: RotateCcw, label: 'Rotate', description: 'Rotate grid in 3D space with sphere control' },
 ];
 
-const editingTools: ToolConfig[] = [
-  { id: 'erase', icon: Scissors, label: 'Crop', description: 'Lasso tool to mask unwanted areas' },
+const maskTools: ToolConfig[] = [
+  { id: 'mask-add', icon: Plus, label: 'Add Mask', description: 'Lasso tool to mask areas (hide parts of image)' },
+  { id: 'mask-subtract', icon: Minus, label: 'Remove Mask', description: 'Lasso tool to remove masking (show parts of image)' },
 ];
 
 type ImageToolbarProps = {
-  activeTool: 'none' | 'zoom' | 'pan' | 'perspective' | 'erase';
-  onToolChange: (tool: 'none' | 'zoom' | 'pan' | 'perspective' | 'erase') => void;
+  activeTool: 'none' | 'pan' | 'scale' | 'rotate' | 'mask-add' | 'mask-subtract';
+  onToolChange: (tool: 'none' | 'pan' | 'scale' | 'rotate' | 'mask-add' | 'mask-subtract') => void;
   onUndo: () => void;
   canUndo: boolean;
 };
@@ -39,8 +41,8 @@ export function ImageToolbar({ activeTool, onToolChange, onUndo, canUndo }: Imag
   return (
     <header className="toolbar">
       <div className="toolbar__group">
-        <span className="toolbar__group-label">Transform:</span>
-        {transformTools.map((tool) => {
+        <span className="toolbar__group-label">Grid:</span>
+        {gridTools.map((tool) => {
           const Icon = tool.icon;
           const isActive = activeTool === tool.id;
           return (
@@ -60,8 +62,8 @@ export function ImageToolbar({ activeTool, onToolChange, onUndo, canUndo }: Imag
       <span className="toolbar__divider" aria-hidden />
 
       <div className="toolbar__group">
-        <span className="toolbar__group-label">Edit:</span>
-        {editingTools.map((tool) => {
+        <span className="toolbar__group-label">Mask:</span>
+        {maskTools.map((tool) => {
           const Icon = tool.icon;
           const isActive = activeTool === tool.id;
           return (

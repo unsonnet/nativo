@@ -603,15 +603,53 @@ body::before {
   gap: 0.75rem;
 }
 
+.form-field--inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.form-field--inline .form-field__label {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+}
+
+.form-radio-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-left: auto;
+  margin-right: 1rem;
+}
+
+.form-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--text-size-sm);
+  color: var(--text-muted);
+}
+
+.form-radio input {
+  width: 14px;
+  height: 14px;
+  accent-color: rgba(129, 140, 248, 0.7);
+}
+
 .form-field__label {
   font-size: var(--text-size-sm);
   font-weight: 500;
   color: var(--text-primary);
 }
 
-.form-field__label--secondary {
-  font-size: var(--text-size-sm);
-  font-weight: 500;
+.form-field__label.form-field__label--secondary {
   color: var(--text-muted);
 }
 
