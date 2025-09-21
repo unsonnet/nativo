@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Minus, Move, RotateCcw, Undo2, ZoomIn, Plus } from 'lucide-react';
+import { Home, Minus, Move, RotateCcw, Undo2, ZoomIn, Plus } from 'lucide-react';
 
 const TOOL_DESCRIPTIONS: Record<string, string> = {
   pan: 'Click and drag to move the grid position',
@@ -35,9 +35,18 @@ type ImageToolbarProps = {
   onToolChange: (tool: 'none' | 'pan' | 'scale' | 'rotate' | 'mask-add' | 'mask-subtract') => void;
   onUndo: () => void;
   canUndo: boolean;
+  onResetViewport: () => void;
+  canResetViewport: boolean;
 };
 
-export function ImageToolbar({ activeTool, onToolChange, onUndo, canUndo }: ImageToolbarProps) {
+export function ImageToolbar({
+  activeTool,
+  onToolChange,
+  onUndo,
+  canUndo,
+  onResetViewport,
+  canResetViewport,
+}: ImageToolbarProps) {
   return (
     <header className="toolbar">
       <div className="toolbar__group">
@@ -91,6 +100,15 @@ export function ImageToolbar({ activeTool, onToolChange, onUndo, canUndo }: Imag
           title="Undo last action"
         >
           <Undo2 className="toolbar__icon" strokeWidth={1.9} />
+        </button>
+        <button
+          type="button"
+          className="toolbar__button"
+          onClick={onResetViewport}
+          disabled={!canResetViewport}
+          title="Reset viewport"
+        >
+          <Home className="toolbar__icon" strokeWidth={1.9} />
         </button>
       </div>
 

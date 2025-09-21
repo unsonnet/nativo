@@ -372,8 +372,7 @@ body::before {
   flex: 1;
   min-height: 0;
   width: 100%;
-  gap: clamp(1.25rem, 3vw, 2rem);
-  padding: clamp(1.25rem, 3.5vw, 2.5rem) clamp(1.25rem, 3.5vw, 2.5rem) clamp(0.5rem, 2vw, 1rem);
+  gap: 0;
   box-sizing: border-box;
 }
 
@@ -390,7 +389,7 @@ body::before {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem clamp(1.35rem, 3vw, 2.25rem);
+  padding: 0.5rem;
   background: rgba(9, 12, 20, 0.25);
   border-bottom: 1px solid rgba(148, 163, 184, 0.08);
   box-shadow: 8px 0 36px rgba(8, 12, 20, 0.35);
@@ -467,32 +466,35 @@ body::before {
 .report-create__preview {
   flex: 1 1 auto;
   min-height: 0;
-  max-height: calc(100vh - 210px);
   border-radius: 1.2rem;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(0.5rem, 1.5vw, 1.1rem);
+  cursor: grab;
+}
+
+.report-create__preview--panning {
+  cursor: grabbing;
 }
 
 .report-create__preview img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: transform 80ms ease-out;
+  will-change: transform;
 }
 
 .report-create__thumbs {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.35rem;
   border-radius: 1rem;
   background: rgba(15, 23, 42, 0.26);
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
-  margin-top: auto;
   align-self: center;
-  margin-bottom: clamp(0.25rem, 1vw, 0.6rem);
+  padding: 1.3rem;
 }
 
 
