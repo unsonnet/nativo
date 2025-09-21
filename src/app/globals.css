@@ -372,8 +372,11 @@ body::before {
   flex: 1;
   min-height: 0;
   width: 100%;
-  gap: 0;
   box-sizing: border-box;
+  --thumb-bottom-gap: clamp(0.75rem, 1.2vw, 1.15rem);
+  --thumb-padding: 1.3rem;
+  --thumb-block-size: calc(64px + (2 * var(--thumb-padding)));
+  --thumb-reserved-space: calc(var(--thumb-block-size) + var(--thumb-bottom-gap));
 }
 
 .report-create__workspace {
@@ -390,10 +393,13 @@ body::before {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
+  padding-top: clamp(1.35rem, 2.6vw, 2rem);
   background: rgba(9, 12, 20, 0.25);
   border-bottom: 1px solid rgba(148, 163, 184, 0.08);
   box-shadow: 8px 0 36px rgba(8, 12, 20, 0.35);
   backdrop-filter: blur(20px);
+  position: relative;
+  z-index: 2;
 }
 
 .toolbar__group {
@@ -466,8 +472,10 @@ body::before {
 .report-create__preview {
   flex: 1 1 auto;
   min-height: 0;
-  border-radius: 1.2rem;
+  border-radius: 0;
   overflow: hidden;
+  box-sizing: border-box;
+  padding-bottom: var(--thumb-reserved-space);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -482,19 +490,22 @@ body::before {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transition: transform 80ms ease-out;
   will-change: transform;
 }
 
 .report-create__thumbs {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: var(--thumb-bottom-gap);
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
   border-radius: 1rem;
-  background: rgba(15, 23, 42, 0.26);
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
-  align-self: center;
-  padding: 1.3rem;
+  background: transparent;
+  box-shadow: none;
+  padding: var(--thumb-padding);
+  z-index: 2;
 }
 
 

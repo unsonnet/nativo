@@ -56,6 +56,7 @@ export function ImageWorkspace() {
   const objectUrls = useRef(new Map<string, string>());
   const dragCounter = useRef(0);
   const previewRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const pointerState = useRef<
     | {
         pointerId: number;
@@ -99,8 +100,8 @@ export function ImageWorkspace() {
         scale: next.scale,
         offset: { x: next.offset.x, y: next.offset.y },
       };
-      if (previewRef.current) {
-        previewRef.current.style.transform = `translate3d(${viewportRef.current.offset.x}px, ${viewportRef.current.offset.y}px, 0) scale(${viewportRef.current.scale})`;
+      if (imageRef.current) {
+        imageRef.current.style.transform = `translate3d(${viewportRef.current.offset.x}px, ${viewportRef.current.offset.y}px, 0) scale(${viewportRef.current.scale})`;
       }
       scheduleViewportRender();
     },
@@ -305,8 +306,8 @@ export function ImageWorkspace() {
   );
 
   useEffect(() => {
-    if (previewRef.current) {
-      previewRef.current.style.transform = `translate3d(${viewportState.offset.x}px, ${viewportState.offset.y}px, 0) scale(${viewportState.scale})`;
+    if (imageRef.current) {
+      imageRef.current.style.transform = `translate3d(${viewportState.offset.x}px, ${viewportState.offset.y}px, 0) scale(${viewportState.scale})`;
     }
   }, [viewportState]);
 
@@ -371,6 +372,7 @@ export function ImageWorkspace() {
                 onWheel={handleViewportWheel}
               >
                 <img
+                  ref={imageRef}
                   src={selectedImage.url}
                   alt={selectedImage.name}
                   style={{
@@ -438,4 +440,3 @@ export function ImageWorkspace() {
     </section>
   );
 }
-
