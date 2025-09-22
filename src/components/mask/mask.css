@@ -1,0 +1,9 @@
+.report-create__preview--mask {
+  cursor: crosshair;
+}
+
+.report-create__preview-layer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}

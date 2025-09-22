@@ -16,6 +16,7 @@ import type {
 import { Upload } from 'lucide-react';
 
 import { ImageToolbar } from '@/components/ImageToolbar';
+import { useImageMasking } from '@/components/mask';
 
 type PreviewImage = {
   id: string;
@@ -71,6 +72,22 @@ export function ImageWorkspace() {
     () => images.find((image) => image.id === selectedId) ?? images[0] ?? null,
     [images, selectedId]
   );
+  const selectedImageId = selectedImage?.id ?? null;
+
+  const {
+    isMaskTool,
+    handlePointerDown: handleMaskPointerDown,
+    handlePointerMove: handleMaskPointerMove,
+    handlePointerUp: handleMaskPointerUp,
+    handleToolChange: handleMaskToolChange,
+  } = useImageMasking({
+    images,
+    selectedImageId,
+    previewRef,
+    imageRef,
+    viewportRef,
+    onToggleViewportPanning: setIsViewportPanning,
+  });
 
   useEffect(() => {
     if (images.length > 0 && !images.some((image) => image.id === selectedId)) {
@@ -80,6 +97,7 @@ export function ImageWorkspace() {
       setSelectedId(null);
     }
   }, [images, selectedId]);
+
 
   const scheduleViewportRender = useCallback(() => {
     if (viewportRafRef.current !== null) {
@@ -131,6 +149,18 @@ export function ImageWorkspace() {
     pointerState.current = null;
     setIsViewportPanning(false);
   }, [selectedId, applyViewport]);
+
+  useEffect(() => {
+    if (!previewRef.current) {
+      return;
+    }
+    if (pointerState.current) {
+      previewRef.current.releasePointerCapture(pointerState.current.pointerId);
+      pointerState.current = null;
+    }
+    handleMaskToolChange();
+    setIsViewportPanning(false);
+  }, [activeTool, handleMaskToolChange]);
 
   const addFiles = useCallback((fileList: FileList | File[]) => {
     const filesArray = Array.from(fileList).filter((file) =>
@@ -234,6 +264,21 @@ export function ImageWorkspace() {
         return;
       }
       event.preventDefault();
+
+      if (handleMaskPointerDown(event, activeTool)) {
+        return;
+      }
+
+      const panToolActive =
+        activeTool === 'pan' ||
+        activeTool === 'none' ||
+        activeTool === 'scale' ||
+        activeTool === 'rotate';
+
+      if (!panToolActive) {
+        return;
+      }
+
       previewRef.current.setPointerCapture(event.pointerId);
       pointerState.current = {
         pointerId: event.pointerId,
@@ -243,33 +288,47 @@ export function ImageWorkspace() {
       };
       setIsViewportPanning(true);
     },
-    []
+    [activeTool, handleMaskPointerDown]
   );
 
-  const handleViewportPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!pointerState.current || pointerState.current.pointerId !== event.pointerId) {
-      return;
-    }
-    event.preventDefault();
-    const dx = event.clientX - pointerState.current.startX;
-    const dy = event.clientY - pointerState.current.startY;
-    const { startOffset } = pointerState.current;
-    updateViewport({
-      scale: viewportRef.current.scale,
-      offset: {
-        x: startOffset.x + dx,
-        y: startOffset.y + dy,
-      },
-    });
-  }, [updateViewport]);
+  const handleViewportPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (handleMaskPointerMove(event)) {
+        return;
+      }
 
-  const releaseViewportPointer = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (pointerState.current && event.pointerId === pointerState.current.pointerId) {
-      previewRef.current?.releasePointerCapture(event.pointerId);
-      pointerState.current = null;
-      setIsViewportPanning(false);
-    }
-  }, []);
+      if (!pointerState.current || pointerState.current.pointerId !== event.pointerId) {
+        return;
+      }
+      event.preventDefault();
+      const dx = event.clientX - pointerState.current.startX;
+      const dy = event.clientY - pointerState.current.startY;
+      const { startOffset } = pointerState.current;
+      updateViewport({
+        scale: viewportRef.current.scale,
+        offset: {
+          x: startOffset.x + dx,
+          y: startOffset.y + dy,
+        },
+      });
+    },
+    [handleMaskPointerMove, updateViewport]
+  );
+
+  const releaseViewportPointer = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (handleMaskPointerUp(event)) {
+        return;
+      }
+
+      if (pointerState.current && event.pointerId === pointerState.current.pointerId) {
+        previewRef.current?.releasePointerCapture(event.pointerId);
+        pointerState.current = null;
+        setIsViewportPanning(false);
+      }
+    },
+    [handleMaskPointerUp]
+  );
 
   const handleViewportWheel = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
     if (!previewRef.current) {
@@ -319,6 +378,7 @@ export function ImageWorkspace() {
   const canvasClassName = isDragging
     ? 'report-create__canvas report-create__canvas--dragging'
     : 'report-create__canvas';
+  const isMaskToolActive = isMaskTool(activeTool);
 
   return (
     <section
@@ -368,7 +428,7 @@ export function ImageWorkspace() {
                 ref={previewRef}
                 className={`report-create__preview${
                   isViewportPanning ? ' report-create__preview--panning' : ''
-                }`}
+                }${isMaskToolActive ? ' report-create__preview--mask' : ''}`}
                 onPointerDown={handleViewportPointerDown}
                 onPointerMove={handleViewportPointerMove}
                 onPointerUp={releaseViewportPointer}
@@ -376,14 +436,16 @@ export function ImageWorkspace() {
                 onPointerCancel={releaseViewportPointer}
                 onWheel={handleViewportWheel}
               >
-                <img
-                  ref={imageRef}
-                  src={selectedImage.url}
-                  alt={selectedImage.name}
-                  style={{
-                    transform: `translate3d(${viewportState.offset.x}px, ${viewportState.offset.y}px, 0) scale(${viewportState.scale})`,
-                  }}
-                />
+                <div className="report-create__preview-layer">
+                  <img
+                    ref={imageRef}
+                    src={selectedImage.url}
+                    alt={selectedImage.name}
+                    style={{
+                      transform: `translate3d(${viewportState.offset.x}px, ${viewportState.offset.y}px, 0) scale(${viewportState.scale})`,
+                    }}
+                  />
+                </div>
               </div>
             )}
 
