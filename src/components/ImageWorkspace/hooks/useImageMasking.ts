@@ -84,20 +84,56 @@ export function useImageMasking<TImage extends MaskImage>({
     []
   );
 
-  /** Convert pointer coords to image coords */
+  /** Convert pointer coords to image pixel coords */
   const getImageCoords = useCallback(
     (e: ReactPointerEvent, imageId: string) => {
       const img = imageRef.current;
       const asset = assetsRef.current.get(imageId);
       if (!img || !asset?.width || !asset?.height) return null;
 
-      const rect = img.getBoundingClientRect();
-      if (!rect.width || !rect.height) return null;
+  // Parent rect (preview-layer) — matches object-fit content box
+      const parentRect = img.parentElement?.getBoundingClientRect() ?? previewRef.current?.getBoundingClientRect();
+      if (!parentRect || !parentRect.width || !parentRect.height) return null;
 
-      return {
-        x: Math.max(0, Math.min(asset.width, ((e.clientX - rect.left) / rect.width) * asset.width)),
-        y: Math.max(0, Math.min(asset.height, ((e.clientY - rect.top) / rect.height) * asset.height)),
-      };
+      const naturalW = asset.width;
+      const naturalH = asset.height;
+      const fitScale = Math.min(parentRect.width / naturalW, parentRect.height / naturalH);
+      if (!Number.isFinite(fitScale) || fitScale <= 0) return null;
+
+      const baseWidth = naturalW * fitScale;
+      const baseHeight = naturalH * fitScale;
+      const baseLeft = (parentRect.width - baseWidth) / 2;
+      const baseTop = (parentRect.height - baseHeight) / 2;
+
+  // Map client pointer into element local coords via inverse computed transform
+      const relX = e.clientX - parentRect.left;
+      const relY = e.clientY - parentRect.top;
+
+      let localX = relX;
+      let localY = relY;
+      try {
+        const style = getComputedStyle(img);
+        const t = style.transform || 'none';
+        if (t !== 'none') {
+          const m = new DOMMatrixReadOnly(t as string);
+          // Inverse map from parent/container coords into element local coords
+          const inv = m.inverse();
+          const p = inv.transformPoint(new DOMPoint(relX, relY));
+          localX = p.x;
+          localY = p.y;
+        }
+      } catch (err) {
+        // fallback to using relX/relY as local
+      }
+
+      // Subtract object-fit content offset
+      const contentCssX = localX - baseLeft;
+      const contentCssY = localY - baseTop;
+
+      const imgX = Math.max(0, Math.min(naturalW, contentCssX / fitScale));
+      const imgY = Math.max(0, Math.min(naturalH, contentCssY / fitScale));
+
+      return { x: imgX, y: imgY };
     },
     [imageRef]
   );
