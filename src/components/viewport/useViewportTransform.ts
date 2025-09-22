@@ -5,15 +5,13 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from 'react';
 
+/* ------------------------------------------------------------------
+ * Types
+ * -----------------------------------------------------------------*/
 export type ViewportState = {
   scale: number;
   offset: { x: number; y: number };
 };
-
-const createDefaultViewport = (): ViewportState => ({
-  scale: 1,
-  offset: { x: 0, y: 0 },
-});
 
 type PointerState = {
   pointerId: number;
@@ -33,14 +31,25 @@ type UseViewportTransformResult = {
   viewportState: ViewportState;
   viewportRef: MutableRefObject<ViewportState>;
   isViewportDefault: boolean;
-  handlePointerDown: (event: ReactPointerEvent<HTMLDivElement>) => boolean;
-  handlePointerMove: (event: ReactPointerEvent<HTMLDivElement>) => boolean;
-  handlePointerUp: (event: ReactPointerEvent<HTMLDivElement>) => boolean;
-  handleWheel: (event: ReactWheelEvent<HTMLDivElement>) => void;
+  handlePointerDown: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
+  handlePointerMove: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
+  handlePointerUp: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
+  handleWheel: (e: ReactWheelEvent<HTMLDivElement>) => void;
   resetViewport: () => void;
   cancelPan: () => void;
 };
 
+/* ------------------------------------------------------------------
+ * Defaults
+ * -----------------------------------------------------------------*/
+export const createDefaultViewport = (): ViewportState => ({
+  scale: 1,
+  offset: { x: 0, y: 0 },
+});
+
+/* ------------------------------------------------------------------
+ * Hook
+ * -----------------------------------------------------------------*/
 export function useViewportTransform({
   imageRef,
   previewRef,
@@ -48,46 +57,41 @@ export function useViewportTransform({
   onViewportUpdate,
 }: UseViewportTransformParams): UseViewportTransformResult {
   const [viewportState, setViewportState] = useState<ViewportState>(createDefaultViewport);
-  const viewportRef = useRef<ViewportState>(viewportState);
+  const viewportRef = useRef(viewportState);
   const pointerStateRef = useRef<PointerState | null>(null);
   const rafRef = useRef<number | null>(null);
 
+  /* ---------------- Helpers ---------------- */
+
+  /** Schedule a render using rAF to throttle setState */
   const scheduleRender = useCallback(() => {
-    if (rafRef.current !== null) {
-      return;
-    }
+    if (rafRef.current !== null) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
-      setViewportState({
-        scale: viewportRef.current.scale,
-        offset: { ...viewportRef.current.offset },
-      });
+      setViewportState({ ...viewportRef.current });
     });
   }, []);
 
+  /** Apply new viewport transform to state + DOM */
   const applyViewport = useCallback(
     (next: ViewportState) => {
-      viewportRef.current = {
-        scale: next.scale,
-        offset: { x: next.offset.x, y: next.offset.y },
-      };
-      const target = imageRef.current;
-      if (target) {
-        target.style.transform = `translate3d(${viewportRef.current.offset.x}px, ${viewportRef.current.offset.y}px, 0) scale(${viewportRef.current.scale})`;
+      viewportRef.current = { scale: next.scale, offset: { ...next.offset } };
+
+      const img = imageRef.current;
+      if (img) {
+        const { scale, offset } = viewportRef.current;
+        img.style.transform = `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`;
       }
-      onViewportUpdate?.({
-        scale: viewportRef.current.scale,
-        offset: { ...viewportRef.current.offset },
-      });
+
+      onViewportUpdate?.({ ...viewportRef.current });
       scheduleRender();
     },
     [imageRef, onViewportUpdate, scheduleRender]
   );
 
+  /** Update viewport via direct state or updater fn */
   const updateViewport = useCallback(
-    (
-      updater: ViewportState | ((prev: ViewportState) => ViewportState)
-    ) => {
+    (updater: ViewportState | ((prev: ViewportState) => ViewportState)) => {
       const next =
         typeof updater === 'function'
           ? (updater as (prev: ViewportState) => ViewportState)(viewportRef.current)
@@ -97,31 +101,30 @@ export function useViewportTransform({
     [applyViewport]
   );
 
+  /** Cancel active pan gesture */
   const cancelPan = useCallback(() => {
-    const state = pointerStateRef.current;
+    const s = pointerStateRef.current;
     pointerStateRef.current = null;
-    if (state && previewRef.current?.hasPointerCapture(state.pointerId)) {
-      previewRef.current.releasePointerCapture(state.pointerId);
+
+    if (s && previewRef.current?.hasPointerCapture(s.pointerId)) {
+      previewRef.current.releasePointerCapture(s.pointerId);
     }
     onPanningChange?.(false);
   }, [onPanningChange, previewRef]);
 
-  const handlePointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0) {
-        return false;
-      }
-      const preview = previewRef.current;
-      if (!preview) {
-        return false;
-      }
+  /* ---------------- Handlers ---------------- */
 
-      event.preventDefault();
-      preview.setPointerCapture(event.pointerId);
+  /** Start panning on pointer down */
+  const handlePointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0 || !previewRef.current) return false;
+
+      e.preventDefault();
+      previewRef.current.setPointerCapture(e.pointerId);
       pointerStateRef.current = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
         startOffset: { ...viewportRef.current.offset },
       };
       onPanningChange?.(true);
@@ -130,21 +133,18 @@ export function useViewportTransform({
     [onPanningChange, previewRef]
   );
 
+  /** Update offset while dragging */
   const handlePointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const pointerState = pointerStateRef.current;
-      if (!pointerState || pointerState.pointerId !== event.pointerId) {
-        return false;
-      }
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const s = pointerStateRef.current;
+      if (!s || s.pointerId !== e.pointerId) return false;
 
-      event.preventDefault();
-      const dx = event.clientX - pointerState.startX;
-      const dy = event.clientY - pointerState.startY;
+      e.preventDefault();
       updateViewport({
         scale: viewportRef.current.scale,
         offset: {
-          x: pointerState.startOffset.x + dx,
-          y: pointerState.startOffset.y + dy,
+          x: s.startOffset.x + (e.clientX - s.startX),
+          y: s.startOffset.y + (e.clientY - s.startY),
         },
       });
       return true;
@@ -152,43 +152,37 @@ export function useViewportTransform({
     [updateViewport]
   );
 
+  /** Finish panning */
   const handlePointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const pointerState = pointerStateRef.current;
-      if (!pointerState || pointerState.pointerId !== event.pointerId) {
-        return false;
-      }
-
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (pointerStateRef.current?.pointerId !== e.pointerId) return false;
       cancelPan();
       return true;
     },
     [cancelPan]
   );
 
+  /** Zoom with mouse wheel (centered on cursor) */
   const handleWheel = useCallback(
-    (event: ReactWheelEvent<HTMLDivElement>) => {
-      const preview = previewRef.current;
-      if (!preview) {
-        return;
-      }
-      event.preventDefault();
-      const rect = preview.getBoundingClientRect();
-      const localX = event.clientX - rect.left;
-      const localY = event.clientY - rect.top;
+    (e: ReactWheelEvent<HTMLDivElement>) => {
+      const rect = previewRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      e.preventDefault();
+      const localX = e.clientX - rect.left;
+      const localY = e.clientY - rect.top;
+
       updateViewport((prev) => {
-        const scaleFactor = Math.exp(-event.deltaY * 0.0015);
+        const scaleFactor = Math.exp(-e.deltaY * 0.0015);
         const nextScale = Math.min(6, Math.max(0.4, prev.scale * scaleFactor));
-        if (nextScale === prev.scale) {
-          return prev;
-        }
-        const appliedFactor = nextScale / prev.scale;
-        const nextOffsetX = localX - appliedFactor * (localX - prev.offset.x);
-        const nextOffsetY = localY - appliedFactor * (localY - prev.offset.y);
+        if (nextScale === prev.scale) return prev;
+
+        const applied = nextScale / prev.scale;
         return {
           scale: nextScale,
           offset: {
-            x: nextOffsetX,
-            y: nextOffsetY,
+            x: localX - applied * (localX - prev.offset.x),
+            y: localY - applied * (localY - prev.offset.y),
           },
         };
       });
@@ -196,32 +190,40 @@ export function useViewportTransform({
     [previewRef, updateViewport]
   );
 
+  /** Reset viewport to default */
   const resetViewport = useCallback(() => {
     cancelPan();
     applyViewport(createDefaultViewport());
   }, [applyViewport, cancelPan]);
 
+  /* ---------------- Lifecycle ---------------- */
+
+  // Keep ref in sync with state
   useEffect(() => {
     viewportRef.current = viewportState;
   }, [viewportState]);
 
+  // Cleanup on unmount
   useEffect(
     () => () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-      }
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       cancelPan();
     },
     [cancelPan]
   );
 
-  const isViewportDefault = useMemo(
-    () =>
-      Math.abs(viewportState.scale - 1) < 0.0001 &&
-      Math.abs(viewportState.offset.x) < 0.5 &&
-      Math.abs(viewportState.offset.y) < 0.5,
-    [viewportState]
-  );
+  /* ---------------- Derived ---------------- */
+
+  const isViewportDefault = useMemo(() => {
+    const { scale, offset } = viewportState;
+    return (
+      Math.abs(scale - 1) < 0.0001 &&
+      Math.abs(offset.x) < 0.5 &&
+      Math.abs(offset.y) < 0.5
+    );
+  }, [viewportState]);
+
+  /* ---------------- Public API ---------------- */
 
   return {
     viewportState,
@@ -235,5 +237,3 @@ export function useViewportTransform({
     cancelPan,
   };
 }
-
-export { createDefaultViewport };

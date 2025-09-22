@@ -9,6 +9,9 @@ import { ImageToolbar } from '@/components/ImageToolbar';
 import { useImageMasking } from '@/components/mask';
 import { useViewportTransform } from '@/components/viewport';
 
+/* ------------------------------------------------------------------
+ * Types & Helpers
+ * -----------------------------------------------------------------*/
 type PreviewImage = {
   id: string;
   name: string;
@@ -17,40 +20,49 @@ type PreviewImage = {
 };
 
 const createId = () =>
-  (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+const MAX_OVERLAY_DIMENSION = 4096;
+
+/* ------------------------------------------------------------------
+ * Component
+ * -----------------------------------------------------------------*/
 export function ImageWorkspace() {
+  /* ---------------- State ---------------- */
   const [images, setImages] = useState<PreviewImage[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [activeTool, setActiveTool] = useState<
     'none' | 'pan' | 'scale' | 'rotate' | 'erase' | 'restore'
   >('none');
 
+  const [isDragging, setIsDragging] = useState(false);
   const [isViewportPanning, setIsViewportPanning] = useState(false);
 
+  /* ---------------- Refs ---------------- */
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrls = useRef(new Map<string, string>());
   const dragCounter = useRef(0);
+
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const tintOverlayRef = useRef<HTMLCanvasElement>(null);
+
   const stripesPatternRef = useRef<HTMLCanvasElement | null>(null);
-  const overlayMetricsRef = useRef<{
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  } | null>(null);
   const overlayReadyRef = useRef(false);
+  const overlayMetricsRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
+
+  /* ---------------- Derived ---------------- */
   const selectedImage = useMemo(
-    () => images.find((image) => image.id === selectedId) ?? images[0] ?? null,
+    () => images.find((img) => img.id === selectedId) ?? images[0] ?? null,
     [images, selectedId]
   );
   const selectedImageId = selectedImage?.id ?? null;
 
+  /* ------------------------------------------------------------------
+   * Masking
+   * -----------------------------------------------------------------*/
   const {
     isMaskTool,
     handlePointerDown: handleMaskPointerDown,
@@ -68,154 +80,146 @@ export function ImageWorkspace() {
     onToggleViewportPanning: setIsViewportPanning,
   });
 
+  /* ------------------------------------------------------------------
+   * Overlay Rendering (absolute-positioned + full redraw on pan/zoom)
+   * -----------------------------------------------------------------*/
   const ensureStripesPattern = useCallback(() => {
-    if (stripesPatternRef.current) {
-      return stripesPatternRef.current;
-    }
+    if (stripesPatternRef.current) return stripesPatternRef.current;
 
-    const patternCanvas = document.createElement('canvas');
-    const size = 36;
-    patternCanvas.width = size;
-    patternCanvas.height = size;
-    const patternCtx = patternCanvas.getContext('2d');
-    if (!patternCtx) {
-      return null;
-    }
+    const scaleFactor = 1 / viewportState.scale;
+    const size = 36 * scaleFactor;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
 
-    patternCtx.clearRect(0, 0, size, size);
-    patternCtx.strokeStyle = 'rgba(30, 41, 59, 0.9)';
-    patternCtx.lineWidth = 8;
-    patternCtx.lineCap = 'round';
-    patternCtx.beginPath();
-    patternCtx.moveTo(-size * 0.5, size);
-    patternCtx.lineTo(size, -size * 0.5);
-    patternCtx.stroke();
-    patternCtx.beginPath();
-    patternCtx.moveTo(0, size * 1.5);
-    patternCtx.lineTo(size * 1.5, 0);
-    patternCtx.stroke();
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
 
-    stripesPatternRef.current = patternCanvas;
-    return patternCanvas;
+    ctx.clearRect(0, 0, size, size);
+    ctx.strokeStyle = 'rgba(30, 41, 59, 0.9)';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.5, size);
+    ctx.lineTo(size, -size * 0.5);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, size * 1.5);
+    ctx.lineTo(size * 1.5, 0);
+    ctx.stroke();
+
+    stripesPatternRef.current = canvas;
+    return canvas;
   }, []);
 
+  /** Compute overlay DOM box relative to preview, and position the overlay canvas */
   const updateOverlayMetrics = useCallback(() => {
-    const overlayCanvas = tintOverlayRef.current;
-    const previewEl = previewRef.current;
-    const imageEl = imageRef.current;
+    const overlay = tintOverlayRef.current;
+    const preview = previewRef.current;
+    const img = imageRef.current;
+    if (!overlay || !preview || !img) return { metrics: null, sizeChanged: false };
 
-    if (!overlayCanvas || !previewEl || !imageEl) {
+    const imageRect = img.getBoundingClientRect();
+    const previewRect = preview.getBoundingClientRect();
+
+    if (!imageRect.width || !imageRect.height) {
+      overlay.style.opacity = '0';
       overlayMetricsRef.current = null;
       return { metrics: null, sizeChanged: false };
     }
 
-    const imageRect = imageEl.getBoundingClientRect();
-    const previewRect = previewEl.getBoundingClientRect();
-    if (imageRect.width <= 0 || imageRect.height <= 0) {
-      overlayCanvas.style.opacity = '0';
-      overlayMetricsRef.current = null;
-      return { metrics: null, sizeChanged: false };
-    }
+    const metrics = {
+      left: imageRect.left - previewRect.left,
+      top: imageRect.top - previewRect.top,
+      width: imageRect.width,
+      height: imageRect.height,
+    };
 
-    const left = imageRect.left - previewRect.left;
-    const top = imageRect.top - previewRect.top;
-    const width = imageRect.width;
-    const height = imageRect.height;
+    overlay.style.left = `${metrics.left}px`;
+    overlay.style.top = `${metrics.top}px`;
+    overlay.style.width = `${metrics.width}px`;
+    overlay.style.height = `${metrics.height}px`;
 
-    overlayCanvas.style.left = `${left}px`;
-    overlayCanvas.style.top = `${top}px`;
-    overlayCanvas.style.width = `${width}px`;
-    overlayCanvas.style.height = `${height}px`;
-
-    const previous = overlayMetricsRef.current;
+    const prev = overlayMetricsRef.current;
     const sizeChanged =
-      !previous ||
-      Math.abs(previous.width - width) > 0.5 ||
-      Math.abs(previous.height - height) > 0.5;
+      !prev ||
+      Math.abs(prev.width - metrics.width) > 0.5 ||
+      Math.abs(prev.height - metrics.height) > 0.5;
 
-    overlayMetricsRef.current = { left, top, width, height };
-    return { metrics: overlayMetricsRef.current, sizeChanged };
-  }, [imageRef, previewRef, tintOverlayRef]);
+    overlayMetricsRef.current = metrics;
+    return { metrics, sizeChanged };
+  }, []);
 
+  /** Paint overlay from current mask tint into the overlay canvas */
   const redrawOverlay = useCallback(
     (metrics?: { width: number; height: number } | null, force = false) => {
-      const overlayCanvas = tintOverlayRef.current;
-      if (!overlayCanvas) {
-        return;
-      }
+      const overlay = tintOverlayRef.current;
+      const tint = getTintOverlay();
 
-      const targetMetrics = metrics ?? overlayMetricsRef.current;
-      const tintCanvas = getTintOverlay();
-      if (
-        !targetMetrics ||
-        targetMetrics.width <= 0 ||
-        targetMetrics.height <= 0 ||
-        !tintCanvas ||
-        tintCanvas.width === 0 ||
-        tintCanvas.height === 0
-      ) {
-        overlayCanvas.style.opacity = '0';
+      if (!overlay || !metrics || !tint || !tint.width || !tint.height) {
         overlayReadyRef.current = false;
+        if (overlay) overlay.style.opacity = '0';
         return;
       }
 
-      const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-      const pixelWidth = Math.max(1, Math.round(targetMetrics.width * dpr));
-      const pixelHeight = Math.max(1, Math.round(targetMetrics.height * dpr));
+      const dpr = window.devicePixelRatio || 1;
+      const targetW = metrics.width * dpr;
+      const targetH = metrics.height * dpr;
+      const maxDim = Math.max(targetW, targetH);
+      const clampRatio = maxDim > MAX_OVERLAY_DIMENSION ? MAX_OVERLAY_DIMENSION / maxDim : 1;
+      const renderScale = dpr * clampRatio;
+      const pixelW = Math.max(1, Math.round(metrics.width * renderScale));
+      const pixelH = Math.max(1, Math.round(metrics.height * renderScale));
 
-      if (overlayCanvas.width !== pixelWidth || overlayCanvas.height !== pixelHeight) {
-        overlayCanvas.width = pixelWidth;
-        overlayCanvas.height = pixelHeight;
+      if (overlay.width !== pixelW || overlay.height !== pixelH) {
+        overlay.width = pixelW;
+        overlay.height = pixelH;
         force = true;
       } else if (!force && overlayReadyRef.current) {
+        // No need to repaint identical buffer
         return;
       }
 
-      const ctx = overlayCanvas.getContext('2d');
-      if (!ctx) {
-        overlayCanvas.style.opacity = '0';
-        overlayReadyRef.current = false;
-        return;
-      }
+      const ctx = overlay.getContext('2d');
+      if (!ctx) return;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
 
       ctx.save();
-      ctx.scale(dpr, dpr);
-      ctx.fillStyle = 'rgba(30, 41, 59, 0.68)';
-      ctx.fillRect(0, 0, targetMetrics.width, targetMetrics.height);
+      const renderScaleX = pixelW / metrics.width;
+      const renderScaleY = pixelH / metrics.height;
+      ctx.setTransform(renderScaleX, 0, 0, renderScaleY, 0, 0);
 
-      const stripesCanvas = ensureStripesPattern();
-      if (stripesCanvas) {
-        const pattern = ctx.createPattern(stripesCanvas, 'repeat');
+      // Dark base
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.68)';
+      ctx.fillRect(0, 0, metrics.width, metrics.height);
+
+      // Stripes on top
+      const stripes = ensureStripesPattern();
+      if (stripes) {
+        const pattern = ctx.createPattern(stripes, 'repeat');
         if (pattern) {
           ctx.globalAlpha = 0.85;
           ctx.fillStyle = pattern;
-          ctx.fillRect(0, 0, targetMetrics.width, targetMetrics.height);
+          ctx.fillRect(0, 0, metrics.width, metrics.height);
+          ctx.globalAlpha = 1;
         }
       }
 
+      // Apply mask alpha
       ctx.globalCompositeOperation = 'destination-in';
-      ctx.drawImage(
-        tintCanvas,
-        0,
-        0,
-        tintCanvas.width,
-        tintCanvas.height,
-        0,
-        0,
-        targetMetrics.width,
-        targetMetrics.height
-      );
-      ctx.restore();
+      ctx.drawImage(tint, 0, 0, tint.width, tint.height, 0, 0, metrics.width, metrics.height);
 
-      overlayCanvas.style.opacity = '1';
+      ctx.restore();
+      overlay.style.opacity = '1';
       overlayReadyRef.current = true;
     },
-    [ensureStripesPattern, getTintOverlay]
+    [getTintOverlay, ensureStripesPattern]
   );
 
+  /** rAF-throttled callback invoked by viewport hook on any pan/zoom change */
   const handleViewportRender = useCallback(() => {
     const { metrics, sizeChanged } = updateOverlayMetrics();
     if (metrics) {
@@ -223,6 +227,9 @@ export function ImageWorkspace() {
     }
   }, [redrawOverlay, updateOverlayMetrics]);
 
+  /* ------------------------------------------------------------------
+   * Viewport
+   * -----------------------------------------------------------------*/
   const {
     viewportState,
     isViewportDefault,
@@ -236,228 +243,179 @@ export function ImageWorkspace() {
     imageRef,
     previewRef,
     onPanningChange: setIsViewportPanning,
-    onViewportUpdate: handleViewportRender,
+    onViewportUpdate: handleViewportRender, // <— always redraw while panning/zooming
   });
 
-  useEffect(() => {
-    resetViewport();
-  }, [resetViewport, selectedId]);
+  /* ------------------------------------------------------------------
+   * File Handling
+   * -----------------------------------------------------------------*/
+  const addFiles = useCallback((files: FileList | File[]) => {
+    const imgs = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (!imgs.length) return;
 
+    const next = imgs.map((file) => {
+      const id = createId();
+      const url = URL.createObjectURL(file);
+      objectUrls.current.set(id, url);
+      return { id, name: file.name, url, file };
+    });
+
+    setImages((prev) => [...prev, ...next]);
+    setSelectedId((prev) => prev ?? next[0]?.id ?? null);
+  }, []);
+
+  const removeImage = useCallback((id: string) => {
+    setImages((prev) => {
+      const img = prev.find((x) => x.id === id);
+      if (!img) return prev;
+      URL.revokeObjectURL(img.url);
+      objectUrls.current.delete(id);
+      return prev.filter((x) => x.id !== id);
+    });
+  }, []);
+
+  const handleFileInputChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) addFiles(e.target.files);
+      e.target.value = '';
+    },
+    [addFiles]
+  );
+
+  const handleChooseClick = () => fileInputRef.current?.click();
+
+  /* Drag-and-drop */
+  const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    dragCounter.current++;
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+      setIsDragging(false);
+      if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
+    },
+    [addFiles]
+  );
+
+  /* ------------------------------------------------------------------
+   * Pointer Handling (mask vs pan)
+   * -----------------------------------------------------------------*/
+  const handleViewportPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      if (handleMaskPointerDown(e, activeTool)) return;
+
+      if (['pan', 'scale', 'rotate', 'none'].includes(activeTool)) {
+        handlePanPointerDown(e);
+      }
+    },
+    [activeTool, handleMaskPointerDown, handlePanPointerDown]
+  );
+
+  const handleViewportPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (handleMaskPointerMove(e)) return;
+      handlePanPointerMove(e);
+    },
+    [handleMaskPointerMove, handlePanPointerMove]
+  );
+
+  const handleViewportPointerUp = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (handleMaskPointerUp(e)) return;
+      handlePanPointerUp(e);
+    },
+    [handleMaskPointerUp, handlePanPointerUp]
+  );
+
+  /* ------------------------------------------------------------------
+   * Effects
+   * -----------------------------------------------------------------*/
+  // Reset viewport on selection change
+  useEffect(() => resetViewport(), [resetViewport, selectedId]);
+
+  // Tool changes: stop ongoing gestures
   useEffect(() => {
     cancelPan();
     handleMaskToolChange();
     setIsViewportPanning(false);
   }, [activeTool, cancelPan, handleMaskToolChange]);
 
+  // Redraw overlay when mask content changes or selection changes
   useEffect(() => {
     if (!selectedImageId) {
-      const overlayCanvas = tintOverlayRef.current;
-      if (overlayCanvas) {
-        overlayCanvas.style.opacity = '0';
-      }
-      overlayMetricsRef.current = null;
+      if (tintOverlayRef.current) tintOverlayRef.current.style.opacity = '0';
       overlayReadyRef.current = false;
       return;
     }
-
-    overlayReadyRef.current = false;
     const { metrics } = updateOverlayMetrics();
-    if (metrics) {
-      redrawOverlay(metrics, true);
-    }
+    if (metrics) redrawOverlay(metrics, true);
   }, [overlayVersion, redrawOverlay, selectedImageId, updateOverlayMetrics]);
 
+  // Redraw on window resize
   useEffect(() => {
-    overlayReadyRef.current = false;
-    handleViewportRender();
-  }, [handleViewportRender, selectedImageId]);
-
-  useEffect(() => {
-    const handleResize = () => {
+    const onResize = () => {
       overlayReadyRef.current = false;
-      handleViewportRender();
+      const { metrics } = updateOverlayMetrics();
+      if (metrics) redrawOverlay(metrics, true);
     };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [updateOverlayMetrics, redrawOverlay]);
 
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [handleViewportRender]);
-
-  const addFiles = useCallback((fileList: FileList | File[]) => {
-    const filesArray = Array.from(fileList).filter((file) =>
-      file.type.startsWith('image/')
-    );
-
-    if (filesArray.length === 0) {
-      return;
-    }
-
-    const nextImages = filesArray.map((file) => {
-      const id = createId();
-      const url = URL.createObjectURL(file);
-      objectUrls.current.set(id, url);
-      return {
-        id,
-        name: file.name,
-        url,
-        file,
-      };
-    });
-
-    setImages((prev) => [...prev, ...nextImages]);
-    setSelectedId((prev) => prev ?? nextImages[0]?.id ?? null);
-  }, []);
-
-  const removeImage = useCallback((id: string) => {
-    setImages((prev) => {
-      const target = prev.find((img) => img.id === id);
-      if (!target) {
-        return prev;
-      }
-      URL.revokeObjectURL(target.url);
-      objectUrls.current.delete(id);
-      return prev.filter((img) => img.id !== id);
-    });
-  }, []);
-
-  const handleFileInputChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      if (event.target.files) {
-        addFiles(event.target.files);
-        event.target.value = '';
-      }
-    },
-    [addFiles]
-  );
-
-  const handleChooseClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    dragCounter.current += 1;
-    setIsDragging(true);
-  }, []);
-
-  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'copy';
-  };
-
-  const handleDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    dragCounter.current = Math.max(0, dragCounter.current - 1);
-    if (dragCounter.current === 0) {
-      setIsDragging(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      dragCounter.current = 0;
-      setIsDragging(false);
-      if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-        addFiles(event.dataTransfer.files);
-        event.dataTransfer.clearData();
-      }
-    },
-    [addFiles]
-  );
-
+  // Cleanup object URLs
   useEffect(() => {
-    const urls = objectUrls.current;
     return () => {
-      urls.forEach((url) => URL.revokeObjectURL(url));
-      urls.clear();
+      objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls.current.clear();
     };
   }, []);
 
-  const handleViewportPointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0) {
-        return;
-      }
-      if (handleMaskPointerDown(event, activeTool)) {
-        return;
-      }
-
-      const panToolActive =
-        activeTool === 'pan' ||
-        activeTool === 'none' ||
-        activeTool === 'scale' ||
-        activeTool === 'rotate';
-
-      if (!panToolActive) {
-        return;
-      }
-
-      handlePanPointerDown(event);
-    },
-    [activeTool, handleMaskPointerDown, handlePanPointerDown]
-  );
-
-  const handleViewportPointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (handleMaskPointerMove(event)) {
-        return;
-      }
-
-      if (handlePanPointerMove(event)) {
-        return;
-      }
-    },
-    [handleMaskPointerMove, handlePanPointerMove]
-  );
-
-  const releaseViewportPointer = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (handleMaskPointerUp(event)) {
-        return;
-      }
-
-      handlePanPointerUp(event);
-    },
-    [handleMaskPointerUp, handlePanPointerUp]
-  );
-
-  const handleResetViewport = useCallback(() => {
-    resetViewport();
-  }, [resetViewport]);
-
-  const canvasClassName = isDragging
+  /* ------------------------------------------------------------------
+   * Rendering
+   * -----------------------------------------------------------------*/
+  const canvasClass = isDragging
     ? 'report-create__canvas report-create__canvas--dragging'
     : 'report-create__canvas';
+
   const isMaskToolActive = isMaskTool(activeTool);
+
   const imageTransform = useMemo(
     () =>
       `translate3d(${viewportState.offset.x}px, ${viewportState.offset.y}px, 0) scale(${viewportState.scale})`,
-    [viewportState.offset.x, viewportState.offset.y, viewportState.scale]
+    [viewportState]
   );
-  const previewElement = previewRef.current;
-  const previewWidth = previewElement?.clientWidth ?? 0;
-  const previewHeight = previewElement?.clientHeight ?? 0;
-  const lassoPathSegments = lassoPreview && previewWidth > 0 && previewHeight > 0 && lassoPreview.points.length > 0
-    ? lassoPreview.points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-    : null;
-  const lassoPathData = lassoPathSegments ? lassoPathSegments.join(' ') : null;
-  const lassoClosedPath = lassoPreview && lassoPreview.points.length > 2 && lassoPathData
-    ? `${lassoPathData} Z`
-    : null;
-  const lassoStroke = lassoPreview?.tool === 'erase' ? 'rgba(248, 113, 113, 0.9)' : 'rgba(56, 189, 248, 0.9)';
+
+  const previewW = previewRef.current?.clientWidth ?? 0;
+  const previewH = previewRef.current?.clientHeight ?? 0;
+  const lassoSegments =
+    lassoPreview && previewW && previewH && lassoPreview.points.length
+      ? lassoPreview.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+      : null;
+  const lassoPath = lassoSegments?.join(' ');
+  const lassoClosed = lassoPreview && lassoPreview.points.length > 2 && lassoPath ? `${lassoPath} Z` : null;
+  const lassoStroke =
+    lassoPreview?.tool === 'erase' ? 'rgba(248,113,113,0.9)' : 'rgba(56,189,248,0.9)';
 
   return (
     <section
-      className={canvasClassName}
+      className={canvasClass}
       onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
+      onDragOver={(e) => e.preventDefault()}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -468,12 +426,8 @@ export function ImageWorkspace() {
       />
 
       {images.length === 0 ? (
-        <div
-          className={`report-create__dropzone${
-            isDragging ? ' report-create__dropzone--active' : ''
-          }`}
-          role="presentation"
-        >
+        /* Empty state */
+        <div className={`report-create__dropzone${isDragging ? ' report-create__dropzone--active' : ''}`}>
           <Upload className="report-create__dropzone-icon" strokeWidth={1.8} />
           <p className="report-create__dropzone-text">Drag and drop images here</p>
           <span className="report-create__dropzone-separator">or</span>
@@ -483,27 +437,29 @@ export function ImageWorkspace() {
           </button>
         </div>
       ) : (
+        /* Workspace */
         <div className="report-create__workspace">
           <ImageToolbar
             activeTool={activeTool}
             onToolChange={(tool) => setActiveTool((prev) => (prev === tool ? 'none' : tool))}
             onUndo={() => undefined}
             canUndo={false}
-            onResetViewport={handleResetViewport}
+            onResetViewport={resetViewport}
             canResetViewport={!isViewportDefault}
           />
+
           <div className="report-create__gallery">
             {selectedImage && (
               <div
                 ref={previewRef}
-                className={`report-create__preview${
-                  isViewportPanning ? ' report-create__preview--panning' : ''
-                }${isMaskToolActive ? ' report-create__preview--mask' : ''}`}
+                className={`report-create__preview${isViewportPanning ? ' report-create__preview--panning' : ''}${
+                  isMaskToolActive ? ' report-create__preview--mask' : ''
+                }`}
                 onPointerDown={handleViewportPointerDown}
                 onPointerMove={handleViewportPointerMove}
-                onPointerUp={releaseViewportPointer}
-                onPointerLeave={releaseViewportPointer}
-                onPointerCancel={releaseViewportPointer}
+                onPointerUp={handleViewportPointerUp}
+                onPointerLeave={handleViewportPointerUp}
+                onPointerCancel={handleViewportPointerUp}
                 onWheel={handleViewportWheel}
               >
                 <div className="report-create__preview-layer">
@@ -514,27 +470,25 @@ export function ImageWorkspace() {
                     fill
                     unoptimized
                     sizes="100vw"
-                    style={{
-                      transform: imageTransform,
-                      objectFit: 'contain',
-                    }}
+                    style={{ transform: imageTransform, objectFit: 'contain' }}
                   />
+                  {/* Absolute overlay canvas; re-painted each rAF during pan/zoom */}
                   <canvas ref={tintOverlayRef} className="report-create__mask-overlay" aria-hidden />
-                  {lassoPathData && previewWidth > 0 && previewHeight > 0 && (
+                  {lassoPath && (
                     <svg
                       className="report-create__lasso-overlay"
-                      viewBox={`0 0 ${previewWidth} ${previewHeight}`}
+                      viewBox={`0 0 ${previewW} ${previewH}`}
                       preserveAspectRatio="none"
                     >
-                      {lassoClosedPath && (
+                      {lassoClosed && (
                         <path
-                          d={lassoClosedPath}
+                          d={lassoClosed}
                           className="report-create__lasso-fill"
-                          fill={lassoPreview?.tool === 'erase' ? 'rgba(248, 113, 113, 0.08)' : 'rgba(56, 189, 248, 0.08)'}
+                          fill={lassoPreview?.tool === 'erase' ? 'rgba(248,113,113,0.08)' : 'rgba(56,189,248,0.08)'}
                         />
                       )}
                       <path
-                        d={lassoPathData}
+                        d={lassoPath}
                         className="report-create__lasso-path"
                         stroke={lassoStroke}
                         strokeWidth={2}
@@ -569,53 +523,50 @@ export function ImageWorkspace() {
               </div>
             )}
 
+            {/* Thumbnails */}
             <div className="report-create__thumbs" role="list">
-              {images.map((image) => {
-                const isActive = image.id === selectedImage?.id;
+              {images.map((img) => {
+                const isActive = img.id === selectedImage?.id;
                 return (
                   <div
-                    key={image.id}
-                    className={`report-create__thumb${
-                      isActive ? ' report-create__thumb--active' : ''
-                    }`}
+                    key={img.id}
+                    className={`report-create__thumb${isActive ? ' report-create__thumb--active' : ''}`}
                     role="listitem"
                   >
                     <button
                       type="button"
                       className="report-create__thumb-select"
-                      onClick={() => setSelectedId(image.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Delete') {
-                          event.preventDefault();
-                          removeImage(image.id);
+                      onClick={() => setSelectedId(img.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Delete') {
+                          e.preventDefault();
+                          removeImage(img.id);
                         }
                       }}
                     >
                       <Image
-                        src={image.url}
-                        alt={image.name}
+                        src={img.url}
+                        alt={img.name}
                         width={64}
                         height={64}
                         unoptimized
                         className="report-create__thumb-image"
                       />
                     </button>
-
                     <button
                       type="button"
                       className="report-create__thumb-remove"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        removeImage(image.id);
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(img.id);
                       }}
-                      aria-label={`Remove ${image.name}`}
+                      aria-label={`Remove ${img.name}`}
                     >
                       ×
                     </button>
                   </div>
                 );
               })}
-
               <button
                 type="button"
                 className="report-create__thumb report-create__thumb--add"

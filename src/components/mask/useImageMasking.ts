@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MutableRefObject, PointerEvent as ReactPointerEvent } from 'react';
 
-const LASSO_DISTANCE_THRESHOLD_SQ = 1;
-const LASSO_TIME_THRESHOLD_MS = 45;
-const getTimestamp = () =>
-  typeof performance !== 'undefined' ? performance.now() : Date.now();
+/* ------------------------------------------------------------------
+ * Constants
+ * -----------------------------------------------------------------*/
+const LASSO_DISTANCE_THRESHOLD_SQ = 1;     // Min distance² before recording a new point
+const LASSO_TIME_THRESHOLD_MS = 45;        // Max interval before forcing a new point
+const MASK_TOOLS = ['erase', 'restore'] as const;
 
-type MaskTool = 'erase' | 'restore';
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-type MaskImage = {
-  id: string;
-  url: string;
-};
+/* ------------------------------------------------------------------
+ * Types
+ * -----------------------------------------------------------------*/
+type MaskTool = (typeof MASK_TOOLS)[number];
+
+export type MaskImage = { id: string; url: string };
 
 type ImageAsset = {
   image: HTMLImageElement;
@@ -20,8 +24,10 @@ type ImageAsset = {
   mask: HTMLCanvasElement;
   maskCtx: CanvasRenderingContext2D;
   tint: HTMLCanvasElement;
-  tintCtx: CanvasRenderingContext2D | null;
+  tintCtx: CanvasRenderingContext2D;
 };
+
+export type BooleanMask = { width: number; height: number; data: Uint8Array };
 
 type LassoState = {
   pointerId: number;
@@ -32,7 +38,7 @@ type LassoState = {
   lastInsertTime: number;
 };
 
-type UseImageMaskingParams<TImage extends MaskImage> = {
+export type UseImageMaskingParams<TImage extends MaskImage> = {
   images: TImage[];
   selectedImageId: string | null;
   previewRef: MutableRefObject<HTMLDivElement | null>;
@@ -40,22 +46,22 @@ type UseImageMaskingParams<TImage extends MaskImage> = {
   onToggleViewportPanning: (isPanning: boolean) => void;
 };
 
-type UseImageMaskingResult = {
+export type UseImageMaskingResult = {
   isMaskTool: (tool: string) => tool is MaskTool;
-  handlePointerDown: (event: ReactPointerEvent<HTMLDivElement>, tool: string) => boolean;
-  handlePointerMove: (event: ReactPointerEvent<HTMLDivElement>) => boolean;
-  handlePointerUp: (event: ReactPointerEvent<HTMLDivElement>) => boolean;
+  handlePointerDown: (e: ReactPointerEvent<HTMLDivElement>, tool: string) => boolean;
+  handlePointerMove: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
+  handlePointerUp: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
   handleToolChange: () => void;
-  lassoPreview: {
-    tool: MaskTool;
-    points: { x: number; y: number }[];
-  } | null;
+  lassoPreview: { tool: MaskTool; points: { x: number; y: number }[] } | null;
   overlayVersion: number;
-  getTintOverlay: (imageId?: string) => HTMLCanvasElement | null;
+  getTintOverlay: (id?: string) => HTMLCanvasElement | null;
+  getMaskCanvas: (id?: string) => HTMLCanvasElement | null;
+  getBooleanMask: (id?: string) => BooleanMask | null;
 };
 
-const MASK_TOOLS: MaskTool[] = ['erase', 'restore'];
-
+/* ------------------------------------------------------------------
+ * Hook
+ * -----------------------------------------------------------------*/
 export function useImageMasking<TImage extends MaskImage>({
   images,
   selectedImageId,
@@ -65,361 +71,251 @@ export function useImageMasking<TImage extends MaskImage>({
 }: UseImageMaskingParams<TImage>): UseImageMaskingResult {
   const assetsRef = useRef(new Map<string, ImageAsset>());
   const lassoStateRef = useRef<LassoState | null>(null);
-  const [lassoPreview, setLassoPreview] = useState<UseImageMaskingResult['lassoPreview']>(null);
+
+  const [lassoPreview, setLassoPreview] =
+    useState<UseImageMaskingResult['lassoPreview']>(null);
   const [overlayVersion, setOverlayVersion] = useState(0);
 
-  const isMaskTool = useCallback((tool: string): tool is MaskTool => MASK_TOOLS.includes(tool as MaskTool), []);
+  /* ---------------- Helpers ---------------- */
 
-  const getImageCoordinates = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>, imageId: string) => {
-      const preview = previewRef.current;
-      const img = imageRef.current;
-      if (!preview || !img) {
-        return null;
-      }
-
-      const asset = assetsRef.current.get(imageId);
-      if (!asset || asset.width === 0 || asset.height === 0) {
-        return null;
-      }
-
-      const imageRect = img.getBoundingClientRect();
-      if (imageRect.width === 0 || imageRect.height === 0) {
-        return null;
-      }
-
-      const localX = event.clientX - imageRect.left;
-      const localY = event.clientY - imageRect.top;
-      const imageX = localX / imageRect.width * asset.width;
-      const imageY = localY / imageRect.height * asset.height;
-
-      return {
-        x: Math.max(0, Math.min(asset.width, imageX)),
-        y: Math.max(0, Math.min(asset.height, imageY)),
-      };
-    },
-    [imageRef, previewRef]
+  const isMaskTool = useCallback(
+    (tool: string): tool is MaskTool => MASK_TOOLS.includes(tool as MaskTool),
+    []
   );
 
-  const getPreviewCoordinates = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const preview = previewRef.current;
-      if (!preview) {
-        return null;
-      }
-      const rect = preview.getBoundingClientRect();
+  /** Convert pointer coords to image coords */
+  const getImageCoords = useCallback(
+    (e: ReactPointerEvent, imageId: string) => {
+      const img = imageRef.current;
+      const asset = assetsRef.current.get(imageId);
+      if (!img || !asset?.width || !asset?.height) return null;
+
+      const rect = img.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+
       return {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
+        x: Math.max(0, Math.min(asset.width, ((e.clientX - rect.left) / rect.width) * asset.width)),
+        y: Math.max(0, Math.min(asset.height, ((e.clientY - rect.top) / rect.height) * asset.height)),
       };
+    },
+    [imageRef]
+  );
+
+  /** Convert pointer coords to preview coords */
+  const getPreviewCoords = useCallback(
+    (e: ReactPointerEvent) => {
+      const rect = previewRef.current?.getBoundingClientRect();
+      return rect ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : null;
     },
     [previewRef]
   );
 
+  /** Refresh tint overlay from mask */
   const updateTintOverlay = useCallback((asset: ImageAsset) => {
-    if (!asset.tintCtx || asset.width === 0 || asset.height === 0) {
-      return;
-    }
-    const ctx = asset.tintCtx;
-    ctx.save();
-    ctx.clearRect(0, 0, asset.width, asset.height);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, asset.width, asset.height);
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.drawImage(asset.mask, 0, 0);
-    ctx.restore();
+    const { tintCtx, width, height, mask } = asset;
+    if (!tintCtx || !width || !height) return;
+
+    tintCtx.save();
+    tintCtx.clearRect(0, 0, width, height);
+    tintCtx.fillStyle = '#fff';
+    tintCtx.fillRect(0, 0, width, height);
+    tintCtx.globalCompositeOperation = 'destination-out';
+    tintCtx.drawImage(mask, 0, 0);
+    tintCtx.restore();
   }, []);
 
+  /** Apply polygon mask (lasso) */
   const applyLassoMask = useCallback(
     (imageId: string, tool: MaskTool, points: { x: number; y: number }[]) => {
-      if (points.length < 3) {
-        return;
-      }
+      if (points.length < 3) return;
 
       const asset = assetsRef.current.get(imageId);
-      if (!asset) {
-        return;
-      }
+      if (!asset) return;
 
-      const ctx = asset.maskCtx;
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let index = 1; index < points.length; index += 1) {
-        ctx.lineTo(points[index].x, points[index].y);
-      }
-      ctx.closePath();
-
-      if (tool === 'erase') {
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.fillStyle = '#000';
-      } else {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = '#fff';
-      }
-      ctx.fill();
-      ctx.restore();
+      const { maskCtx } = asset;
+      maskCtx.save();
+      maskCtx.beginPath();
+      maskCtx.moveTo(points[0].x, points[0].y);
+      points.forEach((p, i) => i && maskCtx.lineTo(p.x, p.y));
+      maskCtx.closePath();
+      maskCtx.globalCompositeOperation = tool === 'erase' ? 'destination-out' : 'source-over';
+      maskCtx.fillStyle = tool === 'erase' ? '#000' : '#fff';
+      maskCtx.fill();
+      maskCtx.restore();
 
       updateTintOverlay(asset);
-      setOverlayVersion((prev) => prev + 1);
+      setOverlayVersion((v) => v + 1);
     },
     [updateTintOverlay]
   );
 
-  const releaseLassoCapture = useCallback(() => {
-    const state = lassoStateRef.current;
-    if (!state) {
-      return;
-    }
-    const preview = previewRef.current;
-    if (preview && preview.hasPointerCapture(state.pointerId)) {
-      preview.releasePointerCapture(state.pointerId);
-    }
+  /** Release pointer capture + reset state */
+  const releaseLasso = useCallback(() => {
+    const s = lassoStateRef.current;
+    if (!s) return;
+
+    previewRef.current?.releasePointerCapture(s.pointerId);
     lassoStateRef.current = null;
-    onToggleViewportPanning(false);
     setLassoPreview(null);
+    onToggleViewportPanning(false);
   }, [onToggleViewportPanning, previewRef]);
 
+  /* ---------------- Handlers ---------------- */
+
   const handlePointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>, tool: string) => {
-      if (!isMaskTool(tool) || event.button !== 0) {
-        return false;
-      }
-      if (!selectedImageId) {
-        return false;
-      }
+    (e: ReactPointerEvent<HTMLDivElement>, tool: string) => {
+      if (!isMaskTool(tool) || e.button !== 0 || !selectedImageId) return false;
 
-      const point = getImageCoordinates(event, selectedImageId);
-      const previewPoint = getPreviewCoordinates(event);
-      if (!point || !previewPoint) {
-        return false;
-      }
+      const point = getImageCoords(e, selectedImageId);
+      const previewPoint = getPreviewCoords(e);
+      if (!point || !previewPoint) return false;
 
-      const preview = previewRef.current;
-      if (!preview) {
-        return false;
-      }
-      preview.setPointerCapture(event.pointerId);
+      previewRef.current?.setPointerCapture(e.pointerId);
       lassoStateRef.current = {
-        pointerId: event.pointerId,
+        pointerId: e.pointerId,
         tool,
         imageId: selectedImageId,
         points: [point],
         previewPoints: [previewPoint],
-        lastInsertTime: getTimestamp(),
+        lastInsertTime: now(),
       };
       onToggleViewportPanning(false);
       setLassoPreview({ tool, points: [previewPoint] });
       return true;
     },
-    [getImageCoordinates, getPreviewCoordinates, isMaskTool, onToggleViewportPanning, previewRef, selectedImageId]
+    [getImageCoords, getPreviewCoords, isMaskTool, onToggleViewportPanning, previewRef, selectedImageId]
   );
 
   const handlePointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const state = lassoStateRef.current;
-      if (!state || state.pointerId !== event.pointerId) {
-        return false;
-      }
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const s = lassoStateRef.current;
+      if (!s || s.pointerId !== e.pointerId) return false;
 
-      event.preventDefault();
-      const point = getImageCoordinates(event, state.imageId);
-      const previewPoint = getPreviewCoordinates(event);
-      if (!point || !previewPoint) {
-        return true;
-      }
+      e.preventDefault();
+      const p = getImageCoords(e, s.imageId);
+      const pp = getPreviewCoords(e);
+      if (!p || !pp) return true;
 
-      const { points } = state;
-      const previewPoints = state.previewPoints;
-      if (points.length === 0) {
-        points.push(point);
-        previewPoints.push(previewPoint);
-        state.lastInsertTime = getTimestamp();
+      const last = s.points[s.points.length - 1];
+      const dx = p.x - last.x;
+      const dy = p.y - last.y;
+      const distSq = dx * dx + dy * dy;
+      const t = now();
+
+      if (distSq >= LASSO_DISTANCE_THRESHOLD_SQ || t - s.lastInsertTime >= LASSO_TIME_THRESHOLD_MS) {
+        s.points.push(p);
+        s.previewPoints.push(pp);
+        s.lastInsertTime = t;
       } else {
-        const last = points[points.length - 1];
-        const dx = point.x - last.x;
-        const dy = point.y - last.y;
-        const distanceSq = dx * dx + dy * dy;
-        const now = getTimestamp();
-        if (distanceSq >= LASSO_DISTANCE_THRESHOLD_SQ || now - state.lastInsertTime >= LASSO_TIME_THRESHOLD_MS) {
-          points.push(point);
-          previewPoints.push(previewPoint);
-          state.lastInsertTime = now;
-        } else {
-          points[points.length - 1] = point;
-          previewPoints[previewPoints.length - 1] = previewPoint;
-        }
+        s.points[s.points.length - 1] = p;
+        s.previewPoints[s.previewPoints.length - 1] = pp;
       }
-
-      setLassoPreview({ tool: state.tool, points: [...state.previewPoints] });
+      setLassoPreview({ tool: s.tool, points: [...s.previewPoints] });
       return true;
     },
-    [getImageCoordinates, getPreviewCoordinates]
+    [getImageCoords, getPreviewCoords]
   );
 
   const handlePointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const state = lassoStateRef.current;
-      if (!state || state.pointerId !== event.pointerId) {
-        return false;
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const s = lassoStateRef.current;
+      if (!s || s.pointerId !== e.pointerId) return false;
+
+      const cancelled = e.type === 'pointercancel';
+      releaseLasso();
+
+      if (!cancelled) {
+        e.preventDefault();
+        applyLassoMask(s.imageId, s.tool, s.points);
       }
-
-      const isCancel = event.type === 'pointercancel';
-      releaseLassoCapture();
-
-      if (!isCancel) {
-        event.preventDefault();
-        const { imageId, tool } = state;
-        const points = state.points.slice();
-        const previewPoints = state.previewPoints.slice();
-        const finalPoint = getImageCoordinates(event, imageId);
-        const finalPreviewPoint = getPreviewCoordinates(event);
-        if (finalPoint) {
-          if (points.length === 0) {
-            points.push(finalPoint);
-            if (finalPreviewPoint) {
-              previewPoints.push(finalPreviewPoint);
-            }
-          } else {
-            const last = points[points.length - 1];
-            const dx = finalPoint.x - last.x;
-            const dy = finalPoint.y - last.y;
-            if (dx * dx + dy * dy >= LASSO_DISTANCE_THRESHOLD_SQ) {
-              points.push(finalPoint);
-              if (finalPreviewPoint) {
-                previewPoints.push(finalPreviewPoint);
-              }
-            } else {
-              points[points.length - 1] = finalPoint;
-              if (finalPreviewPoint) {
-                previewPoints[previewPoints.length - 1] = finalPreviewPoint;
-              }
-            }
-          }
-        }
-
-        setLassoPreview(null);
-        applyLassoMask(imageId, tool, points);
-      }
-
       return true;
     },
-    [applyLassoMask, getImageCoordinates, getPreviewCoordinates, releaseLassoCapture]
+    [applyLassoMask, releaseLasso]
   );
 
-  const handleToolChange = useCallback(() => {
-    releaseLassoCapture();
-  }, [releaseLassoCapture]);
+  const handleToolChange = useCallback(() => releaseLasso(), [releaseLasso]);
 
+  /* ---------------- Lifecycle ---------------- */
+
+  // Manage assets
   useEffect(() => {
     const assets = assetsRef.current;
-    const activeIds = new Set(images.map((image) => image.id));
+    const activeIds = new Set(images.map((img) => img.id));
 
-    assets.forEach((_asset, id) => {
-      if (!activeIds.has(id)) {
-        assets.delete(id);
-      }
+    // Drop removed images
+    assets.forEach((_a, id) => !activeIds.has(id) && assets.delete(id));
+
+    // Add new images
+    images.forEach((img) => {
+      if (assets.has(img.id)) return;
+
+      const htmlImg = new Image();
+      htmlImg.src = img.url;
+      htmlImg.decoding = 'async';
+
+      const mask = document.createElement('canvas');
+      const tint = document.createElement('canvas');
+      const maskCtx = mask.getContext('2d');
+      const tintCtx = tint.getContext('2d');
+      if (!maskCtx || !tintCtx) return;
+
+      assets.set(img.id, { image: htmlImg, width: 0, height: 0, mask, maskCtx, tint, tintCtx });
+
+      htmlImg.onload = () => {
+        const { naturalWidth: w, naturalHeight: h } = htmlImg;
+        if (!w || !h) return;
+
+        const a = assets.get(img.id);
+        if (!a) return;
+
+        Object.assign(a, { width: w, height: h });
+        a.mask.width = a.tint.width = w;
+        a.mask.height = a.tint.height = h;
+
+        a.maskCtx.fillStyle = '#fff';
+        a.maskCtx.fillRect(0, 0, w, h);
+
+        updateTintOverlay(a);
+        setOverlayVersion((v) => v + 1);
+      };
+
+      htmlImg.onerror = () => assets.delete(img.id);
     });
+  }, [images, updateTintOverlay]);
 
-    images.forEach((image) => {
-      if (assets.has(image.id)) {
-        return;
-      }
+  // Reset lasso on image/tool change
+  useEffect(() => releaseLasso(), [releaseLasso, selectedImageId]);
+  useEffect(() => () => releaseLasso(), [releaseLasso]);
 
-      const htmlImage = new Image();
-      htmlImage.decoding = 'async';
-      htmlImage.src = image.url;
-
-      const maskCanvas = document.createElement('canvas');
-      maskCanvas.width = 1;
-      maskCanvas.height = 1;
-      const initialMaskCtx = maskCanvas.getContext('2d');
-      if (!initialMaskCtx) {
-        return;
-      }
-
-      const tintCanvas = document.createElement('canvas');
-      tintCanvas.width = 1;
-      tintCanvas.height = 1;
-      const initialTintCtx = tintCanvas.getContext('2d');
-      if (!initialTintCtx) {
-        return;
-      }
-
-      const baseAsset: ImageAsset = {
-        image: htmlImage,
-        width: 0,
-        height: 0,
-        mask: maskCanvas,
-        maskCtx: initialMaskCtx,
-        tint: tintCanvas,
-        tintCtx: initialTintCtx,
-      };
-
-      assets.set(image.id, baseAsset);
-
-      htmlImage.onload = () => {
-        const target = assetsRef.current.get(image.id);
-        if (!target) {
-          return;
-        }
-
-        const { naturalWidth, naturalHeight } = htmlImage;
-        if (naturalWidth === 0 || naturalHeight === 0) {
-          return;
-        }
-
-        target.mask.width = naturalWidth;
-        target.mask.height = naturalHeight;
-        target.tint.width = naturalWidth;
-        target.tint.height = naturalHeight;
-
-        const maskContext = target.mask.getContext('2d');
-        const tintContext = target.tint.getContext('2d');
-        if (!maskContext || !tintContext) {
-          return;
-        }
-        maskContext.fillStyle = '#fff';
-        maskContext.fillRect(0, 0, naturalWidth, naturalHeight);
-
-        const updatedAsset: ImageAsset = {
-          ...target,
-          width: naturalWidth,
-          height: naturalHeight,
-          maskCtx: maskContext,
-          tintCtx: tintContext,
-        };
-
-        assetsRef.current.set(image.id, updatedAsset);
-        updateTintOverlay(updatedAsset);
-        setOverlayVersion((prev) => prev + 1);
-      };
-
-      htmlImage.onerror = () => {
-        assets.delete(image.id);
-      };
-    });
-  }, [images, selectedImageId, updateTintOverlay]);
-
-  useEffect(() => {
-    releaseLassoCapture();
-  }, [releaseLassoCapture, selectedImageId]);
-
-  useEffect(() => () => {
-    releaseLassoCapture();
-  }, [releaseLassoCapture]);
+  /* ---------------- Public API ---------------- */
 
   const getTintOverlay = useCallback(
-    (targetId?: string) => {
-      const effectiveId = targetId ?? selectedImageId;
-      if (!effectiveId) {
-        return null;
-      }
-      const asset = assetsRef.current.get(effectiveId);
-      return asset?.tint ?? null;
-    },
+    (id?: string) => assetsRef.current.get(id ?? selectedImageId ?? '')?.tint ?? null,
     [selectedImageId]
   );
+
+  const getMaskCanvas = useCallback(
+    (id?: string) => assetsRef.current.get(id ?? selectedImageId ?? '')?.mask ?? null,
+    [selectedImageId]
+  );
+
+  const getBooleanMask = useCallback((id?: string) => {
+    const asset = assetsRef.current.get(id ?? selectedImageId ?? '');
+    if (!asset?.width || !asset?.height) return null;
+
+    try {
+      const { width, height } = asset;
+      const { data } = asset.tintCtx.getImageData(0, 0, width, height);
+      const boolData = new Uint8Array(width * height);
+      for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+        boolData[j] = data[i + 3] > 0 ? 1 : 0;
+      }
+      return { width, height, data: boolData };
+    } catch (err) {
+      console.error('Failed extracting boolean mask', id, err);
+      return null;
+    }
+  }, [selectedImageId]);
 
   return {
     isMaskTool,
@@ -430,5 +326,7 @@ export function useImageMasking<TImage extends MaskImage>({
     lassoPreview,
     overlayVersion,
     getTintOverlay,
+    getMaskCanvas,
+    getBooleanMask,
   };
 }
