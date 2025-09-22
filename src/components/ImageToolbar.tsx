@@ -1,19 +1,19 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Minus, Move, RotateCcw, Undo2, ZoomIn, Plus } from 'lucide-react';
+import { Brush, Eraser, Home, Move, RotateCcw, Undo2, ZoomIn } from 'lucide-react';
 
 const TOOL_DESCRIPTIONS: Record<string, string> = {
   pan: 'Click and drag to move the grid position',
   scale: 'Click and drag to resize the grid • Scroll to fine-tune',
   rotate: 'Drag the sphere control to rotate grid in 3D space',
-  'mask-add': 'Draw around areas to hide • Multiple selections allowed',
-  'mask-subtract': 'Draw around masked areas to reveal them',
+  'erase': 'Draw around areas to hide • Multiple selections allowed',
+  'restore': 'Draw around masked areas to reveal them',
   none: 'Select a tool to begin aligning the grid',
 };
 
 type ToolConfig = {
-  id: 'pan' | 'scale' | 'rotate' | 'mask-add' | 'mask-subtract';
+  id: 'pan' | 'scale' | 'rotate' | 'erase' | 'restore';
   icon: LucideIcon;
   label: string;
   description: string;
@@ -26,13 +26,13 @@ const gridTools: ToolConfig[] = [
 ];
 
 const maskTools: ToolConfig[] = [
-  { id: 'mask-add', icon: Plus, label: 'Add Mask', description: 'Lasso tool to mask areas (hide parts of image)' },
-  { id: 'mask-subtract', icon: Minus, label: 'Remove Mask', description: 'Lasso tool to remove masking (show parts of image)' },
+  { id: 'erase', icon: Eraser, label: 'Erase', description: 'Lasso tool to mask areas (hide parts of image)' },
+  { id: 'restore', icon: Brush, label: 'Restore', description: 'Lasso tool to remove masking (show parts of image)' },
 ];
 
 type ImageToolbarProps = {
-  activeTool: 'none' | 'pan' | 'scale' | 'rotate' | 'mask-add' | 'mask-subtract';
-  onToolChange: (tool: 'none' | 'pan' | 'scale' | 'rotate' | 'mask-add' | 'mask-subtract') => void;
+  activeTool: 'none' | 'pan' | 'scale' | 'rotate' | 'erase' | 'restore';
+  onToolChange: (tool: 'none' | 'pan' | 'scale' | 'rotate' | 'erase' | 'restore') => void;
   onUndo: () => void;
   canUndo: boolean;
   onResetViewport: () => void;

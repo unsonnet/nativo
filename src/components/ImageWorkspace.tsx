@@ -44,7 +44,7 @@ export function ImageWorkspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [activeTool, setActiveTool] = useState<
-    'none' | 'pan' | 'scale' | 'rotate' | 'mask-add' | 'mask-subtract'
+    'none' | 'pan' | 'scale' | 'rotate' | 'erase' | 'restore'
   >('none');
 
   const [viewportState, setViewportState] = useState<ViewportState>(createDefaultViewport);
@@ -277,17 +277,22 @@ export function ImageWorkspace() {
     }
     event.preventDefault();
     const rect = previewRef.current.getBoundingClientRect();
-    const cursorX = event.clientX - rect.left - rect.width / 2;
-    const cursorY = event.clientY - rect.top - rect.height / 2;
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
     updateViewport((prev) => {
       const scaleFactor = Math.exp(-event.deltaY * 0.0015);
       const nextScale = Math.min(6, Math.max(0.4, prev.scale * scaleFactor));
+      if (nextScale === prev.scale) {
+        return prev;
+      }
       const appliedFactor = nextScale / prev.scale;
+      const nextOffsetX = localX - appliedFactor * (localX - prev.offset.x);
+      const nextOffsetY = localY - appliedFactor * (localY - prev.offset.y);
       return {
         scale: nextScale,
         offset: {
-          x: (prev.offset.x + cursorX) * appliedFactor - cursorX,
-          y: (prev.offset.y + cursorY) * appliedFactor - cursorY,
+          x: nextOffsetX,
+          y: nextOffsetY,
         },
       };
     });
