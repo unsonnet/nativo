@@ -29,8 +29,8 @@ export function ImageWorkspace() {
   } = useImageWorkspaceController();
 
   const canvasClass = library.isDragging
-    ? 'report-create__canvas report-create__canvas--dragging'
-    : 'report-create__canvas';
+    ? 'image-workspace__canvas image-workspace__canvas--dragging'
+    : 'image-workspace__canvas';
 
   const hasImages = library.images.length > 0 && library.selectedImage;
 
@@ -60,7 +60,7 @@ export function ImageWorkspace() {
           onDrop={library.handleDrop}
         />
       ) : (
-        <div className="report-create__workspace">
+        <div className="image-workspace__workspace">
           <Toolbar
             activeTool={activeTool}
             onToolChange={setActiveTool}
@@ -83,15 +83,15 @@ export function ImageWorkspace() {
             onPointerMove={handleViewportPointerMove}
             onPointerUp={handleViewportPointerUp}
             onWheel={handleWheel}
-          />
-
-          <ThumbnailList
-            images={library.images}
-            selectedId={library.selectedId}
-            onSelect={library.setSelectedId}
-            onRemove={library.removeImage}
-            onAdd={library.handleChooseClick}
-          />
+          >
+            <ThumbnailList
+              images={library.images}
+              selectedId={library.selectedId}
+              onSelect={library.setSelectedId}
+              onRemove={library.removeImage}
+              onAdd={library.handleChooseClick}
+            />
+          </PreviewCanvas>
         </div>
       )}
     </section>

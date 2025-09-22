@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import type { PointerEventHandler, WheelEventHandler } from 'react';
+import type { PointerEventHandler, ReactNode, WheelEventHandler } from 'react';
 import { useMemo } from 'react';
 
 import type { WorkspaceImage } from '../types';
@@ -20,6 +20,7 @@ export type PreviewCanvasProps = {
   onPointerMove: PointerEventHandler<HTMLDivElement>;
   onPointerUp: PointerEventHandler<HTMLDivElement>;
   onWheel: WheelEventHandler<HTMLDivElement>;
+  children?: ReactNode;
 };
 
 export function PreviewCanvas({
@@ -35,6 +36,7 @@ export function PreviewCanvas({
   onPointerMove,
   onPointerUp,
   onWheel,
+  children,
 }: PreviewCanvasProps) {
   const previewWidth = previewRef.current?.clientWidth ?? 0;
   const previewHeight = previewRef.current?.clientHeight ?? 0;
@@ -64,11 +66,11 @@ export function PreviewCanvas({
   }, [lassoPreview]);
 
   return (
-    <div className="report-create__gallery">
+    <div className="image-workspace__gallery">
       <div
         ref={previewRef}
-        className={`report-create__preview${isViewportPanning ? ' report-create__preview--panning' : ''}${
-          isMaskToolActive ? ' report-create__preview--mask' : ''
+        className={`image-workspace__preview${isViewportPanning ? ' image-workspace__preview--panning' : ''}${
+          isMaskToolActive ? ' image-workspace__preview--mask' : ''
         }`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -77,7 +79,7 @@ export function PreviewCanvas({
         onPointerCancel={onPointerUp}
         onWheel={onWheel}
       >
-        <div className="report-create__preview-layer">
+        <div className="image-workspace__preview-layer">
           <Image
             ref={imageRef}
             src={selectedImage.url}
@@ -87,19 +89,19 @@ export function PreviewCanvas({
             sizes="100vw"
             style={{ transform: imageTransform, objectFit: 'contain' }}
           />
-          <canvas ref={tintOverlayRef} className="report-create__mask-overlay" aria-hidden />
+          <canvas ref={tintOverlayRef} className="image-workspace__mask-overlay" aria-hidden />
           {lassoData && previewWidth > 0 && previewHeight > 0 && (
             <svg
-              className="report-create__lasso-overlay"
+              className="image-workspace__lasso-overlay"
               viewBox={`0 0 ${previewWidth} ${previewHeight}`}
               preserveAspectRatio="none"
             >
               {lassoData.closed && (
-                <path d={lassoData.closed} className="report-create__lasso-fill" fill={lassoData.fill} />
+                <path d={lassoData.closed} className="image-workspace__lasso-fill" fill={lassoData.fill} />
               )}
               <path
                 d={lassoData.path}
-                className="report-create__lasso-path"
+                className="image-workspace__lasso-path"
                 stroke={lassoData.stroke}
                 strokeWidth={2}
                 strokeDasharray="6 6"
@@ -108,7 +110,7 @@ export function PreviewCanvas({
                 fill="none"
               />
               <circle
-                className="report-create__lasso-point"
+                className="image-workspace__lasso-point"
                 cx={lassoData.start.x}
                 cy={lassoData.start.y}
                 r={4}
@@ -117,7 +119,7 @@ export function PreviewCanvas({
                 fill="#0f172a"
               />
               <circle
-                className="report-create__lasso-point"
+                className="image-workspace__lasso-point"
                 cx={lassoData.end.x}
                 cy={lassoData.end.y}
                 r={3}
@@ -127,6 +129,7 @@ export function PreviewCanvas({
           )}
         </div>
       </div>
+      {children}
     </div>
   );
 }

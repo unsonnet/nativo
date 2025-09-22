@@ -261,6 +261,9 @@ export function useImageMasking<TImage extends MaskImage>({
 
       if (!maskCtx || !tintCtx) return;
 
+      maskCtx.fillStyle = '#fff';
+      maskCtx.fillRect(0, 0, width, height);
+
       assetsRef.current.set(selected.id, { image, width, height, mask, maskCtx, tint, tintCtx });
       updateTintOverlay({ image, width, height, mask, maskCtx, tint, tintCtx });
       setOverlayVersion((v) => v + 1);

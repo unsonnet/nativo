@@ -14,18 +14,18 @@ type ThumbnailListProps = {
 
 export function ThumbnailList({ images, selectedId, onSelect, onRemove, onAdd }: ThumbnailListProps) {
   return (
-    <div className="report-create__thumbs" role="list">
+    <div className="image-workspace__thumbs" role="list">
       {images.map((image) => {
         const isActive = image.id === selectedId;
         return (
           <div
             key={image.id}
-            className={`report-create__thumb${isActive ? ' report-create__thumb--active' : ''}`}
+            className={`image-workspace__thumb${isActive ? ' image-workspace__thumb--active' : ''}`}
             role="listitem"
           >
             <button
               type="button"
-              className="report-create__thumb-select"
+              className="image-workspace__thumb-select"
               onClick={() => onSelect(image.id)}
               onKeyDown={(event) => {
                 if (event.key === 'Delete') {
@@ -40,12 +40,12 @@ export function ThumbnailList({ images, selectedId, onSelect, onRemove, onAdd }:
                 width={64}
                 height={64}
                 unoptimized
-                className="report-create__thumb-image"
+                className="image-workspace__thumb-image"
               />
             </button>
             <button
               type="button"
-              className="report-create__thumb-remove"
+              className="image-workspace__thumb-remove"
               onClick={(event) => {
                 event.stopPropagation();
                 onRemove(image.id);
@@ -57,8 +57,8 @@ export function ThumbnailList({ images, selectedId, onSelect, onRemove, onAdd }:
           </div>
         );
       })}
-      <button type="button" className="report-create__thumb report-create__thumb--add" onClick={onAdd}>
-        <span aria-hidden className="report-create__thumb-add">+</span>
+      <button type="button" className="image-workspace__thumb image-workspace__thumb--add" onClick={onAdd}>
+        <span aria-hidden className="image-workspace__thumb-add">+</span>
       </button>
     </div>
   );
