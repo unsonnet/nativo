@@ -157,14 +157,20 @@ body::before {
   border-radius: 0.75rem;
   overflow: hidden;
   background: rgba(148, 163, 184, 0.08);
+  position: relative;
 }
 
 .report-card__image,
 .report-card__placeholder {
-  width: 100%;
-  height: 100%;
   object-fit: cover;
   transition: transform 180ms ease;
+}
+
+.report-card__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .report-card:hover .report-card__image {

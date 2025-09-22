@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import type { Report } from "@/types/report";
 
 export function ReportCard({ report }: { report: Report }) {
@@ -20,7 +22,14 @@ export function ReportCard({ report }: { report: Report }) {
 
       <figure className="report-card__media">
         {previewImage ? (
-          <img src={previewImage} alt={subject} className="report-card__image" />
+          <Image
+            src={previewImage}
+            alt={subject}
+            fill
+            unoptimized
+            className="report-card__image"
+            sizes="200px"
+          />
         ) : (
           <span className="report-card__placeholder" aria-hidden />
         )}

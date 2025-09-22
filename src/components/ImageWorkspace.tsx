@@ -1,22 +1,13 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import type {
-  ChangeEvent,
-  DragEvent,
-  PointerEvent as ReactPointerEvent,
-  WheelEvent as ReactWheelEvent,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent, DragEvent, PointerEvent as ReactPointerEvent } from 'react';
+import Image from 'next/image';
 import { Upload } from 'lucide-react';
 
 import { ImageToolbar } from '@/components/ImageToolbar';
 import { useImageMasking } from '@/components/mask';
+import { useViewportTransform } from '@/components/viewport';
 
 type PreviewImage = {
   id: string;
@@ -25,20 +16,10 @@ type PreviewImage = {
   file: File;
 };
 
-type ViewportState = {
-  scale: number;
-  offset: { x: number; y: number };
-};
-
 const createId = () =>
   (typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-
-const createDefaultViewport = (): ViewportState => ({
-  scale: 1,
-  offset: { x: 0, y: 0 },
-});
 
 export function ImageWorkspace() {
   const [images, setImages] = useState<PreviewImage[]>([]);
@@ -48,9 +29,6 @@ export function ImageWorkspace() {
     'none' | 'pan' | 'scale' | 'rotate' | 'erase' | 'restore'
   >('none');
 
-  const [viewportState, setViewportState] = useState<ViewportState>(createDefaultViewport);
-  const viewportRef = useRef<ViewportState>(viewportState);
-  const viewportRafRef = useRef<number | null>(null);
   const [isViewportPanning, setIsViewportPanning] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,21 +36,27 @@ export function ImageWorkspace() {
   const dragCounter = useRef(0);
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-  const pointerState = useRef<
-    | {
-        pointerId: number;
-        startX: number;
-        startY: number;
-        startOffset: { x: number; y: number };
-      }
-    | null
-  >(null);
-
   const selectedImage = useMemo(
     () => images.find((image) => image.id === selectedId) ?? images[0] ?? null,
     [images, selectedId]
   );
   const selectedImageId = selectedImage?.id ?? null;
+
+  const {
+    viewportState,
+    viewportRef,
+    isViewportDefault,
+    handlePointerDown: handlePanPointerDown,
+    handlePointerMove: handlePanPointerMove,
+    handlePointerUp: handlePanPointerUp,
+    handleWheel: handleViewportWheel,
+    resetViewport,
+    cancelPan,
+  } = useViewportTransform({
+    imageRef,
+    previewRef,
+    onPanningChange: setIsViewportPanning,
+  });
 
   const {
     isMaskTool,
@@ -97,70 +81,15 @@ export function ImageWorkspace() {
       setSelectedId(null);
     }
   }, [images, selectedId]);
-
-
-  const scheduleViewportRender = useCallback(() => {
-    if (viewportRafRef.current !== null) {
-      return;
-    }
-    viewportRafRef.current = requestAnimationFrame(() => {
-      viewportRafRef.current = null;
-      setViewportState({
-        scale: viewportRef.current.scale,
-        offset: { ...viewportRef.current.offset },
-      });
-    });
-  }, []);
-
-  const applyViewport = useCallback(
-    (next: ViewportState) => {
-      viewportRef.current = {
-        scale: next.scale,
-        offset: { x: next.offset.x, y: next.offset.y },
-      };
-      if (imageRef.current) {
-        imageRef.current.style.transform = `translate3d(${viewportRef.current.offset.x}px, ${viewportRef.current.offset.y}px, 0) scale(${viewportRef.current.scale})`;
-      }
-      scheduleViewportRender();
-    },
-    [scheduleViewportRender]
-  );
-
-  const updateViewport = useCallback(
-    (
-      updater: ViewportState | ((prev: ViewportState) => ViewportState)
-    ) => {
-      const next =
-        typeof updater === 'function'
-          ? (updater as (prev: ViewportState) => ViewportState)(viewportRef.current)
-          : updater;
-      applyViewport(next);
-    },
-    [applyViewport]
-  );
+  useEffect(() => {
+    resetViewport();
+  }, [resetViewport, selectedId]);
 
   useEffect(() => {
-    viewportRef.current = viewportState;
-  }, [viewportState]);
-
-  useEffect(() => {
-    const defaultViewport = createDefaultViewport();
-    applyViewport(defaultViewport);
-    pointerState.current = null;
-    setIsViewportPanning(false);
-  }, [selectedId, applyViewport]);
-
-  useEffect(() => {
-    if (!previewRef.current) {
-      return;
-    }
-    if (pointerState.current) {
-      previewRef.current.releasePointerCapture(pointerState.current.pointerId);
-      pointerState.current = null;
-    }
+    cancelPan();
     handleMaskToolChange();
     setIsViewportPanning(false);
-  }, [activeTool, handleMaskToolChange]);
+  }, [activeTool, cancelPan, handleMaskToolChange]);
 
   const addFiles = useCallback((fileList: FileList | File[]) => {
     const filesArray = Array.from(fileList).filter((file) =>
@@ -252,19 +181,14 @@ export function ImageWorkspace() {
     return () => {
       urls.forEach((url) => URL.revokeObjectURL(url));
       urls.clear();
-      if (viewportRafRef.current !== null) {
-        cancelAnimationFrame(viewportRafRef.current);
-      }
     };
   }, []);
 
   const handleViewportPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0 || !previewRef.current) {
+      if (event.button !== 0) {
         return;
       }
-      event.preventDefault();
-
       if (handleMaskPointerDown(event, activeTool)) {
         return;
       }
@@ -279,16 +203,9 @@ export function ImageWorkspace() {
         return;
       }
 
-      previewRef.current.setPointerCapture(event.pointerId);
-      pointerState.current = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        startOffset: { ...viewportRef.current.offset },
-      };
-      setIsViewportPanning(true);
+      handlePanPointerDown(event);
     },
-    [activeTool, handleMaskPointerDown]
+    [activeTool, handleMaskPointerDown, handlePanPointerDown]
   );
 
   const handleViewportPointerMove = useCallback(
@@ -297,22 +214,11 @@ export function ImageWorkspace() {
         return;
       }
 
-      if (!pointerState.current || pointerState.current.pointerId !== event.pointerId) {
+      if (handlePanPointerMove(event)) {
         return;
       }
-      event.preventDefault();
-      const dx = event.clientX - pointerState.current.startX;
-      const dy = event.clientY - pointerState.current.startY;
-      const { startOffset } = pointerState.current;
-      updateViewport({
-        scale: viewportRef.current.scale,
-        offset: {
-          x: startOffset.x + dx,
-          y: startOffset.y + dy,
-        },
-      });
     },
-    [handleMaskPointerMove, updateViewport]
+    [handleMaskPointerMove, handlePanPointerMove]
   );
 
   const releaseViewportPointer = useCallback(
@@ -321,59 +227,14 @@ export function ImageWorkspace() {
         return;
       }
 
-      if (pointerState.current && event.pointerId === pointerState.current.pointerId) {
-        previewRef.current?.releasePointerCapture(event.pointerId);
-        pointerState.current = null;
-        setIsViewportPanning(false);
-      }
+      handlePanPointerUp(event);
     },
-    [handleMaskPointerUp]
+    [handleMaskPointerUp, handlePanPointerUp]
   );
-
-  const handleViewportWheel = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
-    if (!previewRef.current) {
-      return;
-    }
-    event.preventDefault();
-    const rect = previewRef.current.getBoundingClientRect();
-    const localX = event.clientX - rect.left;
-    const localY = event.clientY - rect.top;
-    updateViewport((prev) => {
-      const scaleFactor = Math.exp(-event.deltaY * 0.0015);
-      const nextScale = Math.min(6, Math.max(0.4, prev.scale * scaleFactor));
-      if (nextScale === prev.scale) {
-        return prev;
-      }
-      const appliedFactor = nextScale / prev.scale;
-      const nextOffsetX = localX - appliedFactor * (localX - prev.offset.x);
-      const nextOffsetY = localY - appliedFactor * (localY - prev.offset.y);
-      return {
-        scale: nextScale,
-        offset: {
-          x: nextOffsetX,
-          y: nextOffsetY,
-        },
-      };
-    });
-  }, [updateViewport]);
 
   const handleResetViewport = useCallback(() => {
-    updateViewport(createDefaultViewport());
-  }, [updateViewport]);
-
-  const isViewportDefault = useMemo(
-    () =>
-      Math.abs(viewportState.scale - 1) < 0.0001 &&
-      Math.abs(viewportState.offset.x) < 0.5 &&
-      Math.abs(viewportState.offset.y) < 0.5,
-    [viewportState]
-  );
-
-  useEffect(() => {
-    if (imageRef.current) {
-      imageRef.current.style.transform = `translate3d(${viewportState.offset.x}px, ${viewportState.offset.y}px, 0) scale(${viewportState.scale})`;
-    }
-  }, [viewportState]);
+    resetViewport();
+  }, [resetViewport]);
 
   const canvasClassName = isDragging
     ? 'report-create__canvas report-create__canvas--dragging'
@@ -437,12 +298,16 @@ export function ImageWorkspace() {
                 onWheel={handleViewportWheel}
               >
                 <div className="report-create__preview-layer">
-                  <img
+                  <Image
                     ref={imageRef}
                     src={selectedImage.url}
                     alt={selectedImage.name}
+                    fill
+                    unoptimized
+                    sizes="100vw"
                     style={{
                       transform: `translate3d(${viewportState.offset.x}px, ${viewportState.offset.y}px, 0) scale(${viewportState.scale})`,
+                      objectFit: 'contain',
                     }}
                   />
                 </div>
@@ -471,9 +336,12 @@ export function ImageWorkspace() {
                         }
                       }}
                     >
-                      <img
+                      <Image
                         src={image.url}
                         alt={image.name}
+                        width={64}
+                        height={64}
+                        unoptimized
                         className="report-create__thumb-image"
                       />
                     </button>
