@@ -207,6 +207,10 @@
   justify-content: center;
   cursor: grab;
   position: relative;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .image-workspace__preview--panning {
@@ -217,10 +221,36 @@
   cursor: crosshair;
 }
 
+/* When modifier (Ctrl/Cmd) is held, show hand cursor indicating pan */
+.image-workspace__preview.image-workspace__preview--modifier {
+  cursor: grab !important; /* start as grab */
+}
+.image-workspace__preview.image-workspace__preview--modifier:active {
+  cursor: grabbing !important;
+}
+
+/* When no tool is selected, show default arrow cursor */
+.image-workspace__preview.image-workspace__preview--none {
+  cursor: default;
+}
+
+/* Force grab when actively panning so cursor remains hand during drag */
+.image-workspace__preview.image-workspace__preview--force-grab {
+  cursor: grabbing !important;
+}
+
 .image-workspace__preview-layer {
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+/* Ensure children inside preview also cannot be selected */
+.image-workspace__preview, .image-workspace__preview * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .image-workspace__preview img {

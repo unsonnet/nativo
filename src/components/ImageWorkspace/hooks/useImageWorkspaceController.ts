@@ -12,6 +12,8 @@ export function useImageWorkspaceController() {
 
   const previewRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
+  const pointerModeRef = useRef<Map<number, 'pan' | 'mask' | 'none'>>(new Map());
+  const modifierHeldRef = useRef(false);
 
   const {
     isMaskTool,
@@ -57,10 +59,33 @@ export function useImageWorkspaceController() {
   const handleViewportPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) return;
-      if (handleMaskPointerDown(event, activeTool)) return;
+
+      const id = event.pointerId;
+
+      // If modifier held, prefer viewport panning — route to pan and mark pointer
+      if (event.ctrlKey || event.metaKey) {
+        pointerModeRef.current.set(id, 'pan');
+        handlePanPointerDown(event);
+        // ensure preview shows forced grab while panning with modifier
+        const node = previewRef.current;
+        if (node) node.classList.add('image-workspace__preview--force-grab');
+        return;
+      }
+
+      // Otherwise let the active tool try first (e.g. mask). If it claims the event,
+      // mark pointer as mask; otherwise fall back to pan for certain tools.
+      if (handleMaskPointerDown(event, activeTool)) {
+        pointerModeRef.current.set(id, 'mask');
+        return;
+      }
 
       if (activeTool === 'none' || activeTool === 'pan' || activeTool === 'scale' || activeTool === 'rotate') {
+        pointerModeRef.current.set(id, 'pan');
         handlePanPointerDown(event);
+        const node = previewRef.current;
+        if (node) node.classList.add('image-workspace__preview--force-grab');
+      } else {
+        pointerModeRef.current.set(id, 'none');
       }
     },
     [activeTool, handleMaskPointerDown, handlePanPointerDown]
@@ -68,16 +93,58 @@ export function useImageWorkspaceController() {
 
   const handleViewportPointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (handleMaskPointerMove(event)) return;
-      handlePanPointerMove(event);
+      const id = event.pointerId;
+      const mode = pointerModeRef.current.get(id) ?? 'none';
+
+      if (mode === 'mask') {
+        if (handleMaskPointerMove(event)) return;
+      } else if (mode === 'pan') {
+        handlePanPointerMove(event);
+        return;
+      } else {
+        // no explicit mode: allow mask first (backwards compatible)
+        if (handleMaskPointerMove(event)) return;
+        handlePanPointerMove(event);
+      }
     },
     [handleMaskPointerMove, handlePanPointerMove]
   );
 
   const handleViewportPointerUp = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (handleMaskPointerUp(event)) return;
-      handlePanPointerUp(event);
+      const id = event.pointerId;
+      const mode = pointerModeRef.current.get(id) ?? 'none';
+
+      if (mode === 'mask') {
+        if (handleMaskPointerUp(event)) {
+          pointerModeRef.current.delete(id);
+          // remove force-grab if no pan pointers remain
+          const node = previewRef.current;
+          const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
+          if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
+          return;
+        }
+      } else if (mode === 'pan') {
+        handlePanPointerUp(event);
+        pointerModeRef.current.delete(id);
+        const node = previewRef.current;
+        const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
+        if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
+        return;
+      } else {
+        if (handleMaskPointerUp(event)) {
+          pointerModeRef.current.delete(id);
+          const node = previewRef.current;
+          const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
+          if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
+          return;
+        }
+        handlePanPointerUp(event);
+        pointerModeRef.current.delete(id);
+        const node = previewRef.current;
+        const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
+        if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
+      }
     },
     [handleMaskPointerUp, handlePanPointerUp]
   );
@@ -95,7 +162,55 @@ export function useImageWorkspaceController() {
     cancelPan();
     handleMaskToolChange();
     setIsViewportPanning(false);
+    // Clear any in-flight pointer modes when tool changes
+    pointerModeRef.current.clear();
   }, [activeTool, cancelPan, handleMaskToolChange]);
+
+  // Toggle a preview modifier class when Ctrl or Meta is held so cursor can change
+  useEffect(() => {
+    const setModifier = (on: boolean) => {
+      modifierHeldRef.current = on;
+      const node = previewRef.current;
+      if (!node) return;
+      if (on) node.classList.add('image-workspace__preview--modifier');
+      else node.classList.remove('image-workspace__preview--modifier');
+      // update inline cursor: if modifier turned on and no active pan pointers -> show grab
+      if (on) {
+        const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
+        node.style.cursor = anyPan ? 'grabbing' : 'grab';
+      } else {
+        node.style.cursor = '';
+      }
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) setModifier(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) setModifier(false);
+    };
+    const onBlur = () => setModifier(false);
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      setModifier(false);
+    };
+  }, [previewRef]);
+
+  // Add a class when no tool is selected so we can show default cursor
+  useEffect(() => {
+    const node = previewRef.current;
+    if (!node) return;
+    if (activeTool === 'none') node.classList.add('image-workspace__preview--none');
+    else node.classList.remove('image-workspace__preview--none');
+    return () => node.classList.remove('image-workspace__preview--none');
+  }, [previewRef, activeTool]);
 
   useEffect(() => {
     if (!selectedImageId) return;

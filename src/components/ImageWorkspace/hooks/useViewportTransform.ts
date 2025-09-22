@@ -66,6 +66,12 @@ export function useViewportTransform({
 
       const img = imageRef.current;
       if (img) {
+        // Prevent native image dragging so the image can't be dragged out of the app
+        try {
+          img.draggable = false;
+        } catch (err) {
+          // Some environments may restrict setting draggable; ignore
+        }
         const { scale, offset } = viewportRef.current;
         img.style.transform = `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`;
       }
@@ -100,7 +106,6 @@ export function useViewportTransform({
   const handlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if (e.button !== 0 || !previewRef.current) return false;
-
       e.preventDefault();
       previewRef.current.setPointerCapture(e.pointerId);
       pointerStateRef.current = {
@@ -119,7 +124,7 @@ export function useViewportTransform({
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const s = pointerStateRef.current;
       if (!s || s.pointerId !== e.pointerId) return false;
-
+      // Only handle movement for an active pan session
       e.preventDefault();
       updateViewport({
         scale: viewportRef.current.scale,
@@ -146,7 +151,6 @@ export function useViewportTransform({
     (e: ReactWheelEvent<HTMLDivElement>) => {
       const rect = previewRef.current?.getBoundingClientRect();
       if (!rect) return;
-
       e.preventDefault();
       const localX = e.clientX - rect.left;
       const localY = e.clientY - rect.top;
@@ -177,6 +181,15 @@ export function useViewportTransform({
   useEffect(() => {
     viewportRef.current = viewportState;
   }, [viewportState]);
+
+  // Prevent any dragstart events inside the preview (safeguard against image dragging)
+  useEffect(() => {
+    const node = previewRef.current;
+    if (!node) return;
+    const onDragStart = (ev: Event) => ev.preventDefault();
+    node.addEventListener('dragstart', onDragStart);
+    return () => node.removeEventListener('dragstart', onDragStart);
+  }, [previewRef]);
 
   useEffect(
     () => () => {
