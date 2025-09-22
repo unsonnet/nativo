@@ -26,6 +26,7 @@ type UseViewportTransformParams = {
   imageRef: MutableRefObject<HTMLImageElement | null>;
   previewRef: MutableRefObject<HTMLDivElement | null>;
   onPanningChange?: (isPanning: boolean) => void;
+  onViewportUpdate?: (state: ViewportState) => void;
 };
 
 type UseViewportTransformResult = {
@@ -44,6 +45,7 @@ export function useViewportTransform({
   imageRef,
   previewRef,
   onPanningChange,
+  onViewportUpdate,
 }: UseViewportTransformParams): UseViewportTransformResult {
   const [viewportState, setViewportState] = useState<ViewportState>(createDefaultViewport);
   const viewportRef = useRef<ViewportState>(viewportState);
@@ -73,9 +75,13 @@ export function useViewportTransform({
       if (target) {
         target.style.transform = `translate3d(${viewportRef.current.offset.x}px, ${viewportRef.current.offset.y}px, 0) scale(${viewportRef.current.scale})`;
       }
+      onViewportUpdate?.({
+        scale: viewportRef.current.scale,
+        offset: { ...viewportRef.current.offset },
+      });
       scheduleRender();
     },
-    [imageRef, scheduleRender]
+    [imageRef, onViewportUpdate, scheduleRender]
   );
 
   const updateViewport = useCallback(
@@ -231,4 +237,3 @@ export function useViewportTransform({
 }
 
 export { createDefaultViewport };
-

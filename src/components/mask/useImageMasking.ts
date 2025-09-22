@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MutableRefObject, PointerEvent as ReactPointerEvent } from 'react';
 
-const LASSO_DISTANCE_THRESHOLD_SQ = 9;
+const LASSO_DISTANCE_THRESHOLD_SQ = 1;
+const LASSO_TIME_THRESHOLD_MS = 45;
+const getTimestamp = () =>
+  typeof performance !== 'undefined' ? performance.now() : Date.now();
 
 type MaskTool = 'erase' | 'restore';
 
@@ -16,8 +19,8 @@ type ImageAsset = {
   height: number;
   mask: HTMLCanvasElement;
   maskCtx: CanvasRenderingContext2D;
-  maskUrl: string | null;
-  maskDirty: boolean;
+  tint: HTMLCanvasElement;
+  tintCtx: CanvasRenderingContext2D | null;
 };
 
 type LassoState = {
@@ -25,19 +28,15 @@ type LassoState = {
   tool: MaskTool;
   imageId: string;
   points: { x: number; y: number }[];
+  previewPoints: { x: number; y: number }[];
+  lastInsertTime: number;
 };
-
-type ViewportRef = MutableRefObject<{
-  scale: number;
-  offset: { x: number; y: number };
-}>;
 
 type UseImageMaskingParams<TImage extends MaskImage> = {
   images: TImage[];
   selectedImageId: string | null;
   previewRef: MutableRefObject<HTMLDivElement | null>;
   imageRef: MutableRefObject<HTMLImageElement | null>;
-  viewportRef: ViewportRef;
   onToggleViewportPanning: (isPanning: boolean) => void;
 };
 
@@ -47,6 +46,12 @@ type UseImageMaskingResult = {
   handlePointerMove: (event: ReactPointerEvent<HTMLDivElement>) => boolean;
   handlePointerUp: (event: ReactPointerEvent<HTMLDivElement>) => boolean;
   handleToolChange: () => void;
+  lassoPreview: {
+    tool: MaskTool;
+    points: { x: number; y: number }[];
+  } | null;
+  overlayVersion: number;
+  getTintOverlay: (imageId?: string) => HTMLCanvasElement | null;
 };
 
 const MASK_TOOLS: MaskTool[] = ['erase', 'restore'];
@@ -56,62 +61,14 @@ export function useImageMasking<TImage extends MaskImage>({
   selectedImageId,
   previewRef,
   imageRef,
-  viewportRef,
   onToggleViewportPanning,
 }: UseImageMaskingParams<TImage>): UseImageMaskingResult {
   const assetsRef = useRef(new Map<string, ImageAsset>());
   const lassoStateRef = useRef<LassoState | null>(null);
+  const [lassoPreview, setLassoPreview] = useState<UseImageMaskingResult['lassoPreview']>(null);
+  const [overlayVersion, setOverlayVersion] = useState(0);
 
   const isMaskTool = useCallback((tool: string): tool is MaskTool => MASK_TOOLS.includes(tool as MaskTool), []);
-
-  const applyMaskToImage = useCallback(
-    (targetId?: string) => {
-      const img = imageRef.current;
-      if (!img) {
-        return;
-      }
-
-      const effectiveId = targetId ?? selectedImageId;
-      if (!effectiveId) {
-        img.style.maskImage = 'none';
-        img.style.webkitMaskImage = 'none';
-        return;
-      }
-
-      const asset = assetsRef.current.get(effectiveId);
-      if (!asset) {
-        return;
-      }
-
-      if (asset.maskDirty || asset.maskUrl === null) {
-        try {
-          asset.maskUrl = asset.mask.toDataURL('image/png');
-        } catch {
-          asset.maskUrl = null;
-        }
-        asset.maskDirty = false;
-      }
-
-      if (effectiveId !== selectedImageId || !asset.maskUrl) {
-        if (effectiveId === selectedImageId) {
-          img.style.maskImage = 'none';
-          img.style.webkitMaskImage = 'none';
-        }
-        return;
-      }
-
-      const urlValue = `url("${asset.maskUrl}")`;
-      img.style.maskImage = urlValue;
-      img.style.webkitMaskImage = urlValue;
-      img.style.maskSize = '100% 100%';
-      img.style.webkitMaskSize = '100% 100%';
-      img.style.maskRepeat = 'no-repeat';
-      img.style.webkitMaskRepeat = 'no-repeat';
-      img.style.maskPosition = '0 0';
-      img.style.webkitMaskPosition = '0 0';
-    },
-    [imageRef, selectedImageId]
-  );
 
   const getImageCoordinates = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>, imageId: string) => {
@@ -126,30 +83,52 @@ export function useImageMasking<TImage extends MaskImage>({
         return null;
       }
 
-      const rect = preview.getBoundingClientRect();
-      const localX = event.clientX - rect.left;
-      const localY = event.clientY - rect.top;
-
-      const { offset, scale } = viewportRef.current;
-      const normalizedX = (localX - offset.x) / scale;
-      const normalizedY = (localY - offset.y) / scale;
-
-      const layoutWidth = img.clientWidth;
-      const layoutHeight = img.clientHeight;
-      if (layoutWidth === 0 || layoutHeight === 0) {
+      const imageRect = img.getBoundingClientRect();
+      if (imageRect.width === 0 || imageRect.height === 0) {
         return null;
       }
 
-      const scaledX = normalizedX * (asset.width / layoutWidth);
-      const scaledY = normalizedY * (asset.height / layoutHeight);
+      const localX = event.clientX - imageRect.left;
+      const localY = event.clientY - imageRect.top;
+      const imageX = localX / imageRect.width * asset.width;
+      const imageY = localY / imageRect.height * asset.height;
 
       return {
-        x: Math.max(0, Math.min(asset.width, scaledX)),
-        y: Math.max(0, Math.min(asset.height, scaledY)),
+        x: Math.max(0, Math.min(asset.width, imageX)),
+        y: Math.max(0, Math.min(asset.height, imageY)),
       };
     },
-    [imageRef, previewRef, viewportRef]
+    [imageRef, previewRef]
   );
+
+  const getPreviewCoordinates = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const preview = previewRef.current;
+      if (!preview) {
+        return null;
+      }
+      const rect = preview.getBoundingClientRect();
+      return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      };
+    },
+    [previewRef]
+  );
+
+  const updateTintOverlay = useCallback((asset: ImageAsset) => {
+    if (!asset.tintCtx || asset.width === 0 || asset.height === 0) {
+      return;
+    }
+    const ctx = asset.tintCtx;
+    ctx.save();
+    ctx.clearRect(0, 0, asset.width, asset.height);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, asset.width, asset.height);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.drawImage(asset.mask, 0, 0);
+    ctx.restore();
+  }, []);
 
   const applyLassoMask = useCallback(
     (imageId: string, tool: MaskTool, points: { x: number; y: number }[]) => {
@@ -181,11 +160,10 @@ export function useImageMasking<TImage extends MaskImage>({
       ctx.fill();
       ctx.restore();
 
-      asset.maskDirty = true;
-      assetsRef.current.set(imageId, asset);
-      applyMaskToImage(imageId);
+      updateTintOverlay(asset);
+      setOverlayVersion((prev) => prev + 1);
     },
-    [applyMaskToImage]
+    [updateTintOverlay]
   );
 
   const releaseLassoCapture = useCallback(() => {
@@ -199,6 +177,7 @@ export function useImageMasking<TImage extends MaskImage>({
     }
     lassoStateRef.current = null;
     onToggleViewportPanning(false);
+    setLassoPreview(null);
   }, [onToggleViewportPanning, previewRef]);
 
   const handlePointerDown = useCallback(
@@ -211,7 +190,8 @@ export function useImageMasking<TImage extends MaskImage>({
       }
 
       const point = getImageCoordinates(event, selectedImageId);
-      if (!point) {
+      const previewPoint = getPreviewCoordinates(event);
+      if (!point || !previewPoint) {
         return false;
       }
 
@@ -225,11 +205,14 @@ export function useImageMasking<TImage extends MaskImage>({
         tool,
         imageId: selectedImageId,
         points: [point],
+        previewPoints: [previewPoint],
+        lastInsertTime: getTimestamp(),
       };
       onToggleViewportPanning(false);
+      setLassoPreview({ tool, points: [previewPoint] });
       return true;
     },
-    [getImageCoordinates, isMaskTool, onToggleViewportPanning, previewRef, selectedImageId]
+    [getImageCoordinates, getPreviewCoordinates, isMaskTool, onToggleViewportPanning, previewRef, selectedImageId]
   );
 
   const handlePointerMove = useCallback(
@@ -241,28 +224,37 @@ export function useImageMasking<TImage extends MaskImage>({
 
       event.preventDefault();
       const point = getImageCoordinates(event, state.imageId);
-      if (!point) {
+      const previewPoint = getPreviewCoordinates(event);
+      if (!point || !previewPoint) {
         return true;
       }
 
       const { points } = state;
+      const previewPoints = state.previewPoints;
       if (points.length === 0) {
         points.push(point);
+        previewPoints.push(previewPoint);
+        state.lastInsertTime = getTimestamp();
       } else {
         const last = points[points.length - 1];
         const dx = point.x - last.x;
         const dy = point.y - last.y;
         const distanceSq = dx * dx + dy * dy;
-        if (distanceSq >= LASSO_DISTANCE_THRESHOLD_SQ) {
+        const now = getTimestamp();
+        if (distanceSq >= LASSO_DISTANCE_THRESHOLD_SQ || now - state.lastInsertTime >= LASSO_TIME_THRESHOLD_MS) {
           points.push(point);
+          previewPoints.push(previewPoint);
+          state.lastInsertTime = now;
         } else {
           points[points.length - 1] = point;
+          previewPoints[previewPoints.length - 1] = previewPoint;
         }
       }
 
+      setLassoPreview({ tool: state.tool, points: [...state.previewPoints] });
       return true;
     },
-    [getImageCoordinates]
+    [getImageCoordinates, getPreviewCoordinates]
   );
 
   const handlePointerUp = useCallback(
@@ -279,28 +271,40 @@ export function useImageMasking<TImage extends MaskImage>({
         event.preventDefault();
         const { imageId, tool } = state;
         const points = state.points.slice();
+        const previewPoints = state.previewPoints.slice();
         const finalPoint = getImageCoordinates(event, imageId);
+        const finalPreviewPoint = getPreviewCoordinates(event);
         if (finalPoint) {
           if (points.length === 0) {
             points.push(finalPoint);
+            if (finalPreviewPoint) {
+              previewPoints.push(finalPreviewPoint);
+            }
           } else {
             const last = points[points.length - 1];
             const dx = finalPoint.x - last.x;
             const dy = finalPoint.y - last.y;
             if (dx * dx + dy * dy >= LASSO_DISTANCE_THRESHOLD_SQ) {
               points.push(finalPoint);
+              if (finalPreviewPoint) {
+                previewPoints.push(finalPreviewPoint);
+              }
             } else {
               points[points.length - 1] = finalPoint;
+              if (finalPreviewPoint) {
+                previewPoints[previewPoints.length - 1] = finalPreviewPoint;
+              }
             }
           }
         }
 
+        setLassoPreview(null);
         applyLassoMask(imageId, tool, points);
       }
 
       return true;
     },
-    [applyLassoMask, getImageCoordinates, releaseLassoCapture]
+    [applyLassoMask, getImageCoordinates, getPreviewCoordinates, releaseLassoCapture]
   );
 
   const handleToolChange = useCallback(() => {
@@ -329,8 +333,16 @@ export function useImageMasking<TImage extends MaskImage>({
       const maskCanvas = document.createElement('canvas');
       maskCanvas.width = 1;
       maskCanvas.height = 1;
-      const initialCtx = maskCanvas.getContext('2d');
-      if (!initialCtx) {
+      const initialMaskCtx = maskCanvas.getContext('2d');
+      if (!initialMaskCtx) {
+        return;
+      }
+
+      const tintCanvas = document.createElement('canvas');
+      tintCanvas.width = 1;
+      tintCanvas.height = 1;
+      const initialTintCtx = tintCanvas.getContext('2d');
+      if (!initialTintCtx) {
         return;
       }
 
@@ -339,9 +351,9 @@ export function useImageMasking<TImage extends MaskImage>({
         width: 0,
         height: 0,
         mask: maskCanvas,
-        maskCtx: initialCtx,
-        maskUrl: null,
-        maskDirty: true,
+        maskCtx: initialMaskCtx,
+        tint: tintCanvas,
+        tintCtx: initialTintCtx,
       };
 
       assets.set(image.id, baseAsset);
@@ -359,35 +371,35 @@ export function useImageMasking<TImage extends MaskImage>({
 
         target.mask.width = naturalWidth;
         target.mask.height = naturalHeight;
-        const context = target.mask.getContext('2d');
-        if (!context) {
+        target.tint.width = naturalWidth;
+        target.tint.height = naturalHeight;
+
+        const maskContext = target.mask.getContext('2d');
+        const tintContext = target.tint.getContext('2d');
+        if (!maskContext || !tintContext) {
           return;
         }
-        context.fillStyle = '#fff';
-        context.fillRect(0, 0, naturalWidth, naturalHeight);
+        maskContext.fillStyle = '#fff';
+        maskContext.fillRect(0, 0, naturalWidth, naturalHeight);
 
-        assetsRef.current.set(image.id, {
+        const updatedAsset: ImageAsset = {
           ...target,
           width: naturalWidth,
           height: naturalHeight,
-          maskCtx: context,
-          maskDirty: true,
-        });
+          maskCtx: maskContext,
+          tintCtx: tintContext,
+        };
 
-        if (image.id === selectedImageId) {
-          applyMaskToImage(image.id);
-        }
+        assetsRef.current.set(image.id, updatedAsset);
+        updateTintOverlay(updatedAsset);
+        setOverlayVersion((prev) => prev + 1);
       };
 
       htmlImage.onerror = () => {
         assets.delete(image.id);
       };
     });
-  }, [applyMaskToImage, images, selectedImageId]);
-
-  useEffect(() => {
-    applyMaskToImage();
-  }, [applyMaskToImage, selectedImageId]);
+  }, [images, selectedImageId, updateTintOverlay]);
 
   useEffect(() => {
     releaseLassoCapture();
@@ -397,11 +409,26 @@ export function useImageMasking<TImage extends MaskImage>({
     releaseLassoCapture();
   }, [releaseLassoCapture]);
 
+  const getTintOverlay = useCallback(
+    (targetId?: string) => {
+      const effectiveId = targetId ?? selectedImageId;
+      if (!effectiveId) {
+        return null;
+      }
+      const asset = assetsRef.current.get(effectiveId);
+      return asset?.tint ?? null;
+    },
+    [selectedImageId]
+  );
+
   return {
     isMaskTool,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
     handleToolChange,
+    lassoPreview,
+    overlayVersion,
+    getTintOverlay,
   };
 }
