@@ -26,6 +26,7 @@ export function ImageWorkspace() {
     resetViewport,
     isViewportPanning,
     imageTransform,
+    modifierActive,
   } = useImageWorkspaceController();
 
   const canvasClass = library.isDragging
@@ -64,6 +65,7 @@ export function ImageWorkspace() {
           <Toolbar
             activeTool={activeTool}
             onToolChange={setActiveTool}
+            modifierActive={modifierActive}
             onUndo={() => undefined}
             canUndo={false}
             onResetViewport={resetViewport}

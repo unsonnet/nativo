@@ -7,13 +7,14 @@ import type { WorkspaceTool } from '../types';
 
 export function useImageWorkspaceController() {
   const library = useImageLibrary();
-  const [activeTool, setActiveTool] = useState<WorkspaceTool>('none');
+  const [activeTool, setActiveTool] = useState<WorkspaceTool>('pan');
   const [isViewportPanning, setIsViewportPanning] = useState(false);
 
   const previewRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const pointerModeRef = useRef<Map<number, 'pan' | 'mask' | 'none'>>(new Map());
   const modifierHeldRef = useRef(false);
+  const [modifierActive, setModifierActive] = useState(false);
 
   const {
     isMaskTool,
@@ -170,6 +171,7 @@ export function useImageWorkspaceController() {
   useEffect(() => {
     const setModifier = (on: boolean) => {
       modifierHeldRef.current = on;
+      setModifierActive(on);
       const node = previewRef.current;
       if (!node) return;
       if (on) node.classList.add('image-workspace__preview--modifier');
@@ -264,5 +266,6 @@ export function useImageWorkspaceController() {
     resetViewport,
     isViewportPanning,
     imageTransform,
+    modifierActive,
   };
 }

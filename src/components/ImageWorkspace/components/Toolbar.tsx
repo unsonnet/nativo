@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Brush, Eraser, Home, Move, RotateCcw, Undo2, ZoomIn } from 'lucide-react';
+import { Brush, Eraser, Home, Move, RotateCcw, Undo2, ZoomIn, Hand } from 'lucide-react';
 
 import type { WorkspaceTool } from '../types';
 
@@ -13,7 +13,8 @@ type ToolConfig = {
 };
 
 const TOOL_DESCRIPTIONS: Record<WorkspaceTool, string> = {
-  pan: 'Click and drag to move the grid position',
+  // The hand (pan) tool is the default and uses the previous 'none' status message
+  pan: 'Select a tool to begin aligning the grid',
   scale: 'Click and drag to resize the grid • Scroll to fine-tune',
   rotate: 'Drag the sphere control to rotate grid in 3D space',
   erase: 'Draw around areas to hide • Multiple selections allowed',
@@ -27,6 +28,8 @@ const GRID_TOOLS: ToolConfig[] = [
   { id: 'rotate', icon: RotateCcw, label: 'Rotate', description: 'Rotate grid in 3D space with sphere control' },
 ];
 
+const HAND_TOOL: ToolConfig = { id: 'pan', icon: Hand, label: 'Hand', description: 'Move and scale the image — click+drag to pan, scroll to zoom' };
+
 const MASK_TOOLS: ToolConfig[] = [
   { id: 'erase', icon: Eraser, label: 'Erase', description: 'Lasso tool to mask areas (hide parts of image)' },
   { id: 'restore', icon: Brush, label: 'Restore', description: 'Lasso tool to remove masking (show parts of image)' },
@@ -39,6 +42,7 @@ type ToolbarProps = {
   canUndo: boolean;
   onResetViewport: () => void;
   canResetViewport: boolean;
+  modifierActive?: boolean;
 };
 
 export function Toolbar({
@@ -48,18 +52,48 @@ export function Toolbar({
   canUndo,
   onResetViewport,
   canResetViewport,
+  modifierActive = false,
 }: ToolbarProps) {
   const handleChange = (tool: WorkspaceTool) => {
-    onToolChange(tool === activeTool ? 'none' : tool);
+    // If clicking the currently active hand (pan) tool, keep it selected (it's the default)
+      if (tool === activeTool) { 
+        if (tool === 'pan') { 
+          return; 
+        } 
+        // deselecting a non-pan tool returns to pan
+        onToolChange('pan'); 
+        return; 
+      } 
+    onToolChange(tool);
   };
 
   return (
     <header className="toolbar">
+      {/* Hand sits at the far left as the persistent default tool */}
+      <div className="toolbar__group toolbar__group--hand">
+        {(() => {
+          const Icon = HAND_TOOL.icon;
+          // consider modifierActive to temporarily highlight hand button
+          const isActive = modifierActive ? true : activeTool === HAND_TOOL.id;
+          return (
+            <button
+              key="hand"
+              type="button"
+              className={`toolbar__button${isActive ? ' toolbar__button--active' : ''}`}
+              onClick={() => handleChange(HAND_TOOL.id)}
+              title={HAND_TOOL.description}
+            >
+              <Icon className="toolbar__icon" strokeWidth={1.9} />
+            </button>
+          );
+        })()}
+      </div>
+
       <div className="toolbar__group">
         <span className="toolbar__group-label">Grid:</span>
         {GRID_TOOLS.map((tool) => {
           const Icon = tool.icon;
-          const isActive = activeTool === tool.id;
+          const isActive = activeTool === tool.id && activeTool !== 'pan';
           return (
             <button
               key={tool.id}
