@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Brush, Eraser, Home, Move, RotateCcw, Undo2, ZoomIn, Hand } from 'lucide-react';
+import { Brush, Eraser, Home, Move, RotateCcw, Undo2, ZoomIn, Hand, Eye, EyeOff } from 'lucide-react';
 
 import type { WorkspaceTool } from '../types';
 
@@ -43,6 +43,8 @@ type ToolbarProps = {
   onResetViewport: () => void;
   canResetViewport: boolean;
   modifierActive?: boolean;
+  maskVisible?: boolean;
+  onToggleMaskVisible?: (v: boolean) => void;
 };
 
 export function Toolbar({
@@ -53,6 +55,8 @@ export function Toolbar({
   onResetViewport,
   canResetViewport,
   modifierActive = false,
+  maskVisible = true,
+  onToggleMaskVisible,
 }: ToolbarProps) {
   const handleChange = (tool: WorkspaceTool) => {
     // If clicking the currently active hand (pan) tool, keep it selected (it's the default)
@@ -127,6 +131,21 @@ export function Toolbar({
             </button>
           );
         })}
+        {/* Visibility toggle sits at the end of mask group */}
+        {(() => {
+          const Icon = maskVisible ? Eye : EyeOff;
+          return (
+            <button
+              key="visibility"
+              type="button"
+              className={`toolbar__button`}
+              onClick={() => onToggleMaskVisible && onToggleMaskVisible(!maskVisible)}
+              title={maskVisible ? 'Hide erased areas (transparent)' : 'Show erased areas (striped)'}
+            >
+              <Icon className="toolbar__icon" strokeWidth={1.9} />
+            </button>
+          );
+        })()}
       </div>
 
       <span className="toolbar__divider" aria-hidden />

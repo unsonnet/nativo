@@ -18,6 +18,7 @@ type UseMaskOverlayParams = {
   previewRef: MutableRefObject<HTMLDivElement | null>;
   imageRef: MutableRefObject<HTMLImageElement | null>;
   getTintOverlay: () => HTMLCanvasElement | null;
+  maskVisible?: boolean;
 };
 
 type UseMaskOverlayResult = {
@@ -31,6 +32,7 @@ export function useMaskOverlay({
   previewRef,
   imageRef,
   getTintOverlay,
+  maskVisible = true,
 }: UseMaskOverlayParams): UseMaskOverlayResult {
   const tintOverlayRef = useRef<HTMLCanvasElement | null>(null);
   const overlayMetricsRef = useRef<OverlayMetricsEx | null>(null);
@@ -44,14 +46,14 @@ export function useMaskOverlay({
     if (cached && Math.abs(cached.scale - normalizedScale) < 0.001) return cached.canvas;
 
     const canvas = document.createElement('canvas');
-    const size = 36;
+    const size = 30;
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     ctx.clearRect(0, 0, size, size);
-    ctx.strokeStyle = 'rgba(30, 41, 59, 0.9)';
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = 4;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(-size * 0.5, size);
@@ -184,32 +186,53 @@ export function useMaskOverlay({
     const renderScaleY = pixelH / metrics.containerHeight;
   ctx.setTransform(renderScaleX, 0, 0, renderScaleY, 0, 0);
 
-  ctx.fillStyle = 'rgba(30, 41, 59, 0.68)';
-  ctx.fillRect(0, 0, metrics.containerWidth, metrics.containerHeight);
+      if (maskVisible) {
+        // draw semi-transparent dim + stripes overlay
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillRect(0, 0, metrics.containerWidth, metrics.containerHeight);
 
-      const stripes = ensureStripesPattern(scale);
-      if (stripes) {
-        const pattern = ctx.createPattern(stripes, 'repeat');
-        if (pattern) {
-          ctx.globalAlpha = 0.85;
-          ctx.fillStyle = pattern;
-          ctx.fillRect(0, 0, metrics.containerWidth, metrics.containerHeight);
-          ctx.globalAlpha = 1;
+        const stripes = ensureStripesPattern(scale);
+        if (stripes) {
+          const pattern = ctx.createPattern(stripes, 'repeat');
+          if (pattern) {
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = pattern;
+            ctx.fillRect(0, 0, metrics.containerWidth, metrics.containerHeight);
+            ctx.globalAlpha = 1;
+          }
+        }
+
+        ctx.globalCompositeOperation = 'destination-in';
+        const dstLeft = Math.round(metrics.left);
+        const dstTop = Math.round(metrics.top);
+        const dstWidth = Math.round(metrics.width);
+        const dstHeight = Math.round(metrics.height);
+        ctx.drawImage(tint, 0, 0, tint.width, tint.height, dstLeft, dstTop, dstWidth, dstHeight);
+      } else {
+        // Draw the actual image into overlay and cut out erased areas so overlay shows masked image with transparency
+        const img = imageRef.current;
+        if (img) {
+          const dstLeft = Math.round(metrics.left);
+          const dstTop = Math.round(metrics.top);
+          const dstWidth = Math.round(metrics.width);
+          const dstHeight = Math.round(metrics.height);
+          try {
+            ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, dstLeft, dstTop, dstWidth, dstHeight);
+            // cut out using tint (tint has opaque where image should remain and transparent where erased?)
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.drawImage(tint, 0, 0, tint.width, tint.height, dstLeft, dstTop, dstWidth, dstHeight);
+            ctx.globalCompositeOperation = 'source-over';
+          } catch (err) {
+            // fallback to using the DOM image; no-op
+          }
         }
       }
-
-    ctx.globalCompositeOperation = 'destination-in';
-    const dstLeft = Math.round(metrics.left);
-    const dstTop = Math.round(metrics.top);
-    const dstWidth = Math.round(metrics.width);
-    const dstHeight = Math.round(metrics.height);
-    ctx.drawImage(tint, 0, 0, tint.width, tint.height, dstLeft, dstTop, dstWidth, dstHeight);
 
       ctx.restore();
       overlay.style.opacity = '1';
       overlayReadyRef.current = true;
     },
-    [ensureStripesPattern, getTintOverlay]
+    [ensureStripesPattern, getTintOverlay, maskVisible, imageRef]
   );
 
   const updateFromViewport = useCallback(

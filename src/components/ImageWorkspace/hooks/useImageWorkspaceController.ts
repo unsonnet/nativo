@@ -15,6 +15,7 @@ export function useImageWorkspaceController() {
   const pointerModeRef = useRef<Map<number, 'pan' | 'mask' | 'none'>>(new Map());
   const modifierHeldRef = useRef(false);
   const [modifierActive, setModifierActive] = useState(false);
+  const [maskVisible, setMaskVisible] = useState(true);
 
   const {
     isMaskTool,
@@ -25,6 +26,7 @@ export function useImageWorkspaceController() {
     lassoPreview,
     overlayVersion,
     getTintOverlay,
+    getMaskCanvas,
   } = useImageMasking({
     images: library.images,
     selectedImageId: library.selectedImage?.id ?? null,
@@ -37,6 +39,7 @@ export function useImageWorkspaceController() {
     previewRef,
     imageRef,
     getTintOverlay,
+    maskVisible,
   });
 
   const {
@@ -216,8 +219,45 @@ export function useImageWorkspaceController() {
 
   useEffect(() => {
     if (!selectedImageId) return;
+    const img = imageRef.current;
+    const overlayCanvas = tintOverlayRef.current;
+    const applyMask = () => {
+      if (!img) return;
+      const mask = getMaskCanvas?.();
+      if (!mask) {
+        // no mask data: ensure overlay hidden
+        if (overlayCanvas) overlayCanvas.style.opacity = '0';
+        return;
+      }
+
+      if (maskVisible) {
+        // ensure DOM image is visible and overlay is freshly redrawn
+        if (img) img.style.opacity = '';
+        if (overlayCanvas) overlayCanvas.style.opacity = '1';
+        forceRedraw();
+        // ensure overlay aligns with current viewport transform
+        try {
+          updateFromViewport(viewportState);
+        } catch (err) {
+          /* ignore */
+        }
+        return;
+      }
+
+      // maskVisible === false -> hide DOM image and let overlay draw the masked image
+      if (img) img.style.opacity = '0';
+      try {
+        // we rely on the overlay to draw the masked image; ensure overlay is visible
+        if (overlayCanvas) overlayCanvas.style.opacity = '1';
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    // Always redraw first, then apply mask state
     forceRedraw();
-  }, [forceRedraw, overlayVersion, selectedImageId]);
+    applyMask();
+  }, [forceRedraw, overlayVersion, selectedImageId, maskVisible, getMaskCanvas]);
 
   useEffect(() => {
     if (!selectedImageId) return;
@@ -267,5 +307,7 @@ export function useImageWorkspaceController() {
     isViewportPanning,
     imageTransform,
     modifierActive,
+    maskVisible,
+    setMaskVisible,
   };
 }

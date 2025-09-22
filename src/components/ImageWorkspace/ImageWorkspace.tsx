@@ -27,6 +27,8 @@ export function ImageWorkspace() {
     isViewportPanning,
     imageTransform,
     modifierActive,
+    maskVisible,
+    setMaskVisible,
   } = useImageWorkspaceController();
 
   const canvasClass = library.isDragging
@@ -66,6 +68,8 @@ export function ImageWorkspace() {
             activeTool={activeTool}
             onToolChange={setActiveTool}
             modifierActive={modifierActive}
+            maskVisible={maskVisible}
+            onToggleMaskVisible={setMaskVisible}
             onUndo={() => undefined}
             canUndo={false}
             onResetViewport={resetViewport}
