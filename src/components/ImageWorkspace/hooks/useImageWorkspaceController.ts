@@ -118,6 +118,7 @@ export function useImageWorkspaceController() {
   });
 
   const selectedImageId = library.selectedImage?.id ?? null;
+  const wheelTempRef = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -176,8 +177,25 @@ export function useImageWorkspaceController() {
         return;
       }
 
-      // For translate: prefer selection handlers; fall back to viewport pan
-      if (activeTool === 'translate') {
+      // For translate/rotate: prefer selection handlers; fall back to viewport pan
+      if (activeTool === 'translate' || activeTool === 'rotate') {
+        // Support right-click quick-switch: right-drag on rotate -> translate, and vice versa
+        if (event.button === 2) {
+          if (activeTool === 'rotate') {
+            if (handleSelectionPointerDown(event, 'translate')) {
+              pointerModeRef.current.set(id, 'selection');
+              setTempToolOverride('translate');
+              return;
+            }
+          } else if (activeTool === 'translate') {
+            if (handleSelectionPointerDown(event, 'rotate')) {
+              pointerModeRef.current.set(id, 'selection');
+              setTempToolOverride('rotate');
+              return;
+            }
+          }
+        }
+
         if (handleSelectionPointerDown(event, activeTool)) {
           pointerModeRef.current.set(id, 'selection');
           return;
@@ -245,6 +263,8 @@ export function useImageWorkspaceController() {
       if (mode === 'selection') {
         if (handleSelectionPointerUp(event)) {
           pointerModeRef.current.delete(id);
+          // clear any temporary tool override set by right-drag
+          setTempToolOverride(null);
           return;
         }
       }
@@ -434,14 +454,25 @@ export function useImageWorkspaceController() {
   // wrap wheel: if active tool is translate, route to selection wheel else viewport
   const handleWheelWrapper = useCallback(
     (e: any) => {
-      // If translate is active but Shift is held, prefer viewport zoom (hand behavior)
-      if (activeTool === 'translate' && e && e.shiftKey) {
+      // If translate/rotate is active but Shift is held, prefer viewport zoom (hand behavior)
+      if ((activeTool === 'translate' || activeTool === 'rotate') && e && e.shiftKey) {
         handleWheel(e);
         return;
       }
 
-      if (activeTool === 'translate' && typeof handleSelectionWheel === 'function') {
+      if ((activeTool === 'translate' || activeTool === 'rotate') && typeof handleSelectionWheel === 'function') {
         const native = e && e.nativeEvent ? e.nativeEvent : e;
+        // If rotate and wheel is active, temporarily highlight translate in the toolbar
+        try {
+          if (activeTool === 'rotate') {
+            setTempToolOverride('translate');
+            if (wheelTempRef.current) window.clearTimeout(wheelTempRef.current);
+            wheelTempRef.current = window.setTimeout(() => {
+              setTempToolOverride(null);
+              wheelTempRef.current = null;
+            }, 250);
+          }
+        } catch (err) {}
         if (handleSelectionWheel(native)) return;
       }
       handleWheel(e);

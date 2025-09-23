@@ -1,3 +1,4 @@
+import { buildRotatedQuad } from './selection3d';
 export type Metrics = {
   left: number;
   top: number;
@@ -15,6 +16,7 @@ export type SelectionState =
       sel: SelectionVals;
       offset: { x: number; y: number };
       scale: number;
+      rotation?: { x: number; y: number; z: number; w: number } | null;
     }
   | null;
 
@@ -23,16 +25,34 @@ export function drawSelection(ctx: CanvasRenderingContext2D, metrics: Metrics, s
   const sel = selection.sel;
   if (!sel || !sel.length || !sel.width) return;
 
-  // compute aspect ratio with longest horizontal
+  // If rotation is present, draw as rotated quad in pseudo-3D
+  const hasRotation = !!(selection as any).rotation;
+  if (hasRotation) {
+    const quad = buildRotatedQuad(metrics as any, selection as any);
+    if (quad) {
+      const pts = quad.corners2D;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(56,189,248,0.9)';
+      ctx.fillStyle = 'rgba(56,189,248,0.08)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(pts[0].x), Math.round(pts[0].y));
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(Math.round(pts[i].x), Math.round(pts[i].y));
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+  }
+
+  // Axis-aligned rendering fallback
   const long = Math.max(sel.length, sel.width);
   const short = Math.min(sel.length, sel.width);
   const aspect = long / short;
-
-  // size relative to image content (CSS px)
   const baseW = metrics.width;
   const baseH = metrics.height;
   const maxBase = Math.min(baseW, baseH) * 0.22;
-
   let h = maxBase;
   let w = aspect * h;
   if (w > baseW) {
@@ -43,19 +63,14 @@ export function drawSelection(ctx: CanvasRenderingContext2D, metrics: Metrics, s
     h = baseH * 0.9;
     w = h * aspect;
   }
-
-  // center in image content
   let x = metrics.left + (baseW - w) / 2;
   let y = metrics.top + (baseH - h) / 2;
-
-  // apply scale about center, then apply offset (CSS px)
   const cx = x + w / 2;
   const cy = y + h / 2;
   w = w * (selection.scale ?? 1);
   h = h * (selection.scale ?? 1);
   x = cx - w / 2 + (selection.offset?.x ?? 0);
   y = cy - h / 2 + (selection.offset?.y ?? 0);
-
   ctx.save();
   ctx.fillStyle = 'rgba(56,189,248,0.08)';
   ctx.strokeStyle = 'rgba(56,189,248,0.9)';

@@ -5,6 +5,8 @@ import type { ViewportState } from './useViewportTransform';
 import { OverlayComposer } from '../utils/overlayComposer';
 import { drawMask } from '../utils/drawMask';
 import { drawSelection } from '../utils/drawSelection';
+import { quatIdentity, quatFromEuler, quatMul, quatNormalize, type Quat } from '../utils/math3d';
+import { computeSelectionBaseRect } from '../utils/selection3d';
 
 const MAX_OVERLAY_DIMENSION = 4096;
 
@@ -54,7 +56,7 @@ export function useMaskOverlay({
   const tintOverlayRef = useRef<HTMLCanvasElement | null>(null);
   // per-image selection state (selection values, offset, scale)
   type SelectionVals = { length: number | null; width: number | null; thickness: number | null } | null;
-  type SelectionState = { sel: SelectionVals; offset: { x: number; y: number }; scale: number };
+  type SelectionState = { sel: SelectionVals; offset: { x: number; y: number }; scale: number; rotation?: Quat | null };
   const selectionMapRef = useRef<Map<string, SelectionState>>(new Map());
   const pointerTracker = useRef<Map<number, any>>(new Map());
   // backward compat when no image id is provided
@@ -67,6 +69,18 @@ export function useMaskOverlay({
   const selectionVisibleRef = useRef<boolean>(selectionVisible);
   const wheelTimeoutRef = useRef<number | null>(null);
   const wheelStartRef = useRef<SelectionState | null>(null);
+
+  // --- Arcball helpers ---
+  const mapPointToArcball = useCallback((px: number, py: number, cx: number, cy: number, radius: number) => {
+    const x = (px - cx) / radius;
+    const y = (py - cy) / radius;
+    const r2 = x * x + y * y;
+    if (r2 > 1) {
+      const invLen = 1 / Math.sqrt(r2);
+      return { x: x * invLen, y: y * invLen, z: 0 };
+    }
+    return { x, y, z: Math.sqrt(1 - r2) };
+  }, []);
 
   useEffect(() => {
     selectionVisibleRef.current = selectionVisible;
@@ -320,8 +334,8 @@ export function useMaskOverlay({
           savePersisted(selectedImageId, null);
         } else {
           // if a state already exists, preserve its transform
-          const prev = selectionMapRef.current.get(selectedImageId) ?? loadPersisted(selectedImageId) ?? { sel: null, offset: { x: 0, y: 0 }, scale: 1 };
-          const next: SelectionState = { sel: vals, offset: prev.offset ?? { x: 0, y: 0 }, scale: prev.scale ?? 1 };
+          const prev = selectionMapRef.current.get(selectedImageId) ?? loadPersisted(selectedImageId) ?? { sel: null, offset: { x: 0, y: 0 }, scale: 1, rotation: quatIdentity() };
+          const next: SelectionState = { sel: vals, offset: prev.offset ?? { x: 0, y: 0 }, scale: prev.scale ?? 1, rotation: prev.rotation ?? quatIdentity() };
           selectionMapRef.current.set(selectedImageId, next);
           savePersisted(selectedImageId, next);
         }
@@ -352,11 +366,9 @@ export function useMaskOverlay({
       // Selection pointer handlers: allow interactive translate/scale of selection
       handleSelectionPointerDown: (e: ReactPointerEvent<HTMLDivElement>, tool: string) => {
         const id = e.pointerId;
-        // Only respond to left button
-        if (e.button !== 0) return false;
-        // Only translate/scale when tool is 'translate'
-        if (tool !== 'translate') return false;
-
+          // Only respond to left or right button (allow right-drag temporary switching)
+          if (e.button !== 0 && e.button !== 2) return false;
+        // Only act for grid tools when selection exists
   const key = selectedImageId ?? '';
   const state = (selectedImageId ? selectionMapRef.current.get(key) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } : null);
         if (!state) return false;
@@ -366,43 +378,117 @@ export function useMaskOverlay({
           previewRef.current?.setPointerCapture(id);
         } catch (err) {}
 
-        // store tracker: start positions and initial transform
-        pointerTracker.current.set(id, {
-          pointerId: id,
-          startX: e.clientX,
-          startY: e.clientY,
-          startOffset: { x: state.offset.x, y: state.offset.y },
-          startScale: state.scale,
-          mode: e.shiftKey ? 'scale' : 'pan',
-          startState: JSON.parse(JSON.stringify(state)),
-        });
-        return true;
+        if (tool === 'translate') {
+          // store tracker: start positions and initial transform
+          pointerTracker.current.set(id, {
+            pointerId: id,
+            startX: e.clientX,
+            startY: e.clientY,
+            startOffset: { x: state.offset.x, y: state.offset.y },
+            startScale: state.scale,
+            mode: e.shiftKey ? 'scale' : 'pan',
+            startState: JSON.parse(JSON.stringify(state)),
+          });
+          return true;
+        }
+
+        if (tool === 'rotate') {
+          const st = selectedImageId ? selectionMapRef.current.get(key) : null;
+          const baseRect = computeSelectionBaseRect(overlayMetricsRef.current as any, (st ?? state) as any);
+          // compute center and radius in SCREEN space using overlay rect scaling
+          const overlayEl = tintOverlayRef.current;
+          const rect = overlayEl?.getBoundingClientRect();
+          const metrics = overlayMetricsRef.current;
+          const containerW = metrics?.containerWidth ?? rect?.width ?? 1;
+          const containerH = metrics?.containerHeight ?? rect?.height ?? 1;
+          const scaleX = rect && containerW ? rect.width / containerW : 1;
+          const scaleY = rect && containerH ? rect.height / containerH : 1;
+          const s = (Number.isFinite(scaleX) && Number.isFinite(scaleY)) ? (scaleX + scaleY) * 0.5 : 1;
+          const cxLocal = baseRect ? baseRect.cx : (containerW * 0.5);
+          const cyLocal = baseRect ? baseRect.cy : (containerH * 0.5);
+          const cxScreen = (rect?.left ?? 0) + cxLocal * s;
+          const cyScreen = (rect?.top ?? 0) + cyLocal * s;
+          const radiusLocal = baseRect ? Math.min(baseRect.w, baseRect.h) * 0.5 : Math.min(containerW, containerH) * 0.25;
+          const radiusScreen = Math.max(10, radiusLocal * s);
+          const startVec = mapPointToArcball(e.clientX, e.clientY, cxScreen, cyScreen, radiusScreen);
+          const startAngle = Math.atan2(e.clientY - cyScreen, e.clientX - cxScreen);
+          const mode: 'arcball' | 'roll' = e.altKey ? 'roll' : 'arcball';
+          const startRot = (st?.rotation ?? quatIdentity()) as Quat;
+          pointerTracker.current.set(id, {
+            pointerId: id,
+            startX: e.clientX,
+            startY: e.clientY,
+            startRot,
+            center: { x: cxScreen, y: cyScreen },
+            radius: radiusScreen,
+            startVec,
+            startAngle,
+            mode,
+            startState: JSON.parse(JSON.stringify(st ?? state)),
+          });
+          return true;
+        }
+
+        return false;
       },
       handleSelectionPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => {
         const id = e.pointerId;
         const t = pointerTracker.current.get(id);
         if (!t) return false;
         e.preventDefault();
-  const dx = e.clientX - t.startX;
-  const dy = e.clientY - t.startY;
+        const dx = e.clientX - t.startX;
+        const dy = e.clientY - t.startY;
 
         // update selection transform for current image
-  const key = selectedImageId ?? '';
-  const st = (selectedImageId ? selectionMapRef.current.get(key) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } : null);
+        const key = selectedImageId ?? '';
+        const st = (selectedImageId ? selectionMapRef.current.get(key) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1, rotation: quatIdentity() } : null);
         if (!st) return false;
 
         if (t.mode === 'scale') {
           // scale based on vertical movement (drag up to increase)
           const delta = 1 + dy * -0.002;
           st.scale = Math.max(0.1, t.startScale * delta);
-        } else {
+        } else if (t.mode === 'pan') {
           // Adjust pointer delta by the viewport scale so movement is 1:1
           const vs = lastViewportRef.current?.scale ?? 1;
           st.offset = { x: t.startOffset.x + dx / vs, y: t.startOffset.y + dy / vs };
+        } else if (t.mode === 'arcball' || t.mode === 'roll') {
+          if (!st.rotation) st.rotation = quatIdentity();
+          const cx = t.center.x;
+          const cy = t.center.y;
+          const radius = t.radius || 80;
+          if (t.mode === 'roll') {
+            const curAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
+            let delta = curAngle - t.startAngle;
+            // wrap to [-pi, pi]
+            if (delta > Math.PI) delta -= 2 * Math.PI;
+            if (delta < -Math.PI) delta += 2 * Math.PI;
+            const dq = quatFromEuler(0, 0, delta);
+            st.rotation = quatNormalize(quatMul(dq, t.startRot));
+          } else if (t.mode === 'arcball') {
+            // Shoemake Arcball: delta quaternion from start vector to current vector on unit sphere
+            const v0 = t.startVec; // already normalized on start
+            const v1 = mapPointToArcball(e.clientX, e.clientY, cx, cy, radius);
+            let dot = v0.x * v1.x + v0.y * v1.y + v0.z * v1.z;
+            dot = Math.max(-1, Math.min(1, dot));
+            const angle = Math.acos(dot);
+            // axis = v0 x v1
+            let ax = v0.y * v1.z - v0.z * v1.y;
+            let ay = v0.z * v1.x - v0.x * v1.z;
+            let az = v0.x * v1.y - v0.y * v1.x;
+            const len = Math.hypot(ax, ay, az);
+            if (len >= 1e-6 && Number.isFinite(angle)) {
+              ax /= len; ay /= len; az /= len;
+              const half = angle * 0.5;
+              const s = Math.sin(half);
+              const dq = { x: ax * s, y: ay * s, z: az * s, w: Math.cos(half) } as Quat;
+              st.rotation = quatNormalize(quatMul(dq, t.startRot));
+            }
+          }
         }
 
-  if (selectedImageId) selectionMapRef.current.set(selectedImageId, st);
-  else selectionRef.current = st.sel;
+        if (selectedImageId) selectionMapRef.current.set(selectedImageId, st);
+        else selectionRef.current = st.sel;
 
         // notify change
         try {
@@ -443,9 +529,12 @@ export function useMaskOverlay({
             if (onPushUndo && t.startState) {
               const before = t.startState as SelectionState;
               const after = st as SelectionState | null;
-              const changed =
-                !!after &&
-                (before.offset.x !== after.offset.x || before.offset.y !== after.offset.y || before.scale !== after.scale);
+              const changed = !!after && (
+                before.offset.x !== after.offset.x ||
+                before.offset.y !== after.offset.y ||
+                before.scale !== after.scale ||
+                JSON.stringify(before.rotation ?? quatIdentity()) !== JSON.stringify(after.rotation ?? quatIdentity())
+              );
               if (changed) {
                 const doRedo = () => {
                   selectionMapRef.current.set(selectedImageId!, after!);
@@ -472,7 +561,8 @@ export function useMaskOverlay({
                     if (metrics) redrawOverlay(metrics, state.scale, true);
                   } catch (err) {}
                 };
-                onPushUndo({ undo: doUndo, redo: doRedo, description: 'Move selection' });
+                const desc = (t.mode === 'arcball' || t.mode === 'roll') ? 'Rotate selection' : (t.mode === 'scale' ? 'Scale selection' : 'Move selection');
+                onPushUndo({ undo: doUndo, redo: doRedo, description: desc });
               }
             }
           } catch (err) {}
@@ -553,7 +643,7 @@ export function useMaskOverlay({
       },
     getSelectionState: () => {
       if (!selectedImageId) {
-        if (selectionRef.current) return { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 };
+        if (selectionRef.current) return { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } as SelectionState;
         return null;
       }
       const st = selectionMapRef.current.get(selectedImageId);
