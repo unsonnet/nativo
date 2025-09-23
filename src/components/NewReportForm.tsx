@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 
 type FlooringOption = {
@@ -10,6 +10,7 @@ type FlooringOption = {
 
 type NewReportFormProps = {
   onSubmit?: (data: NewReportFormState) => void;
+  onDimensionsChange?: (enabled: boolean) => void;
 };
 
 type NewReportFormState = {
@@ -45,7 +46,7 @@ const INITIAL_TOUCHED_STATE = {
   reportName: false,
 };
 
-export function NewReportForm({ onSubmit }: NewReportFormProps) {
+export function NewReportForm({ onSubmit, onDimensionsChange }: NewReportFormProps) {
   const [form, setForm] = useState<NewReportFormState>(INITIAL_FORM_STATE);
   const [touched, setTouched] = useState(INITIAL_TOUCHED_STATE);
   const [isReportNameFocused, setIsReportNameFocused] = useState(false);
@@ -79,12 +80,30 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
     }));
   };
 
+  const NUMERIC_RE = /^\d*(?:\.\d*)?$/;
+
   const handleNumericChange = (field: 'length' | 'width' | 'thickness', value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    // allow empty string
+    if (value === '') {
+      setForm((prev) => ({ ...prev, [field]: '' }));
+      return;
+    }
+
+    // reject negative sign or multiple decimals; allow digits and single optional decimal
+    if (!NUMERIC_RE.test(value)) return;
+
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  // Notify parent about whether both length and width are present — run in effect to avoid
+  // calling parent's setState during render of this component.
+  useEffect(() => {
+    try {
+      onDimensionsChange?.(form.length !== '' && form.width !== '');
+    } catch (err) {
+      // ignore
+    }
+  }, [form.length, form.width, onDimensionsChange]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -191,8 +210,9 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
             </label>
             <input
               id="length"
-              type="number"
-              min="0"
+              type="text"
+              inputMode="decimal"
+              pattern="^\d*(?:\.\d*)?$"
               value={form.length}
               onChange={(event) => handleNumericChange('length', event.target.value)}
               className="form-control"
@@ -204,8 +224,9 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
             </label>
             <input
               id="width"
-              type="number"
-              min="0"
+              type="text"
+              inputMode="decimal"
+              pattern="^\d*(?:\.\d*)?$"
               value={form.width}
               onChange={(event) => handleNumericChange('width', event.target.value)}
               className="form-control"
@@ -217,8 +238,9 @@ export function NewReportForm({ onSubmit }: NewReportFormProps) {
             </label>
             <input
               id="thickness"
-              type="number"
-              min="0"
+              type="text"
+              inputMode="decimal"
+              pattern="^\d*(?:\.\d*)?$"
               value={form.thickness}
               onChange={(event) => handleNumericChange('thickness', event.target.value)}
               className="form-control"

@@ -8,7 +8,11 @@ import { useImageWorkspaceController } from './hooks/useImageWorkspaceController
 
 import './styles/workspace.css';
 
-export function ImageWorkspace() {
+type ImageWorkspaceProps = {
+  gridEnabled?: boolean;
+};
+
+export function ImageWorkspace({ gridEnabled = false }: ImageWorkspaceProps) {
   const {
     library,
     activeTool,
@@ -70,6 +74,7 @@ export function ImageWorkspace() {
           <Toolbar
             activeTool={activeTool}
             onToolChange={setActiveTool}
+            gridEnabled={gridEnabled}
             modifierActive={modifierActive}
             tempActiveTool={tempToolOverride}
             maskVisible={maskVisible}

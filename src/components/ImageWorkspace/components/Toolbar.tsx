@@ -46,6 +46,7 @@ type ToolbarProps = {
   maskVisible?: boolean;
   onToggleMaskVisible?: (v: boolean) => void;
   tempActiveTool?: WorkspaceTool | null;
+  gridEnabled?: boolean;
 };
 
 export function Toolbar({
@@ -59,6 +60,7 @@ export function Toolbar({
   maskVisible = true,
   onToggleMaskVisible,
   tempActiveTool = null,
+  gridEnabled = true,
 }: ToolbarProps) {
   const handleChange = (tool: WorkspaceTool) => {
     // If clicking the currently active hand (pan) tool, keep it selected (it's the default)
@@ -107,9 +109,10 @@ export function Toolbar({
             <button
               key={tool.id}
               type="button"
-              className={`toolbar__button${isActive ? ' toolbar__button--active' : ''}`}
-              onClick={() => handleChange(tool.id)}
+              className={`toolbar__button${isActive ? ' toolbar__button--active' : ''}${!gridEnabled ? ' toolbar__button--disabled' : ''}`}
+              onClick={() => gridEnabled && handleChange(tool.id)}
               title={tool.description}
+              disabled={!gridEnabled}
             >
               <Icon className="toolbar__icon" strokeWidth={1.9} />
             </button>
