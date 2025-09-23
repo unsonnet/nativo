@@ -97,7 +97,8 @@ export function Toolbar({
         <span className="toolbar__group-label">Grid:</span>
         {GRID_TOOLS.map((tool) => {
           const Icon = tool.icon;
-          const isActive = activeTool === tool.id && activeTool !== 'pan';
+          // If modifierActive is true, treat other tools as not active (hand temporarily highlighted)
+          const isActive = !modifierActive && activeTool === tool.id && activeTool !== 'pan';
           return (
             <button
               key={tool.id}
@@ -118,7 +119,8 @@ export function Toolbar({
         <span className="toolbar__group-label">Mask:</span>
         {MASK_TOOLS.map((tool) => {
           const Icon = tool.icon;
-          const isActive = activeTool === tool.id;
+          // Hide mask tools as active when modifier is held (hand temporarily highlighted)
+          const isActive = !modifierActive && activeTool === tool.id;
           return (
             <button
               key={tool.id}

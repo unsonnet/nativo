@@ -36,8 +36,11 @@ type UseViewportTransformResult = {
   cancelPan: () => void;
 };
 
+// Default viewport scale is slightly reduced so the image is inset from the
+// preview edges and leaves a small buffer for tools like the lasso.
+const INITIAL_VIEWPORT_SCALE = 0.95;
 export const createDefaultViewport = (): ViewportState => ({
-  scale: 1,
+  scale: INITIAL_VIEWPORT_SCALE,
   offset: { x: 0, y: 0 },
 });
 
@@ -156,7 +159,10 @@ export function useViewportTransform({
       const localY = e.clientY - rect.top;
 
       updateViewport((prev) => {
-        const scaleFactor = Math.exp(-e.deltaY * 0.0015);
+        // Some platforms send horizontal wheel (deltaX) when Shift is held.
+        // Prefer deltaY but fall back to deltaX so Shift+scroll still zooms.
+        const delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+        const scaleFactor = Math.exp(-delta * 0.0015);
         const nextScale = Math.min(6, Math.max(0.4, prev.scale * scaleFactor));
         if (nextScale === prev.scale) return prev;
 
@@ -175,7 +181,19 @@ export function useViewportTransform({
 
   const resetViewport = useCallback(() => {
     cancelPan();
-    applyViewport(createDefaultViewport());
+    // Compute centered offsets so the image is vertically and horizontally
+    // centered when using the initial (slightly reduced) scale. This leaves
+    // a small buffer around the image for tools like the lasso.
+    const node = previewRef.current;
+    if (!node) {
+      applyViewport(createDefaultViewport());
+      return;
+    }
+    const rect = node.getBoundingClientRect();
+    const defaultViewport = createDefaultViewport();
+    const sx = rect.width * (1 - defaultViewport.scale) * 0.5;
+    const sy = rect.height * (1 - defaultViewport.scale) * 0.5;
+    applyViewport({ scale: defaultViewport.scale, offset: { x: sx, y: sy } });
   }, [applyViewport, cancelPan]);
 
   useEffect(() => {

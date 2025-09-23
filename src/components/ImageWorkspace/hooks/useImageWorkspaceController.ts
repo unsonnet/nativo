@@ -104,6 +104,8 @@ export function useImageWorkspaceController() {
   useEffect(() => {
     undoStackRef.current.length = 0;
     redoStackRef.current.length = 0;
+    // Ensure UI reflects cleared history
+    setCanUndoState(false);
   }, [selectedImageId]);
 
   const handleViewportPointerDown = useCallback(
@@ -112,8 +114,8 @@ export function useImageWorkspaceController() {
 
       const id = event.pointerId;
 
-      // If modifier held, prefer viewport panning — route to pan and mark pointer
-      if (event.ctrlKey || event.metaKey) {
+      // If modifier held (Shift), prefer viewport panning — route to pan and mark pointer
+      if (event.shiftKey) {
         pointerModeRef.current.set(id, 'pan');
         handlePanPointerDown(event);
         // ensure preview shows forced grab while panning with modifier
@@ -216,7 +218,7 @@ export function useImageWorkspaceController() {
     pointerModeRef.current.clear();
   }, [activeTool, cancelPan, handleMaskToolChange]);
 
-  // Toggle a preview modifier class when Ctrl or Meta is held so cursor can change
+  // Toggle a preview modifier class when Shift is held so cursor can change
   useEffect(() => {
     const setModifier = (on: boolean) => {
       modifierHeldRef.current = on;
@@ -245,10 +247,10 @@ export function useImageWorkspaceController() {
       } catch (err) {
         // ignore
       }
-      if (e.ctrlKey || e.metaKey) setModifier(true);
+      if (e.shiftKey) setModifier(true);
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) setModifier(false);
+      if (!e.shiftKey) setModifier(false);
     };
     const onBlur = () => setModifier(false);
 
