@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Brush, Eraser, Home, Move, RotateCcw, Undo2, ZoomIn, Hand, Eye, EyeOff } from 'lucide-react';
+import { Brush, Eraser, Home, Move3d, Rotate3d, Undo2, ZoomIn, Hand, Eye, EyeOff } from 'lucide-react';
 
 import type { WorkspaceTool } from '../types';
 
@@ -22,8 +22,8 @@ const TOOL_DESCRIPTIONS: Record<WorkspaceTool, string> = {
 };
 
 const GRID_TOOLS: ToolConfig[] = [
-  { id: 'translate', icon: Move, label: 'Translate', description: 'Move and scale the selection rectangle' },
-  { id: 'rotate', icon: RotateCcw, label: 'Rotate', description: 'Rotate the selection rectangle' },
+  { id: 'translate', icon: Move3d, label: 'Translate', description: 'Move and scale the selection rectangle' },
+  { id: 'rotate', icon: Rotate3d, label: 'Rotate', description: 'Rotate the selection rectangle' },
 ];
 
 const HAND_TOOL: ToolConfig = { id: 'hand', icon: Hand, label: 'Hand', description: 'Move and scale the image' };
