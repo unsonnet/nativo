@@ -27,6 +27,7 @@ export function ImageWorkspace() {
     isViewportPanning,
     imageTransform,
     modifierActive,
+    tempToolOverride,
     maskVisible,
     setMaskVisible,
     undo,
@@ -70,6 +71,7 @@ export function ImageWorkspace() {
             activeTool={activeTool}
             onToolChange={setActiveTool}
             modifierActive={modifierActive}
+            tempActiveTool={tempToolOverride}
             maskVisible={maskVisible}
             onToggleMaskVisible={setMaskVisible}
             onUndo={undo}

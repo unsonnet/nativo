@@ -16,6 +16,7 @@ export function useImageWorkspaceController() {
   const modifierHeldRef = useRef(false);
   const [modifierActive, setModifierActive] = useState(false);
   const [maskVisible, setMaskVisible] = useState(true);
+  const [tempToolOverride, setTempToolOverride] = useState<WorkspaceTool | null>(null);
 
   type UndoAction = { undo: () => void; redo?: () => void; description?: string };
   const undoStackRef = useRef<UndoAction[]>([]);
@@ -110,7 +111,8 @@ export function useImageWorkspaceController() {
 
   const handleViewportPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0) return;
+      // Support left (0) and right (2) buttons for masking/panning behaviors
+      if (event.button !== 0 && event.button !== 2) return;
 
       const id = event.pointerId;
 
@@ -128,6 +130,11 @@ export function useImageWorkspaceController() {
       // mark pointer as mask; otherwise fall back to pan for certain tools.
       if (handleMaskPointerDown(event, activeTool)) {
         pointerModeRef.current.set(id, 'mask');
+        // If right-click was used and a mask tool is active, temporarily show the alternate tool
+        if (event.button === 2 && (activeTool === 'erase' || activeTool === 'restore')) {
+          const alt: WorkspaceTool = activeTool === 'erase' ? 'restore' : 'erase';
+          setTempToolOverride(alt);
+        }
         return;
       }
 
@@ -174,6 +181,8 @@ export function useImageWorkspaceController() {
           const node = previewRef.current;
           const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
           if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
+          // clear any temporary tool override
+          setTempToolOverride(null);
           return;
         }
       } else if (mode === 'pan') {
@@ -189,6 +198,8 @@ export function useImageWorkspaceController() {
           const node = previewRef.current;
           const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
           if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
+          // clear any temporary tool override
+          setTempToolOverride(null);
           return;
         }
         handlePanPointerUp(event);
@@ -380,7 +391,8 @@ export function useImageWorkspaceController() {
     resetViewport,
     isViewportPanning,
     imageTransform,
-    modifierActive,
+  modifierActive,
+  tempToolOverride,
     maskVisible,
     setMaskVisible,
     undo,

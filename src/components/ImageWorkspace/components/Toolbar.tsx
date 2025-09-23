@@ -45,6 +45,7 @@ type ToolbarProps = {
   modifierActive?: boolean;
   maskVisible?: boolean;
   onToggleMaskVisible?: (v: boolean) => void;
+  tempActiveTool?: WorkspaceTool | null;
 };
 
 export function Toolbar({
@@ -57,6 +58,7 @@ export function Toolbar({
   modifierActive = false,
   maskVisible = true,
   onToggleMaskVisible,
+  tempActiveTool = null,
 }: ToolbarProps) {
   const handleChange = (tool: WorkspaceTool) => {
     // If clicking the currently active hand (pan) tool, keep it selected (it's the default)
@@ -97,8 +99,10 @@ export function Toolbar({
         <span className="toolbar__group-label">Grid:</span>
         {GRID_TOOLS.map((tool) => {
           const Icon = tool.icon;
-          // If modifierActive is true, treat other tools as not active (hand temporarily highlighted)
-          const isActive = !modifierActive && activeTool === tool.id && activeTool !== 'pan';
+          // If there's a temporary override, only the temp tool should appear active
+          const isActive = tempActiveTool
+            ? tempActiveTool === tool.id
+            : !modifierActive && activeTool === tool.id && activeTool !== 'pan';
           return (
             <button
               key={tool.id}
@@ -119,8 +123,8 @@ export function Toolbar({
         <span className="toolbar__group-label">Mask:</span>
         {MASK_TOOLS.map((tool) => {
           const Icon = tool.icon;
-          // Hide mask tools as active when modifier is held (hand temporarily highlighted)
-          const isActive = !modifierActive && activeTool === tool.id;
+          // When a temporary tool override exists, highlight that tool instead
+          const isActive = tempActiveTool ? tempActiveTool === tool.id : !modifierActive && activeTool === tool.id;
           return (
             <button
               key={tool.id}

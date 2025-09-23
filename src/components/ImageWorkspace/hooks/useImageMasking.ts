@@ -256,23 +256,34 @@ export function useImageMasking<TImage extends MaskImage>({
 
   const handlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>, tool: string) => {
-      if (!isMaskTool(tool) || e.button !== 0 || !selectedImageId) return false;
+      // Support left (0) and right (2) buttons for lasso. Right-click maps to
+      // the alternate mask tool (erase <-> restore).
+      if (!isMaskTool(tool) || (e.button !== 0 && e.button !== 2) || !selectedImageId) return false;
+
+      const toolToUse: MaskTool = e.button === 2 ? (tool === 'erase' ? 'restore' : 'erase') : (tool as MaskTool);
 
       const point = getImageCoords(e, selectedImageId);
       const previewPoint = getPreviewCoords(e);
       if (!point || !previewPoint) return false;
 
+      // prevent default to avoid context menu on right-click drag
+      try {
+        e.preventDefault();
+      } catch (err) {
+        /* ignore */
+      }
+
       previewRef.current?.setPointerCapture(e.pointerId);
       lassoStateRef.current = {
         pointerId: e.pointerId,
-        tool,
+        tool: toolToUse,
         imageId: selectedImageId,
         points: [point],
         previewPoints: [previewPoint],
         lastInsertTime: now(),
       };
       onToggleViewportPanning(false);
-      setLassoPreview({ tool, points: [previewPoint] });
+      setLassoPreview({ tool: toolToUse, points: [previewPoint] });
       return true;
     },
     [getImageCoords, getPreviewCoords, isMaskTool, onToggleViewportPanning, previewRef, selectedImageId]

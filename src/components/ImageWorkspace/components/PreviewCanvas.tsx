@@ -78,6 +78,7 @@ export function PreviewCanvas({
         onPointerLeave={onPointerUp}
         onPointerCancel={onPointerUp}
         onWheel={onWheel}
+        onContextMenu={(e) => e.preventDefault()}
       >
         <div className="image-workspace__preview-layer">
           <Image
