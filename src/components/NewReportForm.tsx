@@ -12,6 +12,7 @@ type NewReportFormProps = {
   onSubmit?: (data: NewReportFormState) => void;
   onDimensionsChange?: (enabled: boolean) => void;
   onDimensionsValues?: (vals: { length: number | null; width: number | null; thickness: number | null }) => void;
+  imageCount?: number;
 };
 
 type NewReportFormState = {
@@ -47,7 +48,7 @@ const INITIAL_TOUCHED_STATE = {
   reportName: false,
 };
 
-export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues }: NewReportFormProps) {
+export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues, imageCount = 0 }: NewReportFormProps) {
   const [form, setForm] = useState<NewReportFormState>(INITIAL_FORM_STATE);
   const [touched, setTouched] = useState(INITIAL_TOUCHED_STATE);
   const [isReportNameFocused, setIsReportNameFocused] = useState(false);
@@ -112,14 +113,27 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     if (form.reportName.trim() === '') {
       setTouched((prev) => ({ ...prev, reportName: true }));
       setIsReportNameFocused(false);
       return;
     }
 
-    onSubmit?.(form);
+    if ((imageCount ?? 0) === 0) {
+      setErrorMessage('Please add at least one image before creating a report.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      onSubmit?.(form);
+    } catch (err) {
+      setErrorMessage('Failed to create report. Please try again.');
+    } finally {
+      // leave loading state briefly to show spinner; real API should control this
+      setTimeout(() => setIsSubmitting(false), 600);
+    }
   };
 
   const handleReportNameFocus = () => {
@@ -134,6 +148,12 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
   const isReportNameMissing =
     touched.reportName && !isReportNameFocused && form.reportName.trim() === '';
   const reportNameErrorId = isReportNameMissing ? 'report-name-error' : undefined;
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Determine whether submit button should be enabled: needs report name and at least one image
+  const canSubmit = form.reportName.trim() !== '' && (imageCount ?? 0) > 0;
 
   return (
     <form className="report-form" onSubmit={handleSubmit}>
@@ -166,6 +186,8 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
           </p>
         )}
       </section>
+
+  
 
       <section className="form-section">
         <label htmlFor="flooring-type" className="form-section__title">
@@ -298,6 +320,29 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
         </div>
       </section>
 
+      {/* Error area (global) */}
+      {errorMessage && (
+        <div className="form-field__hint" role="alert">
+          {errorMessage}
+        </div>
+      )}
+
+      {/* Submit button is visually anchored to the sidebar bottom via CSS. */}
+      <button
+        type="submit"
+        className="report-create__submit"
+        disabled={!canSubmit || isSubmitting}
+        aria-disabled={!canSubmit || isSubmitting}
+      >
+        {isSubmitting ? (
+          <svg className="button-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+            <circle cx="12" cy="12" r="10" stroke="#ffffff33" strokeWidth="4" />
+            <path d="M22 12A10 10 0 0 1 12 22" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+          </svg>
+        ) : (
+          'Create Report'
+        )}
+      </button>
     </form>
   );
 }

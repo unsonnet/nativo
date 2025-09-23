@@ -233,6 +233,7 @@ body::before {
   position: relative;
   width: min(300px, 100%);
   padding: clamp(1.35rem, 2.6vw, 2rem) clamp(0.9rem, 2vw, 1.4rem);
+  /* rely on flex layout to keep the submit button at the bottom */
   background: rgba(9, 12, 20, 0.25);
   border-right: 1px solid rgba(148, 163, 184, 0.08);
   box-shadow: 8px 0 36px rgba(8, 12, 20, 0.35);
@@ -241,6 +242,7 @@ body::before {
   gap: 1.35rem;
   backdrop-filter: blur(20px);
   z-index: 1;
+  height: 100vh;
 }
 
 .report-create__back {
@@ -270,12 +272,84 @@ body::before {
   position: relative;
   z-index: 1;
   margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
 }
 
 .report-form {
   display: flex;
   flex-direction: column;
   gap: 1.35rem;
+  height: 100%;
+}
+
+/* Minimalist submit anchored to the very bottom of the sidebar */
+.report-create__submit {
+  all: unset;
+  box-sizing: border-box;
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  height: 52px;
+  padding: 0 0.9rem;
+  border-radius: 0.5rem;
+  /* Inverted (enabled) appearance: light background, dark text to pop */
+  background: var(--button-primary);
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.report-create__submit:hover {
+  background: var(--button-primary-hover);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+/* keep the existing muted/disabled look so it doesn't compete visually */
+.report-create__submit:disabled {
+  background: rgba(15, 23, 42, 0.45);
+  color: var(--text-primary);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Spinner stroke colors — dark when enabled, original white when disabled */
+.report-create__submit .button-spinner circle {
+  stroke: rgba(15, 23, 42, 0.16);
+}
+
+.report-create__submit .button-spinner path {
+  stroke: #0f172a;
+}
+
+.report-create__submit:disabled .button-spinner circle {
+  stroke: #ffffff33;
+}
+
+.report-create__submit:disabled .button-spinner path {
+  stroke: #ffffff;
+}
+
+/* anchor footer container in the sidebar so the button sits at the window bottom */
+/* remove reserved space hack; layout uses flex + margin-top:auto */
+
+/* Ensure focus/active states don't change layout (preserve border box) */
+.report-create__submit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.12);
+}
+
+/* prevent layout/size change on click */
+.report-create__submit:active {
+  transform: none;
 }
 
 
@@ -496,4 +570,18 @@ body::before {
 .button:focus-visible {
   outline: 2px solid var(--control-ring);
   outline-offset: 3px;
+}
+
+.button-spinner {
+  display: inline-block;
+  animation: button-spin 900ms linear infinite;
+}
+
+@keyframes button-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

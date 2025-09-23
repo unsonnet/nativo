@@ -13,9 +13,10 @@ import './styles/workspace.css';
 type ImageWorkspaceProps = {
   gridEnabled?: boolean;
   dimensions?: { length: number | null; width: number | null; thickness: number | null };
+  onImagesChange?: (count: number) => void;
 };
 
-export function ImageWorkspace({ gridEnabled = false, dimensions }: ImageWorkspaceProps) {
+export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange }: ImageWorkspaceProps) {
   const {
     library,
     activeTool,
@@ -92,6 +93,14 @@ export function ImageWorkspace({ gridEnabled = false, dimensions }: ImageWorkspa
     : 'image-workspace__canvas';
 
   const hasImages = library.images.length > 0 && library.selectedImage;
+
+  useEffect(() => {
+    try {
+      onImagesChange?.(library.images.length);
+    } catch (err) {
+      // ignore
+    }
+  }, [library.images.length, onImagesChange]);
 
   return (
     <section

@@ -14,6 +14,7 @@ export default function NewReportPage() {
     width: null,
     thickness: null,
   });
+  const [imageCount, setImageCount] = useState(0);
 
   const handleDimensionsChange = useCallback((v: boolean) => setGridEnabled(v), []);
   const handleDimensionsValues = useCallback(
@@ -34,11 +35,15 @@ export default function NewReportPage() {
         </button>
 
         <div className="report-create__form">
-          <NewReportForm onDimensionsChange={handleDimensionsChange} onDimensionsValues={handleDimensionsValues} />
+          <NewReportForm
+            onDimensionsChange={handleDimensionsChange}
+            onDimensionsValues={handleDimensionsValues}
+            imageCount={imageCount}
+          />
         </div>
       </aside>
 
-      <ImageWorkspace gridEnabled={gridEnabled} dimensions={dimensions} />
+      <ImageWorkspace gridEnabled={gridEnabled} dimensions={dimensions} onImagesChange={setImageCount} />
     </div>
   );
 }
