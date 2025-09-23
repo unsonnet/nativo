@@ -1,7 +1,10 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import type { MutableRefObject } from 'react';
 
 import type { ViewportState } from './useViewportTransform';
+import { OverlayComposer } from '../utils/overlayComposer';
+import { drawMask } from '../utils/drawMask';
+import { drawSelection } from '../utils/drawSelection';
 
 const MAX_OVERLAY_DIMENSION = 4096;
 
@@ -19,6 +22,7 @@ type UseMaskOverlayParams = {
   imageRef: MutableRefObject<HTMLImageElement | null>;
   getTintOverlay: () => HTMLCanvasElement | null;
   maskVisible?: boolean;
+  selectionVisible?: boolean;
 };
 
 type UseMaskOverlayResult = {
@@ -26,6 +30,7 @@ type UseMaskOverlayResult = {
   updateFromViewport: (state: ViewportState) => void;
   forceRedraw: () => void;
   markDirty: () => void;
+  setSelectionDimensions: (vals: { length: number | null; width: number | null; thickness: number | null } | null) => void;
 };
 
 export function useMaskOverlay({
@@ -33,39 +38,36 @@ export function useMaskOverlay({
   imageRef,
   getTintOverlay,
   maskVisible = true,
+  selectionVisible = true,
 }: UseMaskOverlayParams): UseMaskOverlayResult {
   const tintOverlayRef = useRef<HTMLCanvasElement | null>(null);
+  const selectionRef = useRef<{ length: number | null; width: number | null; thickness: number | null } | null>(null);
   const overlayMetricsRef = useRef<OverlayMetricsEx | null>(null);
   const overlayReadyRef = useRef(false);
-  const patternCacheRef = useRef<{ canvas: HTMLCanvasElement; scale: number } | null>(null);
   const lastViewportRef = useRef<ViewportState>({ scale: 1, offset: { x: 0, y: 0 } });
+  const rafRef = useRef<number | null>(null);
+  const composerRef = useRef<OverlayComposer | null>(null);
+  const selectionVisibleRef = useRef<boolean>(selectionVisible);
 
-  const ensureStripesPattern = useCallback((scale: number) => {
-    const normalizedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-    const cached = patternCacheRef.current;
-    if (cached && Math.abs(cached.scale - normalizedScale) < 0.001) return cached.canvas;
+  useEffect(() => {
+    selectionVisibleRef.current = selectionVisible;
+  }, [selectionVisible]);
 
-    const canvas = document.createElement('canvas');
-    const size = 30;
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.clearRect(0, 0, size, size);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-size * 0.5, size);
-    ctx.lineTo(size, -size * 0.5);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, size * 1.5);
-    ctx.lineTo(size * 1.5, 0);
-    ctx.stroke();
-    patternCacheRef.current = { canvas, scale: normalizedScale };
-    return canvas;
+  useEffect(() => {
+    const c = new OverlayComposer();
+    c.addDrawer((ctx, metrics, opts) => drawMask(ctx as any, metrics as any, opts.tint, opts.img, opts.maskVisible, opts.scale));
+    // only draw selection when explicitly visible and selection values exist
+    c.addDrawer((ctx, metrics, opts) => {
+      if (!opts || opts.selectionVisible === false) return;
+      if (!opts.selection) return;
+      drawSelection(ctx as any, metrics as any, opts.selection);
+    });
+    composerRef.current = c;
+    return () => {
+      composerRef.current = null;
+    };
   }, []);
+
 
   const updateOverlayMetrics = useCallback(
     (state: ViewportState) => {
@@ -151,7 +153,7 @@ export function useMaskOverlay({
       const overlay = tintOverlayRef.current;
       const tint = getTintOverlay();
 
-      if (!overlay || !metrics || !tint || !tint.width || !tint.height) {
+      if (!overlay || !metrics) {
         overlayReadyRef.current = false;
         if (overlay) overlay.style.opacity = '0';
         return;
@@ -186,53 +188,30 @@ export function useMaskOverlay({
     const renderScaleY = pixelH / metrics.containerHeight;
   ctx.setTransform(renderScaleX, 0, 0, renderScaleY, 0, 0);
 
-      if (maskVisible) {
-        // draw semi-transparent dim + stripes overlay
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.fillRect(0, 0, metrics.containerWidth, metrics.containerHeight);
-
-        const stripes = ensureStripesPattern(scale);
-        if (stripes) {
-          const pattern = ctx.createPattern(stripes, 'repeat');
-          if (pattern) {
-            ctx.globalAlpha = 0.5;
-            ctx.fillStyle = pattern;
-            ctx.fillRect(0, 0, metrics.containerWidth, metrics.containerHeight);
-            ctx.globalAlpha = 1;
-          }
-        }
-
-        ctx.globalCompositeOperation = 'destination-in';
-        const dstLeft = Math.round(metrics.left);
-        const dstTop = Math.round(metrics.top);
-        const dstWidth = Math.round(metrics.width);
-        const dstHeight = Math.round(metrics.height);
-        ctx.drawImage(tint, 0, 0, tint.width, tint.height, dstLeft, dstTop, dstWidth, dstHeight);
-      } else {
-        // Draw the actual image into overlay and cut out erased areas so overlay shows masked image with transparency
+      // compose overlay (mask + selection)
+      try {
         const img = imageRef.current;
-        if (img) {
-          const dstLeft = Math.round(metrics.left);
-          const dstTop = Math.round(metrics.top);
-          const dstWidth = Math.round(metrics.width);
-          const dstHeight = Math.round(metrics.height);
-          try {
-            ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, dstLeft, dstTop, dstWidth, dstHeight);
-            // cut out using tint (tint has opaque where image should remain and transparent where erased?)
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.drawImage(tint, 0, 0, tint.width, tint.height, dstLeft, dstTop, dstWidth, dstHeight);
-            ctx.globalCompositeOperation = 'source-over';
-          } catch (err) {
-            // fallback to using the DOM image; no-op
-          }
+        const composer = composerRef.current;
+        if (composer) {
+          composer.compose(ctx as any, metrics as any, {
+            tint,
+            img,
+            maskVisible,
+            selectionVisible: selectionVisibleRef.current,
+            scale,
+            selection: selectionRef.current,
+          });
         }
+      } catch (err) {
+        // ignore
       }
 
       ctx.restore();
+      // selection is drawn by overlayCompose above
       overlay.style.opacity = '1';
       overlayReadyRef.current = true;
     },
-    [ensureStripesPattern, getTintOverlay, maskVisible, imageRef]
+    [getTintOverlay, maskVisible, imageRef]
   );
 
   const updateFromViewport = useCallback(
@@ -254,6 +233,10 @@ export function useMaskOverlay({
     }
   }, [redrawOverlay, updateOverlayMetrics]);
 
+  // No DPR mousemove listener: prefer explicit redraw scheduling so layout
+  // measurements happen after paint. This avoids depending on monitor-change
+  // heuristics and keeps the overlay focused on centering the selection.
+
   const markDirty = useCallback(() => {
     overlayReadyRef.current = false;
     const overlay = tintOverlayRef.current;
@@ -265,5 +248,26 @@ export function useMaskOverlay({
     updateFromViewport,
     forceRedraw,
     markDirty,
+    setSelectionDimensions: (vals: { length: number | null; width: number | null; thickness: number | null } | null) => {
+      selectionRef.current = vals;
+      // schedule redraw on next animation frame so DOM layout and transforms
+      // have settled (prevents mis-centering races)
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      rafRef.current = requestAnimationFrame(() => {
+        try {
+          const state = lastViewportRef.current;
+          const { metrics } = updateOverlayMetrics(state);
+          if (metrics) {
+            redrawOverlay(metrics, state.scale, true);
+          }
+        } catch (err) {
+          // ignore
+        }
+        rafRef.current = null;
+      });
+    },
   };
 }

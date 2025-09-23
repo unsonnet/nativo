@@ -11,6 +11,7 @@ type FlooringOption = {
 type NewReportFormProps = {
   onSubmit?: (data: NewReportFormState) => void;
   onDimensionsChange?: (enabled: boolean) => void;
+  onDimensionsValues?: (vals: { length: number | null; width: number | null; thickness: number | null }) => void;
 };
 
 type NewReportFormState = {
@@ -46,7 +47,7 @@ const INITIAL_TOUCHED_STATE = {
   reportName: false,
 };
 
-export function NewReportForm({ onSubmit, onDimensionsChange }: NewReportFormProps) {
+export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues }: NewReportFormProps) {
   const [form, setForm] = useState<NewReportFormState>(INITIAL_FORM_STATE);
   const [touched, setTouched] = useState(INITIAL_TOUCHED_STATE);
   const [isReportNameFocused, setIsReportNameFocused] = useState(false);
@@ -100,10 +101,14 @@ export function NewReportForm({ onSubmit, onDimensionsChange }: NewReportFormPro
   useEffect(() => {
     try {
       onDimensionsChange?.(form.length !== '' && form.width !== '');
+      const lengthVal = form.length === '' ? null : Number.parseFloat(form.length);
+      const widthVal = form.width === '' ? null : Number.parseFloat(form.width);
+      const thicknessVal = form.thickness === '' ? null : Number.parseFloat(form.thickness);
+      onDimensionsValues?.({ length: lengthVal, width: widthVal, thickness: thicknessVal });
     } catch (err) {
       // ignore
     }
-  }, [form.length, form.width, onDimensionsChange]);
+  }, [form.length, form.width, onDimensionsChange, onDimensionsValues]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

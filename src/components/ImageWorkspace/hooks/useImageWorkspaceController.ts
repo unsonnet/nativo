@@ -16,6 +16,7 @@ export function useImageWorkspaceController() {
   const modifierHeldRef = useRef(false);
   const [modifierActive, setModifierActive] = useState(false);
   const [maskVisible, setMaskVisible] = useState(true);
+  const [selectionVisible, setSelectionVisible] = useState(true);
   const [tempToolOverride, setTempToolOverride] = useState<WorkspaceTool | null>(null);
 
   type UndoAction = { undo: () => void; redo?: () => void; description?: string };
@@ -23,7 +24,7 @@ export function useImageWorkspaceController() {
   const redoStackRef = useRef<UndoAction[]>([]);
   const [canUndoState, setCanUndoState] = useState(false);
 
-  const pushUndo = useCallback((action: UndoAction) => {
+    const pushUndo = useCallback((action: UndoAction) => {
     undoStackRef.current.push(action);
     // clear redo when a new action is pushed
     redoStackRef.current.length = 0;
@@ -75,13 +76,13 @@ export function useImageWorkspaceController() {
     onToggleViewportPanning: setIsViewportPanning,
     onPushUndo: pushUndo,
   });
-
-  const { tintOverlayRef, updateFromViewport, forceRedraw, markDirty } = useMaskOverlay({
+  const { tintOverlayRef, updateFromViewport, forceRedraw, markDirty, setSelectionDimensions } = useMaskOverlay({
     previewRef,
     imageRef,
     getTintOverlay,
     maskVisible,
-  });
+    selectionVisible,
+  } as any);
 
   const {
     viewportState,
@@ -293,6 +294,19 @@ export function useImageWorkspaceController() {
     }
   }, [maskVisible, forceRedraw, updateFromViewport, viewportState]);
 
+  useEffect(() => {
+    try {
+      forceRedraw();
+    } catch (err) {
+      /* ignore */
+    }
+    try {
+      updateFromViewport(viewportState);
+    } catch (err) {
+      /* ignore */
+    }
+  }, [selectionVisible, forceRedraw, updateFromViewport, viewportState]);
+
   // Add a class when no tool is selected so we can show default cursor
   useEffect(() => {
     const node = previewRef.current;
@@ -391,12 +405,16 @@ export function useImageWorkspaceController() {
     resetViewport,
     isViewportPanning,
     imageTransform,
+    selectionVisible,
+    setSelectionVisible,
   modifierActive,
   tempToolOverride,
     maskVisible,
     setMaskVisible,
     undo,
     redo,
+    setSelectionDimensions,
+  forceRedraw,
     canUndo: () => canUndoState,
     canRedo,
     clearHistory: () => {

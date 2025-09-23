@@ -5,14 +5,17 @@ import { PreviewCanvas } from './components/PreviewCanvas';
 import { ThumbnailList } from './components/ThumbnailList';
 import { Toolbar } from './components/Toolbar';
 import { useImageWorkspaceController } from './hooks/useImageWorkspaceController';
+import { useEffect } from 'react';
+import { useRef } from 'react';
 
 import './styles/workspace.css';
 
 type ImageWorkspaceProps = {
   gridEnabled?: boolean;
+  dimensions?: { length: number | null; width: number | null; thickness: number | null };
 };
 
-export function ImageWorkspace({ gridEnabled = false }: ImageWorkspaceProps) {
+export function ImageWorkspace({ gridEnabled = false, dimensions }: ImageWorkspaceProps) {
   const {
     library,
     activeTool,
@@ -24,6 +27,7 @@ export function ImageWorkspace({ gridEnabled = false }: ImageWorkspaceProps) {
     previewRef,
     imageRef,
     tintOverlayRef,
+    forceRedraw,
     lassoPreview,
     isMaskToolActive,
     isViewportDefault,
@@ -36,7 +40,45 @@ export function ImageWorkspace({ gridEnabled = false }: ImageWorkspaceProps) {
     setMaskVisible,
     undo,
     canUndo,
+    setSelectionDimensions,
+    selectionVisible,
+    setSelectionVisible,
   } = useImageWorkspaceController();
+
+  // keep overlay selection in sync with passed dimensions
+  const prevDimsRef = useRef<typeof dimensions | null>(null);
+
+  useEffect(() => {
+    try {
+      // @ts-ignore
+      setSelectionDimensions?.(dimensions ?? null);
+    } catch (err) {
+      // ignore
+    }
+    // ensure redraw
+    try {
+      // @ts-ignore
+      if (dimensions) forceRedraw();
+    } catch (err) {
+      // ignore
+    }
+    // if dimensions are cleared, hide selection; if they just became filled, show selection
+    try {
+      const had = prevDimsRef.current;
+      const have = dimensions;
+      const hadFilled = !!(had && had.length && had.width);
+      const haveFilled = !!(have && have.length && have.width);
+      if (!haveFilled) {
+        setSelectionVisible(false);
+      } else if (!hadFilled && haveFilled) {
+        // first time filled -> make visible by default
+        setSelectionVisible(true);
+      }
+      prevDimsRef.current = dimensions ?? null;
+    } catch (err) {
+      // ignore
+    }
+  }, [dimensions, setSelectionDimensions, forceRedraw]);
 
   const canvasClass = library.isDragging
     ? 'image-workspace__canvas image-workspace__canvas--dragging'
@@ -79,6 +121,8 @@ export function ImageWorkspace({ gridEnabled = false }: ImageWorkspaceProps) {
             tempActiveTool={tempToolOverride}
             maskVisible={maskVisible}
             onToggleMaskVisible={setMaskVisible}
+            selectionVisible={selectionVisible}
+            onToggleSelectionVisible={setSelectionVisible}
             onUndo={undo}
             canUndo={canUndo()}
             onResetViewport={resetViewport}
@@ -98,6 +142,8 @@ export function ImageWorkspace({ gridEnabled = false }: ImageWorkspaceProps) {
             onPointerMove={handleViewportPointerMove}
             onPointerUp={handleViewportPointerUp}
             onWheel={handleWheel}
+            // pass dimensions for middle overlay
+            dimensions={dimensions}
           >
             <ThumbnailList
               images={library.images}

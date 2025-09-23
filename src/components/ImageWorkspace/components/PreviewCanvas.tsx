@@ -21,6 +21,7 @@ export type PreviewCanvasProps = {
   onPointerUp: PointerEventHandler<HTMLDivElement>;
   onWheel: WheelEventHandler<HTMLDivElement>;
   children?: ReactNode;
+  dimensions?: { length: number | null; width: number | null; thickness: number | null } | null;
 };
 
 export function PreviewCanvas({
@@ -37,6 +38,7 @@ export function PreviewCanvas({
   onPointerUp,
   onWheel,
   children,
+  dimensions,
 }: PreviewCanvasProps) {
   const previewWidth = previewRef.current?.clientWidth ?? 0;
   const previewHeight = previewRef.current?.clientHeight ?? 0;
@@ -128,6 +130,7 @@ export function PreviewCanvas({
               />
             </svg>
           )}
+          {/* Selection rectangle is drawn on the overlay canvas by the overlay hook */}
         </div>
       </div>
       {children}

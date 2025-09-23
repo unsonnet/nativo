@@ -4,11 +4,22 @@ import { useRouter } from 'next/navigation';
 
 import { ImageWorkspace } from '@/components/ImageWorkspace';
 import { NewReportForm } from '@/components/NewReportForm';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export default function NewReportPage() {
   const router = useRouter();
   const [gridEnabled, setGridEnabled] = useState(false);
+  const [dimensions, setDimensions] = useState<{ length: number | null; width: number | null; thickness: number | null }>({
+    length: null,
+    width: null,
+    thickness: null,
+  });
+
+  const handleDimensionsChange = useCallback((v: boolean) => setGridEnabled(v), []);
+  const handleDimensionsValues = useCallback(
+    (vals: { length: number | null; width: number | null; thickness: number | null }) => setDimensions(vals),
+    []
+  );
 
   return (
     <div className="report-create">
@@ -23,11 +34,11 @@ export default function NewReportPage() {
         </button>
 
         <div className="report-create__form">
-          <NewReportForm onDimensionsChange={(v) => setGridEnabled(v)} />
+          <NewReportForm onDimensionsChange={handleDimensionsChange} onDimensionsValues={handleDimensionsValues} />
         </div>
       </aside>
 
-      <ImageWorkspace gridEnabled={gridEnabled} />
+      <ImageWorkspace gridEnabled={gridEnabled} dimensions={dimensions} />
     </div>
   );
 }

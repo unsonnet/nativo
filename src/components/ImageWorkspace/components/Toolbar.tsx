@@ -47,6 +47,8 @@ type ToolbarProps = {
   onToggleMaskVisible?: (v: boolean) => void;
   tempActiveTool?: WorkspaceTool | null;
   gridEnabled?: boolean;
+  selectionVisible?: boolean;
+  onToggleSelectionVisible?: (v: boolean) => void;
 };
 
 export function Toolbar({
@@ -61,6 +63,8 @@ export function Toolbar({
   onToggleMaskVisible,
   tempActiveTool = null,
   gridEnabled = true,
+  selectionVisible = true,
+  onToggleSelectionVisible,
 }: ToolbarProps) {
   const handleChange = (tool: WorkspaceTool) => {
     // If clicking the currently active hand (pan) tool, keep it selected (it's the default)
@@ -118,6 +122,23 @@ export function Toolbar({
             </button>
           );
         })}
+        {/* Selection visibility toggle sits at the end of grid group */}
+        {(() => {
+          const Icon = selectionVisible ? Eye : EyeOff;
+          const disabled = !gridEnabled;
+          return (
+            <button
+              key="grid-visibility"
+              type="button"
+              className={`toolbar__button${disabled ? ' toolbar__button--disabled' : ''}`}
+              onClick={() => !disabled && onToggleSelectionVisible && onToggleSelectionVisible(!selectionVisible)}
+              title={selectionVisible ? 'Hide selection rectangle' : 'Show selection rectangle'}
+              disabled={disabled}
+            >
+              <Icon className="toolbar__icon" strokeWidth={1.9} />
+            </button>
+          );
+        })()}
       </div>
 
       <span className="toolbar__divider" aria-hidden />
