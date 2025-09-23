@@ -11,8 +11,8 @@ export function useImageWorkspaceController() {
   const [isViewportPanning, setIsViewportPanning] = useState(false);
   const [currentSelection, setCurrentSelection] = useState<any | null>(null);
 
-  const previewRef = useRef<HTMLDivElement | null>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const pointerModeRef = useRef<Map<number, 'pan' | 'mask' | 'selection' | 'none'>>(new Map());
   const modifierHeldRef = useRef(false);
   const [modifierActive, setModifierActive] = useState(false);
@@ -78,7 +78,7 @@ export function useImageWorkspaceController() {
     onPushUndo: pushUndo,
   });
   const {
-    tintOverlayRef,
+  tintOverlayRef,
     updateFromViewport,
     forceRedraw,
     markDirty,
@@ -490,7 +490,7 @@ export function useImageWorkspaceController() {
   handleWheel: handleWheelWrapper,
     previewRef,
     imageRef,
-    tintOverlayRef,
+  tintOverlayRef: (tintOverlayRef as React.RefObject<HTMLCanvasElement>),
     lassoPreview,
     isMaskToolActive,
     viewportState,

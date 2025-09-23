@@ -1,36 +1,37 @@
 'use client';
 
+import {
+  Brush,
+  Eraser,
+  Home,
+  Move3d,
+  Rotate3d,
+  Undo2,
+  Hand,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { Brush, Eraser, Home, Move3d, Rotate3d, Undo2, ZoomIn, Hand, Eye, EyeOff } from 'lucide-react';
-
 import type { WorkspaceTool } from '../types';
 
-type ToolConfig = {
-  id: Exclude<WorkspaceTool, 'none'>;
-  icon: LucideIcon;
-  label: string;
-  description: string;
+type ToolConfig = { id: WorkspaceTool; icon: LucideIcon; label: string; description: string };
+
+const DESCRIPTIONS: Record<WorkspaceTool, string> = {
+  hand: 'Pan/zoom image',
+  translate: 'Move/scale selection rectangle',
+  rotate: 'Rotate selection rectangle',
+  erase: 'Mask (hide) parts of image',
+  restore: 'Restore masked parts',
+  none: 'Select a tool',
 };
 
-const TOOL_DESCRIPTIONS: Record<WorkspaceTool, string> = {
-  hand: 'Move and scale the image — click+drag to pan/translate, scroll to zoom',
-  translate: 'Move and scale the selection rectangle',
-  rotate: 'Rotate the selection rectangle',
-  erase: 'Lasso to mask (hide) parts of the image',
-  restore: 'Lasso to restore (show) masked parts of the image',
-  none: 'Select a tool to begin',
-};
-
-const GRID_TOOLS: ToolConfig[] = [
-  { id: 'translate', icon: Move3d, label: 'Translate', description: 'Move and scale the selection rectangle' },
-  { id: 'rotate', icon: Rotate3d, label: 'Rotate', description: 'Rotate the selection rectangle' },
+const TOOLS_GRID: ToolConfig[] = [
+  { id: 'translate', icon: Move3d, label: 'Translate', description: DESCRIPTIONS.translate },
+  { id: 'rotate', icon: Rotate3d, label: 'Rotate', description: DESCRIPTIONS.rotate },
 ];
-
-const HAND_TOOL: ToolConfig = { id: 'hand', icon: Hand, label: 'Hand', description: 'Move and scale the image' };
-
-const MASK_TOOLS: ToolConfig[] = [
-  { id: 'erase', icon: Eraser, label: 'Erase', description: 'Mask (hide) parts of the image' },
-  { id: 'restore', icon: Brush, label: 'Restore', description: 'Restore (show) masked parts of the image' },
+const TOOLS_MASK: ToolConfig[] = [
+  { id: 'erase', icon: Eraser, label: 'Erase', description: DESCRIPTIONS.erase },
+  { id: 'restore', icon: Brush, label: 'Restore', description: DESCRIPTIONS.restore },
 ];
 
 type ToolbarProps = {
@@ -49,6 +50,33 @@ type ToolbarProps = {
   onToggleSelectionVisible?: (v: boolean) => void;
 };
 
+const ToolbarButton = ({
+  icon: Icon,
+  active,
+  disabled,
+  onClick,
+  title,
+}: {
+  icon: LucideIcon;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  title: string;
+}) => (
+  <button
+    type="button"
+    className={`toolbar__button${active ? ' toolbar__button--active' : ''}${disabled ? ' toolbar__button--disabled' : ''}`}
+    onClick={onClick}
+    title={title}
+    disabled={disabled}
+  >
+    <Icon className="toolbar__icon" strokeWidth={1.9} />
+  </button>
+);
+
+/**
+ * Toolbar with hand, grid, mask, undo, and viewport reset controls.
+ */
 export function Toolbar({
   activeTool,
   onToolChange,
@@ -65,11 +93,8 @@ export function Toolbar({
   onToggleSelectionVisible,
 }: ToolbarProps) {
   const handleChange = (tool: WorkspaceTool) => {
-    // If clicking the currently active hand tool, keep it selected (it's the default)
     if (tool === activeTool) {
-      if (tool === 'hand') return;
-      // deselecting a non-hand tool returns to hand
-      onToolChange('hand');
+      onToolChange(tool === 'hand' ? 'hand' : 'hand');
       return;
     }
     onToolChange(tool);
@@ -77,129 +102,67 @@ export function Toolbar({
 
   return (
     <header className="toolbar">
-      {/* Hand sits at the far left as the persistent default tool */}
-      <div className="toolbar__group toolbar__group--hand">
-        {(() => {
-          const Icon = HAND_TOOL.icon;
-          // consider modifierActive to temporarily highlight hand button
-          const isActive = modifierActive ? true : activeTool === HAND_TOOL.id;
-          return (
-            <button
-              key="hand"
-              type="button"
-              className={`toolbar__button${isActive ? ' toolbar__button--active' : ''}`}
-              onClick={() => handleChange(HAND_TOOL.id)}
-              title={HAND_TOOL.description}
-            >
-              <Icon className="toolbar__icon" strokeWidth={1.9} />
-            </button>
-          );
-        })()}
+      {/* Hand tool */}
+      <div className="toolbar__group">
+        <ToolbarButton
+          icon={Hand}
+          active={modifierActive || activeTool === 'hand'}
+          onClick={() => handleChange('hand')}
+          title={DESCRIPTIONS.hand}
+        />
       </div>
 
+      {/* Grid tools */}
       <div className="toolbar__group">
         <span className="toolbar__group-label">Grid:</span>
-        {GRID_TOOLS.map((tool) => {
-          const Icon = tool.icon;
-          // If there's a temporary override, only the temp tool should appear active
-          const isActive = tempActiveTool
-            ? tempActiveTool === tool.id
-            : !modifierActive && activeTool === tool.id && activeTool !== 'hand';
-          return (
-            <button
-              key={tool.id}
-              type="button"
-              className={`toolbar__button${isActive ? ' toolbar__button--active' : ''}${!gridEnabled ? ' toolbar__button--disabled' : ''}`}
-              onClick={() => gridEnabled && handleChange(tool.id)}
-              title={tool.description}
-              disabled={!gridEnabled}
-            >
-              <Icon className="toolbar__icon" strokeWidth={1.9} />
-            </button>
-          );
-        })}
-        {/* Selection visibility toggle sits at the end of grid group */}
-        {(() => {
-          const Icon = selectionVisible ? Eye : EyeOff;
-          const disabled = !gridEnabled;
-          return (
-            <button
-              key="grid-visibility"
-              type="button"
-              className={`toolbar__button${disabled ? ' toolbar__button--disabled' : ''}`}
-              onClick={() => !disabled && onToggleSelectionVisible && onToggleSelectionVisible(!selectionVisible)}
-              title={selectionVisible ? 'Hide selection rectangle' : 'Show selection rectangle'}
-              disabled={disabled}
-            >
-              <Icon className="toolbar__icon" strokeWidth={1.9} />
-            </button>
-          );
-        })()}
+        {TOOLS_GRID.map(({ id, icon, description }) => (
+          <ToolbarButton
+            key={id}
+            icon={icon}
+            active={tempActiveTool ? tempActiveTool === id : !modifierActive && activeTool === id}
+            disabled={!gridEnabled}
+            onClick={() => gridEnabled && handleChange(id)}
+            title={description}
+          />
+        ))}
+        <ToolbarButton
+          icon={selectionVisible ? Eye : EyeOff}
+          disabled={!gridEnabled}
+          onClick={() => gridEnabled && onToggleSelectionVisible?.(!selectionVisible)}
+          title={selectionVisible ? 'Hide selection rectangle' : 'Show selection rectangle'}
+        />
       </div>
 
-      <span className="toolbar__divider" aria-hidden />
+      <span className="toolbar__divider" />
 
+      {/* Mask tools */}
       <div className="toolbar__group">
         <span className="toolbar__group-label">Mask:</span>
-        {MASK_TOOLS.map((tool) => {
-          const Icon = tool.icon;
-          // When a temporary tool override exists, highlight that tool instead
-          const isActive = tempActiveTool ? tempActiveTool === tool.id : !modifierActive && activeTool === tool.id;
-          return (
-            <button
-              key={tool.id}
-              type="button"
-              className={`toolbar__button${isActive ? ' toolbar__button--active' : ''}`}
-              onClick={() => handleChange(tool.id)}
-              title={tool.description}
-            >
-              <Icon className="toolbar__icon" strokeWidth={1.9} />
-            </button>
-          );
-        })}
-        {/* Visibility toggle sits at the end of mask group */}
-        {(() => {
-          const Icon = maskVisible ? Eye : EyeOff;
-          return (
-            <button
-              key="visibility"
-              type="button"
-              className={`toolbar__button`}
-              onClick={() => onToggleMaskVisible && onToggleMaskVisible(!maskVisible)}
-              title={maskVisible ? 'Hide erased areas (transparent)' : 'Show erased areas (striped)'}
-            >
-              <Icon className="toolbar__icon" strokeWidth={1.9} />
-            </button>
-          );
-        })()}
+        {TOOLS_MASK.map(({ id, icon, description }) => (
+          <ToolbarButton
+            key={id}
+            icon={icon}
+            active={tempActiveTool ? tempActiveTool === id : !modifierActive && activeTool === id}
+            onClick={() => handleChange(id)}
+            title={description}
+          />
+        ))}
+        <ToolbarButton
+          icon={maskVisible ? Eye : EyeOff}
+          onClick={() => onToggleMaskVisible?.(!maskVisible)}
+          title={maskVisible ? 'Hide mask overlay' : 'Show mask overlay'}
+        />
       </div>
 
-      <span className="toolbar__divider" aria-hidden />
+      <span className="toolbar__divider" />
 
+      {/* Undo + Reset */}
       <div className="toolbar__group">
-        <button
-          type="button"
-          className="toolbar__button"
-          onClick={onUndo}
-          disabled={!canUndo}
-          title="Undo last action"
-        >
-          <Undo2 className="toolbar__icon" strokeWidth={1.9} />
-        </button>
-        <button
-          type="button"
-          className="toolbar__button"
-          onClick={onResetViewport}
-          disabled={!canResetViewport}
-          title="Reset viewport"
-        >
-          <Home className="toolbar__icon" strokeWidth={1.9} />
-        </button>
+        <ToolbarButton icon={Undo2} disabled={!canUndo} onClick={onUndo} title="Undo" />
+        <ToolbarButton icon={Home} disabled={!canResetViewport} onClick={onResetViewport} title="Reset viewport" />
       </div>
 
-      <div className="toolbar__status" role="status">
-        {TOOL_DESCRIPTIONS[activeTool]}
-      </div>
+      <div className="toolbar__status">{DESCRIPTIONS[activeTool]}</div>
     </header>
   );
 }

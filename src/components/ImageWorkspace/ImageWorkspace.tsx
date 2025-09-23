@@ -1,9 +1,6 @@
 'use client';
 
-import { Dropzone } from './components/Dropzone';
-import { PreviewCanvas } from './components/PreviewCanvas';
-import { ThumbnailList } from './components/ThumbnailList';
-import { Toolbar } from './components/Toolbar';
+import { Dropzone, PreviewCanvas, ThumbnailList, Toolbar } from './components';
 import { useImageWorkspaceController } from './hooks/useImageWorkspaceController';
 import { useEffect } from 'react';
 import { useRef } from 'react';
@@ -146,8 +143,8 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
           />
 
           <PreviewCanvas
-            previewRef={previewRef}
-            imageRef={imageRef}
+            previewRef={previewRef as React.RefObject<HTMLDivElement>}
+            imageRef={imageRef as React.RefObject<HTMLImageElement>}
             tintOverlayRef={tintOverlayRef}
             selectedImage={library.selectedImage!}
             imageTransform={imageTransform}
@@ -159,8 +156,6 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
             onPointerUp={handleViewportPointerUp}
             onWheel={handleWheel}
             // pass dimensions for middle overlay
-            dimensions={dimensions}
-            selectionState={selectionState}
           >
             <ThumbnailList
               images={library.images}

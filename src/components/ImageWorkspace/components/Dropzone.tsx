@@ -3,7 +3,7 @@
 import { Upload } from 'lucide-react';
 import type { DragEventHandler } from 'react';
 
-type DropzoneProps = {
+export type DropzoneProps = {
   isDragging: boolean;
   onChooseClick: () => void;
   onDragEnter: DragEventHandler<HTMLDivElement>;
@@ -11,18 +11,15 @@ type DropzoneProps = {
   onDrop: DragEventHandler<HTMLDivElement>;
 };
 
-export function Dropzone({
-  isDragging,
-  onChooseClick,
-  onDragEnter,
-  onDragLeave,
-  onDrop,
-}: DropzoneProps) {
+/**
+ * Dropzone for drag-and-drop or manual image selection.
+ */
+export function Dropzone({ isDragging, onChooseClick, onDragEnter, onDragLeave, onDrop }: DropzoneProps) {
   return (
     <div
       className={`image-workspace__dropzone${isDragging ? ' image-workspace__dropzone--active' : ''}`}
       onDragEnter={onDragEnter}
-      onDragOver={(event) => event.preventDefault()}
+      onDragOver={(e) => e.preventDefault()}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
