@@ -37,6 +37,7 @@ export type UseImageMaskingParams<TImage extends MaskImage> = {
   previewRef: MutableRefObject<HTMLDivElement | null>;
   imageRef: MutableRefObject<HTMLImageElement | null>;
   onToggleViewportPanning: (isPanning: boolean) => void;
+  onPushUndo?: (action: { undo: () => void; redo?: () => void; description?: string }) => void;
 };
 
 export type UseImageMaskingResult = {
@@ -70,6 +71,7 @@ export function useImageMasking<TImage extends MaskImage>({
   previewRef,
   imageRef,
   onToggleViewportPanning,
+  onPushUndo,
 }: UseImageMaskingParams<TImage>): UseImageMaskingResult {
   const assetsRef = useRef(new Map<string, ImageAsset>());
   const lassoStateRef = useRef<LassoState | null>(null);
@@ -170,6 +172,15 @@ export function useImageMasking<TImage extends MaskImage>({
       if (!asset) return;
 
       const { maskCtx } = asset;
+      // capture previous mask state for undo
+      let prev: ImageData | null = null;
+      let next: ImageData | null = null;
+      try {
+        prev = maskCtx.getImageData(0, 0, asset.width, asset.height);
+      } catch (err) {
+        prev = null;
+      }
+
       maskCtx.save();
       maskCtx.beginPath();
       maskCtx.moveTo(points[0].x, points[0].y);
@@ -179,6 +190,50 @@ export function useImageMasking<TImage extends MaskImage>({
       maskCtx.fillStyle = tool === 'erase' ? '#000' : '#fff';
       maskCtx.fill();
       maskCtx.restore();
+
+      try {
+        next = maskCtx.getImageData(0, 0, asset.width, asset.height);
+      } catch (err) {
+        next = null;
+      }
+
+      // push undo action if available
+      if (onPushUndo && prev) {
+        const undoAction = {
+          undo: () => {
+            const a = assetsRef.current.get(imageId);
+            if (!a) return;
+            const ctx = a.maskCtx;
+            try {
+              ctx.putImageData(prev as ImageData, 0, 0);
+              updateTintOverlay(a);
+              setOverlayVersion((v) => v + 1);
+            } catch (err) {
+              /* ignore */
+            }
+          },
+          redo: next
+            ? () => {
+                const a = assetsRef.current.get(imageId);
+                if (!a) return;
+                const ctx = a.maskCtx;
+                try {
+                  ctx.putImageData(next as ImageData, 0, 0);
+                  updateTintOverlay(a);
+                  setOverlayVersion((v) => v + 1);
+                } catch (err) {
+                  /* ignore */
+                }
+              }
+            : undefined,
+          description: `Mask: ${tool}`,
+        };
+        try {
+          onPushUndo(undoAction);
+        } catch (err) {
+          /* ignore */
+        }
+      }
 
       updateTintOverlay(asset);
       setOverlayVersion((v) => v + 1);

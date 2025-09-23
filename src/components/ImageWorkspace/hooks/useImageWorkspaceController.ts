@@ -17,6 +17,45 @@ export function useImageWorkspaceController() {
   const [modifierActive, setModifierActive] = useState(false);
   const [maskVisible, setMaskVisible] = useState(true);
 
+  type UndoAction = { undo: () => void; redo?: () => void; description?: string };
+  const undoStackRef = useRef<UndoAction[]>([]);
+  const redoStackRef = useRef<UndoAction[]>([]);
+  const [canUndoState, setCanUndoState] = useState(false);
+
+  const pushUndo = useCallback((action: UndoAction) => {
+    undoStackRef.current.push(action);
+    // clear redo when a new action is pushed
+    redoStackRef.current.length = 0;
+    setCanUndoState(true);
+  }, []);
+
+  const canUndo = useCallback(() => undoStackRef.current.length > 0, []);
+  const canRedo = useCallback(() => redoStackRef.current.length > 0, []);
+
+  const undo = useCallback(() => {
+    const action = undoStackRef.current.pop();
+    if (!action) return;
+    try {
+      action.undo();
+      if (action.redo) redoStackRef.current.push(action);
+      setCanUndoState(undoStackRef.current.length > 0);
+    } catch (err) {
+      // ignore
+    }
+  }, []);
+
+  const redo = useCallback(() => {
+    const action = redoStackRef.current.pop();
+    if (!action) return;
+    try {
+      if (action.redo) action.redo();
+      undoStackRef.current.push(action);
+      setCanUndoState(true);
+    } catch (err) {
+      // ignore
+    }
+  }, []);
+
   const {
     isMaskTool,
     handlePointerDown: handleMaskPointerDown,
@@ -33,6 +72,7 @@ export function useImageWorkspaceController() {
     previewRef,
     imageRef,
     onToggleViewportPanning: setIsViewportPanning,
+    onPushUndo: pushUndo,
   });
 
   const { tintOverlayRef, updateFromViewport, forceRedraw, markDirty } = useMaskOverlay({
@@ -59,6 +99,12 @@ export function useImageWorkspaceController() {
   });
 
   const selectedImageId = library.selectedImage?.id ?? null;
+
+  // Clear undo/redo history when the selected image changes (or is removed)
+  useEffect(() => {
+    undoStackRef.current.length = 0;
+    redoStackRef.current.length = 0;
+  }, [selectedImageId]);
 
   const handleViewportPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -189,6 +235,16 @@ export function useImageWorkspaceController() {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd+Z -> undo (no redo)
+      try {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+          e.preventDefault();
+          undo();
+          return;
+        }
+      } catch (err) {
+        // ignore
+      }
       if (e.ctrlKey || e.metaKey) setModifier(true);
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -206,7 +262,23 @@ export function useImageWorkspaceController() {
       window.removeEventListener('blur', onBlur);
       setModifier(false);
     };
-  }, [previewRef]);
+  }, [previewRef, undo]);
+
+  // When toggling mask visibility, ensure overlay and image remain aligned to current viewport
+  // but do NOT reset the viewport state. Some browsers may cause a repaint that looks like a reset;
+  // reapply the current viewport transform to the overlay to preserve position/scale.
+  useEffect(() => {
+    try {
+      forceRedraw();
+    } catch (err) {
+      /* ignore */
+    }
+    try {
+      updateFromViewport(viewportState);
+    } catch (err) {
+      /* ignore */
+    }
+  }, [maskVisible, forceRedraw, updateFromViewport, viewportState]);
 
   // Add a class when no tool is selected so we can show default cursor
   useEffect(() => {
@@ -309,5 +381,14 @@ export function useImageWorkspaceController() {
     modifierActive,
     maskVisible,
     setMaskVisible,
+    undo,
+    redo,
+    canUndo: () => canUndoState,
+    canRedo,
+    clearHistory: () => {
+      undoStackRef.current.length = 0;
+      redoStackRef.current.length = 0;
+      setCanUndoState(false);
+    },
   };
 }

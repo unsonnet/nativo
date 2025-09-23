@@ -29,6 +29,8 @@ export function ImageWorkspace() {
     modifierActive,
     maskVisible,
     setMaskVisible,
+    undo,
+    canUndo,
   } = useImageWorkspaceController();
 
   const canvasClass = library.isDragging
@@ -70,8 +72,8 @@ export function ImageWorkspace() {
             modifierActive={modifierActive}
             maskVisible={maskVisible}
             onToggleMaskVisible={setMaskVisible}
-            onUndo={() => undefined}
-            canUndo={false}
+            onUndo={undo}
+            canUndo={canUndo()}
             onResetViewport={resetViewport}
             canResetViewport={!isViewportDefault}
           />
