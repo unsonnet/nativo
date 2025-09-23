@@ -13,26 +13,24 @@ type ToolConfig = {
 };
 
 const TOOL_DESCRIPTIONS: Record<WorkspaceTool, string> = {
-  // The hand (pan) tool is the default and uses the previous 'none' status message
-  pan: 'Select a tool to begin aligning the grid',
-  scale: 'Click and drag to resize the grid • Scroll to fine-tune',
-  rotate: 'Drag the sphere control to rotate grid in 3D space',
-  erase: 'Draw around areas to hide • Multiple selections allowed',
-  restore: 'Draw around masked areas to reveal them',
-  none: 'Select a tool to begin aligning the grid',
+  hand: 'Move and scale the image — click+drag to pan/translate, scroll to zoom',
+  translate: 'Move and scale the selection rectangle',
+  rotate: 'Rotate the selection rectangle',
+  erase: 'Lasso to mask (hide) parts of the image',
+  restore: 'Lasso to restore (show) masked parts of the image',
+  none: 'Select a tool to begin',
 };
 
 const GRID_TOOLS: ToolConfig[] = [
-  { id: 'pan', icon: Move, label: 'Pan', description: 'Move the grid position in 2D' },
-  { id: 'scale', icon: ZoomIn, label: 'Scale', description: 'Resize the grid scale' },
-  { id: 'rotate', icon: RotateCcw, label: 'Rotate', description: 'Rotate grid in 3D space with sphere control' },
+  { id: 'translate', icon: Move, label: 'Translate', description: 'Move and scale the selection rectangle' },
+  { id: 'rotate', icon: RotateCcw, label: 'Rotate', description: 'Rotate the selection rectangle' },
 ];
 
-const HAND_TOOL: ToolConfig = { id: 'pan', icon: Hand, label: 'Hand', description: 'Move and scale the image — click+drag to pan, scroll to zoom' };
+const HAND_TOOL: ToolConfig = { id: 'hand', icon: Hand, label: 'Hand', description: 'Move and scale the image' };
 
 const MASK_TOOLS: ToolConfig[] = [
-  { id: 'erase', icon: Eraser, label: 'Erase', description: 'Lasso tool to mask areas (hide parts of image)' },
-  { id: 'restore', icon: Brush, label: 'Restore', description: 'Lasso tool to remove masking (show parts of image)' },
+  { id: 'erase', icon: Eraser, label: 'Erase', description: 'Mask (hide) parts of the image' },
+  { id: 'restore', icon: Brush, label: 'Restore', description: 'Restore (show) masked parts of the image' },
 ];
 
 type ToolbarProps = {
@@ -67,15 +65,13 @@ export function Toolbar({
   onToggleSelectionVisible,
 }: ToolbarProps) {
   const handleChange = (tool: WorkspaceTool) => {
-    // If clicking the currently active hand (pan) tool, keep it selected (it's the default)
-      if (tool === activeTool) { 
-        if (tool === 'pan') { 
-          return; 
-        } 
-        // deselecting a non-pan tool returns to pan
-        onToolChange('pan'); 
-        return; 
-      } 
+    // If clicking the currently active hand tool, keep it selected (it's the default)
+    if (tool === activeTool) {
+      if (tool === 'hand') return;
+      // deselecting a non-hand tool returns to hand
+      onToolChange('hand');
+      return;
+    }
     onToolChange(tool);
   };
 
@@ -108,7 +104,7 @@ export function Toolbar({
           // If there's a temporary override, only the temp tool should appear active
           const isActive = tempActiveTool
             ? tempActiveTool === tool.id
-            : !modifierActive && activeTool === tool.id && activeTool !== 'pan';
+            : !modifierActive && activeTool === tool.id && activeTool !== 'hand';
           return (
             <button
               key={tool.id}

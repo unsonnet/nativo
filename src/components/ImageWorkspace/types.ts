@@ -5,4 +5,4 @@ export type WorkspaceImage = {
   file: File;
 };
 
-export type WorkspaceTool = 'none' | 'pan' | 'scale' | 'rotate' | 'erase' | 'restore';
+export type WorkspaceTool = 'none' | 'hand' | 'translate' | 'rotate' | 'erase' | 'restore';

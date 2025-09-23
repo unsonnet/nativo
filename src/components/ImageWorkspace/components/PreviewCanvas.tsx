@@ -22,6 +22,7 @@ export type PreviewCanvasProps = {
   onWheel: WheelEventHandler<HTMLDivElement>;
   children?: ReactNode;
   dimensions?: { length: number | null; width: number | null; thickness: number | null } | null;
+  selectionState?: any | null;
 };
 
 export function PreviewCanvas({
@@ -39,6 +40,7 @@ export function PreviewCanvas({
   onWheel,
   children,
   dimensions,
+  selectionState,
 }: PreviewCanvasProps) {
   const previewWidth = previewRef.current?.clientWidth ?? 0;
   const previewHeight = previewRef.current?.clientHeight ?? 0;

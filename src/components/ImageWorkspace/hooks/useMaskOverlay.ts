@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect } from 'react';
-import type { MutableRefObject } from 'react';
+import type { MutableRefObject, PointerEvent as ReactPointerEvent } from 'react';
 
 import type { ViewportState } from './useViewportTransform';
 import { OverlayComposer } from '../utils/overlayComposer';
@@ -23,6 +23,8 @@ type UseMaskOverlayParams = {
   getTintOverlay: () => HTMLCanvasElement | null;
   maskVisible?: boolean;
   selectionVisible?: boolean;
+  selectedImageId?: string | null;
+  onSelectionChange?: (state: any | null) => void;
 };
 
 type UseMaskOverlayResult = {
@@ -31,6 +33,10 @@ type UseMaskOverlayResult = {
   forceRedraw: () => void;
   markDirty: () => void;
   setSelectionDimensions: (vals: { length: number | null; width: number | null; thickness: number | null } | null) => void;
+  handleSelectionPointerDown: (e: ReactPointerEvent<HTMLDivElement>, tool: string) => boolean;
+  handleSelectionPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
+  handleSelectionPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
+  getSelectionState: () => any | null;
 };
 
 export function useMaskOverlay({
@@ -39,8 +45,16 @@ export function useMaskOverlay({
   getTintOverlay,
   maskVisible = true,
   selectionVisible = true,
+  selectedImageId = null,
+  onSelectionChange,
 }: UseMaskOverlayParams): UseMaskOverlayResult {
   const tintOverlayRef = useRef<HTMLCanvasElement | null>(null);
+  // per-image selection state (selection values, offset, scale)
+  type SelectionVals = { length: number | null; width: number | null; thickness: number | null } | null;
+  type SelectionState = { sel: SelectionVals; offset: { x: number; y: number }; scale: number };
+  const selectionMapRef = useRef<Map<string, SelectionState>>(new Map());
+  const pointerTracker = useRef<Map<number, any>>(new Map());
+  // backward compat when no image id is provided
   const selectionRef = useRef<{ length: number | null; width: number | null; thickness: number | null } | null>(null);
   const overlayMetricsRef = useRef<OverlayMetricsEx | null>(null);
   const overlayReadyRef = useRef(false);
@@ -193,13 +207,14 @@ export function useMaskOverlay({
         const img = imageRef.current;
         const composer = composerRef.current;
         if (composer) {
+          const sel = selectedImageId ? selectionMapRef.current.get(selectedImageId || '')?.sel ?? null : selectionRef.current;
           composer.compose(ctx as any, metrics as any, {
             tint,
             img,
             maskVisible,
             selectionVisible: selectionVisibleRef.current,
             scale,
-            selection: selectionRef.current,
+            selection: sel,
           });
         }
       } catch (err) {
@@ -211,7 +226,7 @@ export function useMaskOverlay({
       overlay.style.opacity = '1';
       overlayReadyRef.current = true;
     },
-    [getTintOverlay, maskVisible, imageRef]
+    [getTintOverlay, maskVisible, imageRef, selectedImageId]
   );
 
   const updateFromViewport = useCallback(
@@ -249,7 +264,21 @@ export function useMaskOverlay({
     forceRedraw,
     markDirty,
     setSelectionDimensions: (vals: { length: number | null; width: number | null; thickness: number | null } | null) => {
-      selectionRef.current = vals;
+      if (!selectedImageId) {
+        selectionRef.current = vals;
+      } else {
+        if (!vals) selectionMapRef.current.delete(selectedImageId);
+        else
+          selectionMapRef.current.set(selectedImageId, {
+            sel: vals,
+            offset: { x: 0, y: 0 },
+            scale: 1,
+          });
+        // notify
+        try {
+          onSelectionChange?.(selectionMapRef.current.get(selectedImageId) ?? null);
+        } catch (err) {}
+      }
       // schedule redraw on next animation frame so DOM layout and transforms
       // have settled (prevents mis-centering races)
       if (rafRef.current) {
@@ -268,6 +297,26 @@ export function useMaskOverlay({
         }
         rafRef.current = null;
       });
+    },
+      // Selection pointer handlers intentionally disabled.
+      // We keep selection storage and drawing, but remove all interactive hitboxes
+      // so selection visuals remain but cannot be moved or scaled with the pointer.
+      handleSelectionPointerDown: (_e: ReactPointerEvent<HTMLDivElement>, _tool: string) => {
+        return false;
+      },
+      handleSelectionPointerMove: (_e: ReactPointerEvent<HTMLDivElement>) => {
+        return false;
+      },
+      handleSelectionPointerUp: (_e: ReactPointerEvent<HTMLDivElement>) => {
+        return false;
+      },
+    getSelectionState: () => {
+      if (!selectedImageId) {
+        if (selectionRef.current) return { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 };
+        return null;
+      }
+      const st = selectionMapRef.current.get(selectedImageId);
+      return st ?? null;
     },
   };
 }

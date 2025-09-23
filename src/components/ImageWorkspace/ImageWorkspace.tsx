@@ -43,7 +43,11 @@ export function ImageWorkspace({ gridEnabled = false, dimensions }: ImageWorkspa
     setSelectionDimensions,
     selectionVisible,
     setSelectionVisible,
+    selectionState,
   } = useImageWorkspaceController();
+
+  // read current per-image selection state (offset + scale) from controller
+  // `selectionState` is updated by the overlay hook when selection moves/scales
 
   // keep overlay selection in sync with passed dimensions
   const prevDimsRef = useRef<typeof dimensions | null>(null);
@@ -78,7 +82,10 @@ export function ImageWorkspace({ gridEnabled = false, dimensions }: ImageWorkspa
     } catch (err) {
       // ignore
     }
-  }, [dimensions, setSelectionDimensions, forceRedraw]);
+  // also run when selected image changes so provided `dimensions` are applied
+  // to the newly selected image. Keep other calls limited to avoid extra updates.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dimensions, library.selectedImage?.id]);
 
   const canvasClass = library.isDragging
     ? 'image-workspace__canvas image-workspace__canvas--dragging'
@@ -144,6 +151,7 @@ export function ImageWorkspace({ gridEnabled = false, dimensions }: ImageWorkspa
             onWheel={handleWheel}
             // pass dimensions for middle overlay
             dimensions={dimensions}
+            selectionState={selectionState}
           >
             <ThumbnailList
               images={library.images}

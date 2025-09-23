@@ -7,8 +7,9 @@ import type { WorkspaceTool } from '../types';
 
 export function useImageWorkspaceController() {
   const library = useImageLibrary();
-  const [activeTool, setActiveTool] = useState<WorkspaceTool>('pan');
+  const [activeTool, setActiveTool] = useState<WorkspaceTool>('hand');
   const [isViewportPanning, setIsViewportPanning] = useState(false);
+  const [currentSelection, setCurrentSelection] = useState<any | null>(null);
 
   const previewRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -76,13 +77,27 @@ export function useImageWorkspaceController() {
     onToggleViewportPanning: setIsViewportPanning,
     onPushUndo: pushUndo,
   });
-  const { tintOverlayRef, updateFromViewport, forceRedraw, markDirty, setSelectionDimensions } = useMaskOverlay({
+  const {
+    tintOverlayRef,
+    updateFromViewport,
+    forceRedraw,
+    markDirty,
+    setSelectionDimensions,
+    handleSelectionPointerDown,
+    handleSelectionPointerMove,
+    handleSelectionPointerUp,
+    getSelectionState,
+  } = useMaskOverlay({
     previewRef,
     imageRef,
     getTintOverlay,
     maskVisible,
     selectionVisible,
+    selectedImageId: library.selectedImage?.id ?? null,
+    onSelectionChange: setCurrentSelection,
   } as any);
+  
+
 
   const {
     viewportState,
@@ -101,6 +116,16 @@ export function useImageWorkspaceController() {
   });
 
   const selectedImageId = library.selectedImage?.id ?? null;
+
+  useEffect(() => {
+    try {
+      // read initial selection for the newly selected image
+      const st = (typeof getSelectionState === 'function' ? getSelectionState() : null) ?? null;
+      setCurrentSelection(st);
+    } catch (err) {
+      setCurrentSelection(null);
+    }
+  }, [selectedImageId]);
 
   // Clear undo/redo history when the selected image changes (or is removed)
   useEffect(() => {
@@ -128,7 +153,8 @@ export function useImageWorkspaceController() {
       }
 
       // Otherwise let the active tool try first (e.g. mask). If it claims the event,
-      // mark pointer as mask; otherwise fall back to pan for certain tools.
+      // mark pointer as mask; otherwise prefer selection (grid) handlers for grid tools,
+      // and fall back to pan for certain tools.
       if (handleMaskPointerDown(event, activeTool)) {
         pointerModeRef.current.set(id, 'mask');
         // If right-click was used and a mask tool is active, temporarily show the alternate tool
@@ -139,14 +165,28 @@ export function useImageWorkspaceController() {
         return;
       }
 
-      if (activeTool === 'none' || activeTool === 'pan' || activeTool === 'scale' || activeTool === 'rotate') {
+      // If active tool is 'hand' -> always pan the viewport (hand tool behavior)
+      if (activeTool === 'hand') {
         pointerModeRef.current.set(id, 'pan');
         handlePanPointerDown(event);
         const node = previewRef.current;
         if (node) node.classList.add('image-workspace__preview--force-grab');
-      } else {
-        pointerModeRef.current.set(id, 'none');
+        return;
       }
+
+      // For translate/none etc, always route to viewport pan by default.
+      if (activeTool === 'translate' || activeTool === 'none') {
+        pointerModeRef.current.set(id, 'pan');
+        handlePanPointerDown(event);
+        const node = previewRef.current;
+        if (node) node.classList.add('image-workspace__preview--force-grab');
+        return;
+      }
+      // Default fallback: pan
+      pointerModeRef.current.set(id, 'pan');
+      handlePanPointerDown(event);
+      const node = previewRef.current;
+      if (node) node.classList.add('image-workspace__preview--force-grab');
     },
     [activeTool, handleMaskPointerDown, handlePanPointerDown]
   );
@@ -158,14 +198,11 @@ export function useImageWorkspaceController() {
 
       if (mode === 'mask') {
         if (handleMaskPointerMove(event)) return;
-      } else if (mode === 'pan') {
-        handlePanPointerMove(event);
-        return;
-      } else {
-        // no explicit mode: allow mask first (backwards compatible)
-        if (handleMaskPointerMove(event)) return;
-        handlePanPointerMove(event);
+        // fall through to pan
       }
+      // pan mode or fallback -> pan the viewport
+      handlePanPointerMove(event);
+      return;
     },
     [handleMaskPointerMove, handlePanPointerMove]
   );
@@ -175,40 +212,22 @@ export function useImageWorkspaceController() {
       const id = event.pointerId;
       const mode = pointerModeRef.current.get(id) ?? 'none';
 
+      // Prefer mask handlers; otherwise always perform viewport pan up
       if (mode === 'mask') {
         if (handleMaskPointerUp(event)) {
           pointerModeRef.current.delete(id);
-          // remove force-grab if no pan pointers remain
           const node = previewRef.current;
           const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
           if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
-          // clear any temporary tool override
           setTempToolOverride(null);
           return;
         }
-      } else if (mode === 'pan') {
-        handlePanPointerUp(event);
-        pointerModeRef.current.delete(id);
-        const node = previewRef.current;
-        const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
-        if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
-        return;
-      } else {
-        if (handleMaskPointerUp(event)) {
-          pointerModeRef.current.delete(id);
-          const node = previewRef.current;
-          const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
-          if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
-          // clear any temporary tool override
-          setTempToolOverride(null);
-          return;
-        }
-        handlePanPointerUp(event);
-        pointerModeRef.current.delete(id);
-        const node = previewRef.current;
-        const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
-        if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
       }
+      handlePanPointerUp(event);
+      pointerModeRef.current.delete(id);
+      const node = previewRef.current;
+      const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
+      if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
     },
     [handleMaskPointerUp, handlePanPointerUp]
   );
@@ -422,5 +441,7 @@ export function useImageWorkspaceController() {
       redoStackRef.current.length = 0;
       setCanUndoState(false);
     },
+    getSelectionState,
+    selectionState: currentSelection,
   };
 }
