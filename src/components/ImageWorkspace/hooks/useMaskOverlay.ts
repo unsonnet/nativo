@@ -25,6 +25,7 @@ type UseMaskOverlayParams = {
   selectionVisible?: boolean;
   selectedImageId?: string | null;
   onSelectionChange?: (state: any | null) => void;
+  onPushUndo?: (action: { undo: () => void; redo?: () => void; description?: string }) => void;
 };
 
 type UseMaskOverlayResult = {
@@ -36,6 +37,7 @@ type UseMaskOverlayResult = {
   handleSelectionPointerDown: (e: ReactPointerEvent<HTMLDivElement>, tool: string) => boolean;
   handleSelectionPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
   handleSelectionPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
+  handleSelectionWheel?: (e: WheelEvent) => boolean;
   getSelectionState: () => any | null;
 };
 
@@ -47,7 +49,8 @@ export function useMaskOverlay({
   selectionVisible = true,
   selectedImageId = null,
   onSelectionChange,
-}: UseMaskOverlayParams): UseMaskOverlayResult {
+  onPushUndo,
+}: UseMaskOverlayParams & { onPushUndo?: (action: { undo: () => void; redo?: () => void; description?: string }) => void; }): UseMaskOverlayResult {
   const tintOverlayRef = useRef<HTMLCanvasElement | null>(null);
   // per-image selection state (selection values, offset, scale)
   type SelectionVals = { length: number | null; width: number | null; thickness: number | null } | null;
@@ -62,10 +65,51 @@ export function useMaskOverlay({
   const rafRef = useRef<number | null>(null);
   const composerRef = useRef<OverlayComposer | null>(null);
   const selectionVisibleRef = useRef<boolean>(selectionVisible);
+  const wheelTimeoutRef = useRef<number | null>(null);
+  const wheelStartRef = useRef<SelectionState | null>(null);
 
   useEffect(() => {
     selectionVisibleRef.current = selectionVisible;
   }, [selectionVisible]);
+  // Persist selection state per-image so transforms are preserved when switching images
+  const STORAGE_PREFIX = 'k9.selection.';
+  const loadPersisted = useCallback((id: string) => {
+    try {
+      const raw = localStorage.getItem(STORAGE_PREFIX + id);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed as SelectionState;
+    } catch (err) {}
+    return null;
+  useEffect(() => {
+    return () => {
+      if (wheelTimeoutRef.current) window.clearTimeout(wheelTimeoutRef.current);
+    };
+  }, []);
+  }, []);
+  const savePersisted = useCallback((id: string, st: SelectionState | null) => {
+    try {
+      if (!st) {
+        localStorage.removeItem(STORAGE_PREFIX + id);
+        return;
+      }
+      localStorage.setItem(STORAGE_PREFIX + id, JSON.stringify(st));
+    } catch (err) {}
+  }, []);
+
+  // Load persisted selection state when selected image changes
+  useEffect(() => {
+    if (!selectedImageId) return;
+    try {
+      const persisted = loadPersisted(selectedImageId);
+      if (persisted) {
+        selectionMapRef.current.set(selectedImageId, persisted);
+        try {
+          onSelectionChange?.(persisted);
+        } catch (err) {}
+      }
+    } catch (err) {}
+  }, [selectedImageId, loadPersisted, onSelectionChange]);
 
   useEffect(() => {
     const c = new OverlayComposer();
@@ -207,14 +251,18 @@ export function useMaskOverlay({
         const img = imageRef.current;
         const composer = composerRef.current;
         if (composer) {
-          const sel = selectedImageId ? selectionMapRef.current.get(selectedImageId || '')?.sel ?? null : selectionRef.current;
+          const selState = selectedImageId
+            ? selectionMapRef.current.get(selectedImageId) ?? null
+            : selectionRef.current
+            ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 }
+            : null;
           composer.compose(ctx as any, metrics as any, {
             tint,
             img,
             maskVisible,
             selectionVisible: selectionVisibleRef.current,
             scale,
-            selection: sel,
+            selection: selState,
           });
         }
       } catch (err) {
@@ -267,13 +315,16 @@ export function useMaskOverlay({
       if (!selectedImageId) {
         selectionRef.current = vals;
       } else {
-        if (!vals) selectionMapRef.current.delete(selectedImageId);
-        else
-          selectionMapRef.current.set(selectedImageId, {
-            sel: vals,
-            offset: { x: 0, y: 0 },
-            scale: 1,
-          });
+        if (!vals) {
+          selectionMapRef.current.delete(selectedImageId);
+          savePersisted(selectedImageId, null);
+        } else {
+          // if a state already exists, preserve its transform
+          const prev = selectionMapRef.current.get(selectedImageId) ?? loadPersisted(selectedImageId) ?? { sel: null, offset: { x: 0, y: 0 }, scale: 1 };
+          const next: SelectionState = { sel: vals, offset: prev.offset ?? { x: 0, y: 0 }, scale: prev.scale ?? 1 };
+          selectionMapRef.current.set(selectedImageId, next);
+          savePersisted(selectedImageId, next);
+        }
         // notify
         try {
           onSelectionChange?.(selectionMapRef.current.get(selectedImageId) ?? null);
@@ -298,17 +349,207 @@ export function useMaskOverlay({
         rafRef.current = null;
       });
     },
-      // Selection pointer handlers intentionally disabled.
-      // We keep selection storage and drawing, but remove all interactive hitboxes
-      // so selection visuals remain but cannot be moved or scaled with the pointer.
-      handleSelectionPointerDown: (_e: ReactPointerEvent<HTMLDivElement>, _tool: string) => {
-        return false;
+      // Selection pointer handlers: allow interactive translate/scale of selection
+      handleSelectionPointerDown: (e: ReactPointerEvent<HTMLDivElement>, tool: string) => {
+        const id = e.pointerId;
+        // Only respond to left button
+        if (e.button !== 0) return false;
+        // Only translate/scale when tool is 'translate'
+        if (tool !== 'translate') return false;
+
+  const key = selectedImageId ?? '';
+  const state = (selectedImageId ? selectionMapRef.current.get(key) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } : null);
+        if (!state) return false;
+
+        // capture pointer on preview so move events come through
+        try {
+          previewRef.current?.setPointerCapture(id);
+        } catch (err) {}
+
+        // store tracker: start positions and initial transform
+        pointerTracker.current.set(id, {
+          pointerId: id,
+          startX: e.clientX,
+          startY: e.clientY,
+          startOffset: { x: state.offset.x, y: state.offset.y },
+          startScale: state.scale,
+          mode: e.shiftKey ? 'scale' : 'pan',
+          startState: JSON.parse(JSON.stringify(state)),
+        });
+        return true;
       },
-      handleSelectionPointerMove: (_e: ReactPointerEvent<HTMLDivElement>) => {
-        return false;
+      handleSelectionPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => {
+        const id = e.pointerId;
+        const t = pointerTracker.current.get(id);
+        if (!t) return false;
+        e.preventDefault();
+  const dx = e.clientX - t.startX;
+  const dy = e.clientY - t.startY;
+
+        // update selection transform for current image
+  const key = selectedImageId ?? '';
+  const st = (selectedImageId ? selectionMapRef.current.get(key) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } : null);
+        if (!st) return false;
+
+        if (t.mode === 'scale') {
+          // scale based on vertical movement (drag up to increase)
+          const delta = 1 + dy * -0.002;
+          st.scale = Math.max(0.1, t.startScale * delta);
+        } else {
+          // Adjust pointer delta by the viewport scale so movement is 1:1
+          const vs = lastViewportRef.current?.scale ?? 1;
+          st.offset = { x: t.startOffset.x + dx / vs, y: t.startOffset.y + dy / vs };
+        }
+
+  if (selectedImageId) selectionMapRef.current.set(selectedImageId, st);
+  else selectionRef.current = st.sel;
+
+        // notify change
+        try {
+          onSelectionChange?.((selectedImageId ? selectionMapRef.current.get(selectedImageId) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } : null));
+        } catch (err) {}
+
+        // schedule redraw
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() => {
+          try {
+            const state = lastViewportRef.current;
+            const { metrics } = updateOverlayMetrics(state);
+            if (metrics) {
+              redrawOverlay(metrics, state.scale, true);
+            }
+          } catch (err) {}
+          rafRef.current = null;
+        });
+
+        return true;
       },
-      handleSelectionPointerUp: (_e: ReactPointerEvent<HTMLDivElement>) => {
-        return false;
+      handleSelectionPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => {
+        const id = e.pointerId;
+        const t = pointerTracker.current.get(id);
+        if (!t) return false;
+        try {
+          previewRef.current?.releasePointerCapture(id);
+        } catch (err) {}
+        pointerTracker.current.delete(id);
+        // persist the current selection state for the selected image
+        if (selectedImageId) {
+          const st = selectionMapRef.current.get(selectedImageId) ?? null;
+          try {
+            savePersisted(selectedImageId, st);
+          } catch (err) {}
+          // push undo if transform changed
+          try {
+            if (onPushUndo && t.startState) {
+              const before = t.startState as SelectionState;
+              const after = st as SelectionState | null;
+              const changed =
+                !!after &&
+                (before.offset.x !== after.offset.x || before.offset.y !== after.offset.y || before.scale !== after.scale);
+              if (changed) {
+                const doRedo = () => {
+                  selectionMapRef.current.set(selectedImageId!, after!);
+                  savePersisted(selectedImageId!, after);
+                  try {
+                    onSelectionChange?.(after);
+                  } catch (err) {}
+                  // redraw
+                  try {
+                    const state = lastViewportRef.current;
+                    const { metrics } = updateOverlayMetrics(state);
+                    if (metrics) redrawOverlay(metrics, state.scale, true);
+                  } catch (err) {}
+                };
+                const doUndo = () => {
+                  selectionMapRef.current.set(selectedImageId!, before);
+                  savePersisted(selectedImageId!, before);
+                  try {
+                    onSelectionChange?.(before);
+                  } catch (err) {}
+                  try {
+                    const state = lastViewportRef.current;
+                    const { metrics } = updateOverlayMetrics(state);
+                    if (metrics) redrawOverlay(metrics, state.scale, true);
+                  } catch (err) {}
+                };
+                onPushUndo({ undo: doUndo, redo: doRedo, description: 'Move selection' });
+              }
+            }
+          } catch (err) {}
+        }
+        return true;
+      },
+      handleSelectionWheel: (e: WheelEvent) => {
+        // scale selection when wheel used; positive deltaY -> zoom out
+        const key = selectedImageId ?? '';
+        const st = (selectedImageId ? selectionMapRef.current.get(key) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } : null);
+        if (!st) return false;
+        e.preventDefault();
+        const delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+        // record start state for undo on first wheel event before we mutate
+        try {
+          if (selectedImageId && !wheelStartRef.current) {
+            const existing = selectionMapRef.current.get(selectedImageId) ?? null;
+            wheelStartRef.current = existing ? JSON.parse(JSON.stringify(existing)) : null;
+          }
+        } catch (err) {}
+        const factor = Math.exp(-delta * 0.0015);
+        st.scale = Math.max(0.1, Math.min(10, st.scale * factor));
+        if (selectedImageId) selectionMapRef.current.set(selectedImageId, st);
+        else selectionRef.current = st.sel;
+        try {
+          onSelectionChange?.((selectedImageId ? selectionMapRef.current.get(selectedImageId) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } : null));
+        } catch (err) {}
+
+        // redraw
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() => {
+          try {
+            const state = lastViewportRef.current;
+            const { metrics } = updateOverlayMetrics(state);
+            if (metrics) redrawOverlay(metrics, state.scale, true);
+          } catch (err) {}
+          rafRef.current = null;
+        });
+
+        // Persist & push a single undo when wheel activity stops (debounced)
+        try {
+          if (selectedImageId) {
+            // clear previous timeout
+            if (wheelTimeoutRef.current) window.clearTimeout(wheelTimeoutRef.current);
+            wheelTimeoutRef.current = window.setTimeout(() => {
+              const final = selectionMapRef.current.get(selectedImageId) ?? null;
+              savePersisted(selectedImageId!, final);
+              // push undo if changed
+              try {
+                if (onPushUndo && wheelStartRef.current) {
+                  const before = wheelStartRef.current as SelectionState;
+                  const after = final as SelectionState | null;
+                  const changed = !!after && (before.scale !== after.scale || before.offset.x !== after.offset.x || before.offset.y !== after.offset.y);
+                  if (changed) {
+                    const doRedo = () => {
+                      selectionMapRef.current.set(selectedImageId!, after!);
+                      savePersisted(selectedImageId!, after);
+                      try { onSelectionChange?.(after); } catch (err) {}
+                      try { const s = lastViewportRef.current; const { metrics } = updateOverlayMetrics(s); if (metrics) redrawOverlay(metrics, s.scale, true); } catch (err) {}
+                    };
+                    const doUndo = () => {
+                      selectionMapRef.current.set(selectedImageId!, before);
+                      savePersisted(selectedImageId!, before);
+                      try { onSelectionChange?.(before); } catch (err) {}
+                      try { const s = lastViewportRef.current; const { metrics } = updateOverlayMetrics(s); if (metrics) redrawOverlay(metrics, s.scale, true); } catch (err) {}
+                    };
+                    onPushUndo({ undo: doUndo, redo: doRedo, description: 'Scale selection' });
+                  }
+                }
+              } catch (err) {}
+              wheelStartRef.current = null;
+              wheelTimeoutRef.current = null;
+            }, 150);
+          }
+        } catch (err) {}
+
+        return true;
       },
     getSelectionState: () => {
       if (!selectedImageId) {

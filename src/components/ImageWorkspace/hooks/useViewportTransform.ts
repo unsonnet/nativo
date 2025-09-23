@@ -52,6 +52,7 @@ export function useViewportTransform({
 }: UseViewportTransformParams): UseViewportTransformResult {
   const [viewportState, setViewportState] = useState<ViewportState>(createDefaultViewport);
   const viewportRef = useRef(viewportState);
+  const defaultViewportRef = useRef<ViewportState>(createDefaultViewport());
   const pointerStateRef = useRef<PointerState | null>(null);
   const rafRef = useRef<number | null>(null);
 
@@ -186,14 +187,18 @@ export function useViewportTransform({
     // a small buffer around the image for tools like the lasso.
     const node = previewRef.current;
     if (!node) {
-      applyViewport(createDefaultViewport());
+      const dv = createDefaultViewport();
+      defaultViewportRef.current = dv;
+      applyViewport(dv);
       return;
     }
     const rect = node.getBoundingClientRect();
     const defaultViewport = createDefaultViewport();
     const sx = rect.width * (1 - defaultViewport.scale) * 0.5;
     const sy = rect.height * (1 - defaultViewport.scale) * 0.5;
-    applyViewport({ scale: defaultViewport.scale, offset: { x: sx, y: sy } });
+    const dv = { scale: defaultViewport.scale, offset: { x: sx, y: sy } };
+    defaultViewportRef.current = dv;
+    applyViewport(dv);
   }, [applyViewport, cancelPan]);
 
   useEffect(() => {
@@ -219,10 +224,11 @@ export function useViewportTransform({
 
   const isViewportDefault = useMemo(() => {
     const { scale, offset } = viewportState;
+    const dv = defaultViewportRef.current ?? createDefaultViewport();
     return (
-      Math.abs(scale - 1) < 0.0001 &&
-      Math.abs(offset.x) < 0.5 &&
-      Math.abs(offset.y) < 0.5
+      Math.abs(scale - dv.scale) < 0.0001 &&
+      Math.abs(offset.x - dv.offset.x) < 0.5 &&
+      Math.abs(offset.y - dv.offset.y) < 0.5
     );
   }, [viewportState]);
 

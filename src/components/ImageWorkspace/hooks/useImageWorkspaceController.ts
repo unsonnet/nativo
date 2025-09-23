@@ -13,7 +13,7 @@ export function useImageWorkspaceController() {
 
   const previewRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const pointerModeRef = useRef<Map<number, 'pan' | 'mask' | 'none'>>(new Map());
+  const pointerModeRef = useRef<Map<number, 'pan' | 'mask' | 'selection' | 'none'>>(new Map());
   const modifierHeldRef = useRef(false);
   const [modifierActive, setModifierActive] = useState(false);
   const [maskVisible, setMaskVisible] = useState(true);
@@ -87,6 +87,7 @@ export function useImageWorkspaceController() {
     handleSelectionPointerMove,
     handleSelectionPointerUp,
     getSelectionState,
+    handleSelectionWheel,
   } = useMaskOverlay({
     previewRef,
     imageRef,
@@ -95,6 +96,7 @@ export function useImageWorkspaceController() {
     selectionVisible,
     selectedImageId: library.selectedImage?.id ?? null,
     onSelectionChange: setCurrentSelection,
+    onPushUndo: pushUndo,
   } as any);
   
 
@@ -174,8 +176,21 @@ export function useImageWorkspaceController() {
         return;
       }
 
-      // For translate/none etc, always route to viewport pan by default.
-      if (activeTool === 'translate' || activeTool === 'none') {
+      // For translate: prefer selection handlers; fall back to viewport pan
+      if (activeTool === 'translate') {
+        if (handleSelectionPointerDown(event, activeTool)) {
+          pointerModeRef.current.set(id, 'selection');
+          return;
+        }
+        pointerModeRef.current.set(id, 'pan');
+        handlePanPointerDown(event);
+        const node = previewRef.current;
+        if (node) node.classList.add('image-workspace__preview--force-grab');
+        return;
+      }
+
+      // For none, route to viewport pan
+      if (activeTool === 'none') {
         pointerModeRef.current.set(id, 'pan');
         handlePanPointerDown(event);
         const node = previewRef.current;
@@ -198,6 +213,10 @@ export function useImageWorkspaceController() {
 
       if (mode === 'mask') {
         if (handleMaskPointerMove(event)) return;
+        // fall through
+      }
+      if (mode === 'selection') {
+        if (handleSelectionPointerMove(event)) return;
         // fall through to pan
       }
       // pan mode or fallback -> pan the viewport
@@ -212,7 +231,7 @@ export function useImageWorkspaceController() {
       const id = event.pointerId;
       const mode = pointerModeRef.current.get(id) ?? 'none';
 
-      // Prefer mask handlers; otherwise always perform viewport pan up
+      // Prefer mask handlers; selection handlers; otherwise always perform viewport pan up
       if (mode === 'mask') {
         if (handleMaskPointerUp(event)) {
           pointerModeRef.current.delete(id);
@@ -223,13 +242,19 @@ export function useImageWorkspaceController() {
           return;
         }
       }
+      if (mode === 'selection') {
+        if (handleSelectionPointerUp(event)) {
+          pointerModeRef.current.delete(id);
+          return;
+        }
+      }
       handlePanPointerUp(event);
       pointerModeRef.current.delete(id);
       const node = previewRef.current;
       const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
       if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
     },
-    [handleMaskPointerUp, handlePanPointerUp]
+    [handleMaskPointerUp, handlePanPointerUp, handleSelectionPointerDown, handleSelectionPointerMove, handleSelectionPointerUp]
   );
 
   useEffect(() => {
@@ -406,6 +431,24 @@ export function useImageWorkspaceController() {
     [viewportState]
   );
 
+  // wrap wheel: if active tool is translate, route to selection wheel else viewport
+  const handleWheelWrapper = useCallback(
+    (e: any) => {
+      // If translate is active but Shift is held, prefer viewport zoom (hand behavior)
+      if (activeTool === 'translate' && e && e.shiftKey) {
+        handleWheel(e);
+        return;
+      }
+
+      if (activeTool === 'translate' && typeof handleSelectionWheel === 'function') {
+        const native = e && e.nativeEvent ? e.nativeEvent : e;
+        if (handleSelectionWheel(native)) return;
+      }
+      handleWheel(e);
+    },
+    [activeTool, handleSelectionWheel, handleWheel]
+  );
+
   return {
     library,
     activeTool,
@@ -413,7 +456,7 @@ export function useImageWorkspaceController() {
     handleViewportPointerDown,
     handleViewportPointerMove,
     handleViewportPointerUp,
-    handleWheel,
+  handleWheel: handleWheelWrapper,
     previewRef,
     imageRef,
     tintOverlayRef,

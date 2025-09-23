@@ -7,9 +7,20 @@ export type Metrics = {
   containerHeight: number;
 };
 
-export type Selection = { length: number | null; width: number | null; thickness: number | null } | null;
+export type SelectionVals = { length: number | null; width: number | null; thickness: number | null } | null;
 
-export function drawSelection(ctx: CanvasRenderingContext2D, metrics: Metrics, sel: Selection) {
+// SelectionState contains the raw selection values plus transform (offset/scale)
+export type SelectionState =
+  | {
+      sel: SelectionVals;
+      offset: { x: number; y: number };
+      scale: number;
+    }
+  | null;
+
+export function drawSelection(ctx: CanvasRenderingContext2D, metrics: Metrics, selection: SelectionState) {
+  if (!selection) return;
+  const sel = selection.sel;
   if (!sel || !sel.length || !sel.width) return;
 
   // compute aspect ratio with longest horizontal
@@ -33,8 +44,17 @@ export function drawSelection(ctx: CanvasRenderingContext2D, metrics: Metrics, s
     w = h * aspect;
   }
 
-  const x = metrics.left + (baseW - w) / 2;
-  const y = metrics.top + (baseH - h) / 2;
+  // center in image content
+  let x = metrics.left + (baseW - w) / 2;
+  let y = metrics.top + (baseH - h) / 2;
+
+  // apply scale about center, then apply offset (CSS px)
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  w = w * (selection.scale ?? 1);
+  h = h * (selection.scale ?? 1);
+  x = cx - w / 2 + (selection.offset?.x ?? 0);
+  y = cy - h / 2 + (selection.offset?.y ?? 0);
 
   ctx.save();
   ctx.fillStyle = 'rgba(56,189,248,0.08)';
