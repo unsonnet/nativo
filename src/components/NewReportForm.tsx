@@ -106,10 +106,10 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
       const widthVal = form.width === '' ? null : Number.parseFloat(form.width);
       const thicknessVal = form.thickness === '' ? null : Number.parseFloat(form.thickness);
       onDimensionsValues?.({ length: lengthVal, width: widthVal, thickness: thicknessVal });
-    } catch (err) {
+    } catch {
       // ignore
     }
-  }, [form.length, form.width, onDimensionsChange, onDimensionsValues]);
+  }, [form.length, form.width, form.thickness, onDimensionsChange, onDimensionsValues]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,7 +128,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
     setErrorMessage(null);
     try {
       onSubmit?.(form);
-    } catch (err) {
+    } catch {
       setErrorMessage('Failed to create report. Please try again.');
     } finally {
       // leave loading state briefly to show spinner; real API should control this

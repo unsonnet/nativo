@@ -26,7 +26,7 @@ type UseMaskOverlayParams = {
   maskVisible?: boolean;
   selectionVisible?: boolean;
   selectedImageId?: string | null;
-  onSelectionChange?: (state: any | null) => void;
+  onSelectionChange?: (state: unknown | null) => void;
   onPushUndo?: (action: { undo: () => void; redo?: () => void; description?: string }) => void;
 };
 
@@ -40,7 +40,7 @@ type UseMaskOverlayResult = {
   handleSelectionPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
   handleSelectionPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
   handleSelectionWheel?: (e: WheelEvent) => boolean;
-  getSelectionState: () => any | null;
+  getSelectionState: () => unknown | null;
 };
 
 export function useMaskOverlay({
@@ -58,7 +58,37 @@ export function useMaskOverlay({
   type SelectionVals = { length: number | null; width: number | null; thickness: number | null } | null;
   type SelectionState = { sel: SelectionVals; offset: { x: number; y: number }; scale: number; rotation?: Quat | null };
   const selectionMapRef = useRef<Map<string, SelectionState>>(new Map());
-  const pointerTracker = useRef<Map<number, any>>(new Map());
+  type TranslateTracker = {
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startOffset: { x: number; y: number };
+    startScale: number;
+    mode: 'scale' | 'pan';
+    startState: SelectionState | null;
+  };
+  type RotateTracker = {
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startRot: Quat;
+    center: { x: number; y: number };
+    radius: number;
+    startVec: { x: number; y: number; z: number };
+    startAngle: number;
+    mode: 'arcball' | 'roll';
+    startState: SelectionState | null;
+  };
+  type PointerTrackerEntry = TranslateTracker | RotateTracker;
+  const pointerTracker = useRef<Map<number, PointerTrackerEntry>>(new Map());
+  type DrawerOpts = {
+    tint?: HTMLCanvasElement | null;
+    img?: HTMLImageElement | null;
+    maskVisible?: boolean;
+    selectionVisible?: boolean;
+    scale?: number;
+    selection?: SelectionState | null;
+  } | undefined;
   // backward compat when no image id is provided
   const selectionRef = useRef<{ length: number | null; width: number | null; thickness: number | null } | null>(null);
   const overlayMetricsRef = useRef<OverlayMetricsEx | null>(null);
@@ -93,13 +123,14 @@ export function useMaskOverlay({
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') return parsed as SelectionState;
-    } catch (err) {}
+  } catch {}
     return null;
+  }, []);
+
   useEffect(() => {
     return () => {
       if (wheelTimeoutRef.current) window.clearTimeout(wheelTimeoutRef.current);
     };
-  }, []);
   }, []);
   const savePersisted = useCallback((id: string, st: SelectionState | null) => {
     try {
@@ -108,7 +139,7 @@ export function useMaskOverlay({
         return;
       }
       localStorage.setItem(STORAGE_PREFIX + id, JSON.stringify(st));
-    } catch (err) {}
+  } catch {}
   }, []);
 
   // Load persisted selection state when selected image changes
@@ -120,19 +151,31 @@ export function useMaskOverlay({
         selectionMapRef.current.set(selectedImageId, persisted);
         try {
           onSelectionChange?.(persisted);
-        } catch (err) {}
+        } catch {}
       }
-    } catch (err) {}
+    } catch {}
   }, [selectedImageId, loadPersisted, onSelectionChange]);
 
   useEffect(() => {
     const c = new OverlayComposer();
-    c.addDrawer((ctx, metrics, opts) => drawMask(ctx as any, metrics as any, opts.tint, opts.img, opts.maskVisible, opts.scale));
+    c.addDrawer((ctx, metrics, opts) => {
+      const o = opts as DrawerOpts;
+      try {
+        drawMask(ctx, metrics, o?.tint ?? null, o?.img ?? null, !!o?.maskVisible);
+      } catch {
+        // ignore
+      }
+    });
     // only draw selection when explicitly visible and selection values exist
     c.addDrawer((ctx, metrics, opts) => {
-      if (!opts || opts.selectionVisible === false) return;
-      if (!opts.selection) return;
-      drawSelection(ctx as any, metrics as any, opts.selection);
+      const o = opts as DrawerOpts;
+      if (!o || o.selectionVisible === false) return;
+      if (!o.selection) return;
+      try {
+        drawSelection(ctx, metrics, o.selection);
+      } catch {
+        // ignore
+      }
     });
     composerRef.current = c;
     return () => {
@@ -142,7 +185,8 @@ export function useMaskOverlay({
 
 
   const updateOverlayMetrics = useCallback(
-    (state: ViewportState) => {
+    (_state: ViewportState) => {
+      void _state;
       const overlay = tintOverlayRef.current;
       const preview = previewRef.current;
       const img = imageRef.current;
@@ -202,7 +246,7 @@ export function useMaskOverlay({
         overlay.style.transformOrigin = 'top left';
         const imgTransform = (img.style && img.style.transform) || '';
         overlay.style.transform = imgTransform;
-      } catch (err) {
+      } catch {
         // ignore style errors in environments where style may be readonly
       }
 
@@ -270,7 +314,7 @@ export function useMaskOverlay({
             : selectionRef.current
             ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 }
             : null;
-          composer.compose(ctx as any, metrics as any, {
+          composer.compose(ctx, metrics, {
             tint,
             img,
             maskVisible,
@@ -279,7 +323,7 @@ export function useMaskOverlay({
             selection: selState,
           });
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
 
@@ -342,7 +386,7 @@ export function useMaskOverlay({
         // notify
         try {
           onSelectionChange?.(selectionMapRef.current.get(selectedImageId) ?? null);
-        } catch (err) {}
+        } catch {}
       }
       // schedule redraw on next animation frame so DOM layout and transforms
       // have settled (prevents mis-centering races)
@@ -357,7 +401,7 @@ export function useMaskOverlay({
           if (metrics) {
             redrawOverlay(metrics, state.scale, true);
           }
-        } catch (err) {
+        } catch {
           // ignore
         }
         rafRef.current = null;
@@ -376,7 +420,7 @@ export function useMaskOverlay({
         // capture pointer on preview so move events come through
         try {
           previewRef.current?.setPointerCapture(id);
-        } catch (err) {}
+        } catch {}
 
         if (tool === 'translate') {
           // store tracker: start positions and initial transform
@@ -394,7 +438,7 @@ export function useMaskOverlay({
 
         if (tool === 'rotate') {
           const st = selectedImageId ? selectionMapRef.current.get(key) : null;
-          const baseRect = computeSelectionBaseRect(overlayMetricsRef.current as any, (st ?? state) as any);
+          const baseRect = computeSelectionBaseRect(overlayMetricsRef.current, (st ?? state));
           // compute center and radius in SCREEN space using overlay rect scaling
           const overlayEl = tintOverlayRef.current;
           const rect = overlayEl?.getBoundingClientRect();
@@ -493,7 +537,7 @@ export function useMaskOverlay({
         // notify change
         try {
           onSelectionChange?.((selectedImageId ? selectionMapRef.current.get(selectedImageId) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } : null));
-        } catch (err) {}
+  } catch {}
 
         // schedule redraw
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -504,7 +548,7 @@ export function useMaskOverlay({
             if (metrics) {
               redrawOverlay(metrics, state.scale, true);
             }
-          } catch (err) {}
+          } catch {}
           rafRef.current = null;
         });
 
@@ -516,14 +560,14 @@ export function useMaskOverlay({
         if (!t) return false;
         try {
           previewRef.current?.releasePointerCapture(id);
-        } catch (err) {}
+        } catch {}
         pointerTracker.current.delete(id);
         // persist the current selection state for the selected image
         if (selectedImageId) {
           const st = selectionMapRef.current.get(selectedImageId) ?? null;
           try {
             savePersisted(selectedImageId, st);
-          } catch (err) {}
+          } catch {}
           // push undo if transform changed
           try {
             if (onPushUndo && t.startState) {
@@ -541,31 +585,31 @@ export function useMaskOverlay({
                   savePersisted(selectedImageId!, after);
                   try {
                     onSelectionChange?.(after);
-                  } catch (err) {}
+                  } catch {}
                   // redraw
                   try {
                     const state = lastViewportRef.current;
                     const { metrics } = updateOverlayMetrics(state);
                     if (metrics) redrawOverlay(metrics, state.scale, true);
-                  } catch (err) {}
+                  } catch {}
                 };
                 const doUndo = () => {
                   selectionMapRef.current.set(selectedImageId!, before);
                   savePersisted(selectedImageId!, before);
                   try {
                     onSelectionChange?.(before);
-                  } catch (err) {}
+                  } catch {}
                   try {
                     const state = lastViewportRef.current;
                     const { metrics } = updateOverlayMetrics(state);
                     if (metrics) redrawOverlay(metrics, state.scale, true);
-                  } catch (err) {}
+                  } catch {}
                 };
                 const desc = (t.mode === 'arcball' || t.mode === 'roll') ? 'Rotate selection' : (t.mode === 'scale' ? 'Scale selection' : 'Move selection');
                 onPushUndo({ undo: doUndo, redo: doRedo, description: desc });
               }
             }
-          } catch (err) {}
+                } catch {}
         }
         return true;
       },
@@ -582,14 +626,14 @@ export function useMaskOverlay({
             const existing = selectionMapRef.current.get(selectedImageId) ?? null;
             wheelStartRef.current = existing ? JSON.parse(JSON.stringify(existing)) : null;
           }
-        } catch (err) {}
+        } catch {}
         const factor = Math.exp(-delta * 0.0015);
         st.scale = Math.max(0.1, Math.min(10, st.scale * factor));
         if (selectedImageId) selectionMapRef.current.set(selectedImageId, st);
         else selectionRef.current = st.sel;
         try {
           onSelectionChange?.((selectedImageId ? selectionMapRef.current.get(selectedImageId) : null) ?? (selectionRef.current ? { sel: selectionRef.current, offset: { x: 0, y: 0 }, scale: 1 } : null));
-        } catch (err) {}
+        } catch {}
 
         // redraw
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -598,7 +642,7 @@ export function useMaskOverlay({
             const state = lastViewportRef.current;
             const { metrics } = updateOverlayMetrics(state);
             if (metrics) redrawOverlay(metrics, state.scale, true);
-          } catch (err) {}
+          } catch {}
           rafRef.current = null;
         });
 
@@ -620,24 +664,24 @@ export function useMaskOverlay({
                     const doRedo = () => {
                       selectionMapRef.current.set(selectedImageId!, after!);
                       savePersisted(selectedImageId!, after);
-                      try { onSelectionChange?.(after); } catch (err) {}
-                      try { const s = lastViewportRef.current; const { metrics } = updateOverlayMetrics(s); if (metrics) redrawOverlay(metrics, s.scale, true); } catch (err) {}
+                      try { onSelectionChange?.(after); } catch {}
+                      try { const s = lastViewportRef.current; const { metrics } = updateOverlayMetrics(s); if (metrics) redrawOverlay(metrics, s.scale, true); } catch {}
                     };
                     const doUndo = () => {
                       selectionMapRef.current.set(selectedImageId!, before);
                       savePersisted(selectedImageId!, before);
-                      try { onSelectionChange?.(before); } catch (err) {}
-                      try { const s = lastViewportRef.current; const { metrics } = updateOverlayMetrics(s); if (metrics) redrawOverlay(metrics, s.scale, true); } catch (err) {}
+                      try { onSelectionChange?.(before); } catch {}
+                      try { const s = lastViewportRef.current; const { metrics } = updateOverlayMetrics(s); if (metrics) redrawOverlay(metrics, s.scale, true); } catch {}
                     };
                     onPushUndo({ undo: doUndo, redo: doRedo, description: 'Scale selection' });
                   }
                 }
-              } catch (err) {}
+              } catch {}
               wheelStartRef.current = null;
               wheelTimeoutRef.current = null;
             }, 150);
           }
-        } catch (err) {}
+  } catch {}
 
         return true;
       },

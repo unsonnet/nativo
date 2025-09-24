@@ -8,8 +8,9 @@ export type RotatedQuad = {
   center: { x: number; y: number };
 };
 
-export function computeSelectionBaseRect(metrics: Metrics, selection: SelectionState) {
-  const sel = selection?.sel;
+export function computeSelectionBaseRect(metrics: Metrics | null, selection: SelectionState | null) {
+  if (!metrics || !selection) return null;
+  const sel = selection.sel;
   if (!sel || !sel.length || !sel.width) return null;
 
   const long = Math.max(sel.length, sel.width);
@@ -55,7 +56,7 @@ export function projectTo2D(v: { x: number; y: number; z: number }, center: { x:
 export function buildRotatedQuad(metrics: Metrics, selection: SelectionState, rot?: Quat | null, persp = 800): RotatedQuad | null {
   const base = computeSelectionBaseRect(metrics, selection);
   if (!base) return null;
-  const q = rot ?? (selection && (selection as any).rotation ? (selection as any).rotation as Quat : quatIdentity());
+  const q = rot ?? (selection && selection.rotation ? (selection.rotation as Quat) : quatIdentity());
 
   // local half extents
   const hx = base.w / 2;

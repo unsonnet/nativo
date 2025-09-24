@@ -2,14 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 
 import { useImageLibrary } from './useImageLibrary';
-import { useImageMasking, useMaskOverlay, useViewportTransform } from './index';
+import { useImageMasking } from './useImageMasking';
+import { useMaskOverlay } from './useMaskOverlay';
+import { useViewportTransform } from './useViewportTransform';
 import type { WorkspaceTool } from '../types';
 
 export function useImageWorkspaceController() {
   const library = useImageLibrary();
   const [activeTool, setActiveTool] = useState<WorkspaceTool>('hand');
   const [isViewportPanning, setIsViewportPanning] = useState(false);
-  const [currentSelection, setCurrentSelection] = useState<any | null>(null);
+  const [currentSelection, setCurrentSelection] = useState<unknown | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -32,7 +34,6 @@ export function useImageWorkspaceController() {
     setCanUndoState(true);
   }, []);
 
-  const canUndo = useCallback(() => undoStackRef.current.length > 0, []);
   const canRedo = useCallback(() => redoStackRef.current.length > 0, []);
 
   const undo = useCallback(() => {
@@ -42,7 +43,7 @@ export function useImageWorkspaceController() {
       action.undo();
       if (action.redo) redoStackRef.current.push(action);
       setCanUndoState(undoStackRef.current.length > 0);
-    } catch (err) {
+    } catch {
       // ignore
     }
   }, []);
@@ -54,7 +55,7 @@ export function useImageWorkspaceController() {
       if (action.redo) action.redo();
       undoStackRef.current.push(action);
       setCanUndoState(true);
-    } catch (err) {
+    } catch {
       // ignore
     }
   }, []);
@@ -97,7 +98,7 @@ export function useImageWorkspaceController() {
     selectedImageId: library.selectedImage?.id ?? null,
     onSelectionChange: setCurrentSelection,
     onPushUndo: pushUndo,
-  } as any);
+  });
   
 
 
@@ -125,10 +126,10 @@ export function useImageWorkspaceController() {
       // read initial selection for the newly selected image
       const st = (typeof getSelectionState === 'function' ? getSelectionState() : null) ?? null;
       setCurrentSelection(st);
-    } catch (err) {
+    } catch {
       setCurrentSelection(null);
     }
-  }, [selectedImageId]);
+  }, [selectedImageId, getSelectionState]);
 
   // Clear undo/redo history when the selected image changes (or is removed)
   useEffect(() => {
@@ -221,7 +222,7 @@ export function useImageWorkspaceController() {
       const node = previewRef.current;
       if (node) node.classList.add('image-workspace__preview--force-grab');
     },
-    [activeTool, handleMaskPointerDown, handlePanPointerDown]
+    [activeTool, handleMaskPointerDown, handlePanPointerDown, handleSelectionPointerDown]
   );
 
   const handleViewportPointerMove = useCallback(
@@ -241,7 +242,7 @@ export function useImageWorkspaceController() {
       handlePanPointerMove(event);
       return;
     },
-    [handleMaskPointerMove, handlePanPointerMove]
+    [handleMaskPointerMove, handlePanPointerMove, handleSelectionPointerMove]
   );
 
   const handleViewportPointerUp = useCallback(
@@ -274,7 +275,7 @@ export function useImageWorkspaceController() {
       const anyPan = Array.from(pointerModeRef.current.values()).includes('pan');
       if (node && !anyPan) node.classList.remove('image-workspace__preview--force-grab');
     },
-    [handleMaskPointerUp, handlePanPointerUp, handleSelectionPointerDown, handleSelectionPointerMove, handleSelectionPointerUp]
+    [handleMaskPointerUp, handlePanPointerUp, handleSelectionPointerUp]
   );
 
   useEffect(() => {
@@ -320,7 +321,7 @@ export function useImageWorkspaceController() {
           undo();
           return;
         }
-      } catch (err) {
+        } catch {
         // ignore
       }
       if (e.shiftKey) setModifier(true);
@@ -348,12 +349,12 @@ export function useImageWorkspaceController() {
   useEffect(() => {
     try {
       forceRedraw();
-    } catch (err) {
+    } catch {
       /* ignore */
     }
     try {
       updateFromViewport(viewportState);
-    } catch (err) {
+    } catch {
       /* ignore */
     }
   }, [maskVisible, forceRedraw, updateFromViewport, viewportState]);
@@ -361,14 +362,14 @@ export function useImageWorkspaceController() {
   useEffect(() => {
     try {
       forceRedraw();
-    } catch (err) {
+    } catch {
       /* ignore */
     }
-    try {
-      updateFromViewport(viewportState);
-    } catch (err) {
-      /* ignore */
-    }
+      try {
+          updateFromViewport(viewportState);
+        } catch {
+          /* ignore */
+        }
   }, [selectionVisible, forceRedraw, updateFromViewport, viewportState]);
 
   // Add a class when no tool is selected so we can show default cursor
@@ -401,7 +402,7 @@ export function useImageWorkspaceController() {
         // ensure overlay aligns with current viewport transform
         try {
           updateFromViewport(viewportState);
-        } catch (err) {
+        } catch {
           /* ignore */
         }
         return;
@@ -412,7 +413,7 @@ export function useImageWorkspaceController() {
       try {
         // we rely on the overlay to draw the masked image; ensure overlay is visible
         if (overlayCanvas) overlayCanvas.style.opacity = '1';
-      } catch (err) {
+      } catch {
         // ignore
       }
     };
@@ -420,7 +421,7 @@ export function useImageWorkspaceController() {
     // Always redraw first, then apply mask state
     forceRedraw();
     applyMask();
-  }, [forceRedraw, overlayVersion, selectedImageId, maskVisible, getMaskCanvas]);
+  }, [forceRedraw, overlayVersion, selectedImageId, maskVisible, getMaskCanvas, tintOverlayRef, updateFromViewport, viewportState]);
 
   useEffect(() => {
     if (!selectedImageId) return;
@@ -453,16 +454,15 @@ export function useImageWorkspaceController() {
 
   // wrap wheel: if active tool is translate, route to selection wheel else viewport
   const handleWheelWrapper = useCallback(
-    (e: any) => {
-      // If translate/rotate is active but Shift is held, prefer viewport zoom (hand behavior)
-      if ((activeTool === 'translate' || activeTool === 'rotate') && e && e.shiftKey) {
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      const shiftHeld = !!e.shiftKey;
+      if ((activeTool === 'translate' || activeTool === 'rotate') && shiftHeld) {
         handleWheel(e);
         return;
       }
 
       if ((activeTool === 'translate' || activeTool === 'rotate') && typeof handleSelectionWheel === 'function') {
-        const native = e && e.nativeEvent ? e.nativeEvent : e;
-        // If rotate and wheel is active, temporarily highlight translate in the toolbar
+  const native = e.nativeEvent as WheelEvent;
         try {
           if (activeTool === 'rotate') {
             setTempToolOverride('translate');
@@ -472,10 +472,10 @@ export function useImageWorkspaceController() {
               wheelTempRef.current = null;
             }, 250);
           }
-        } catch (err) {}
+        } catch {}
         if (handleSelectionWheel(native)) return;
       }
-      handleWheel(e);
+  handleWheel(e);
     },
     [activeTool, handleSelectionWheel, handleWheel]
   );

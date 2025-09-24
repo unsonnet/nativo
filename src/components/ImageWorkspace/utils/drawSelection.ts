@@ -26,9 +26,9 @@ export function drawSelection(ctx: CanvasRenderingContext2D, metrics: Metrics, s
   if (!sel || !sel.length || !sel.width) return;
 
   // If rotation is present, draw as rotated quad in pseudo-3D
-  const hasRotation = !!(selection as any).rotation;
+  const hasRotation = !!selection.rotation;
   if (hasRotation) {
-    const quad = buildRotatedQuad(metrics as any, selection as any);
+    const quad = buildRotatedQuad(metrics, selection);
     if (quad) {
       const pts = quad.corners2D;
       ctx.save();

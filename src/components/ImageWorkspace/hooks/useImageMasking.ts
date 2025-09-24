@@ -124,7 +124,7 @@ export function useImageMasking<TImage extends MaskImage>({
           localX = p.x;
           localY = p.y;
         }
-      } catch (err) {
+      } catch {
         // fallback to using relX/relY as local
       }
 
@@ -137,7 +137,7 @@ export function useImageMasking<TImage extends MaskImage>({
 
       return { x: imgX, y: imgY };
     },
-    [imageRef]
+    [imageRef, previewRef]
   );
 
   /** Convert pointer coords to preview coords */
@@ -177,7 +177,7 @@ export function useImageMasking<TImage extends MaskImage>({
       let next: ImageData | null = null;
       try {
         prev = maskCtx.getImageData(0, 0, asset.width, asset.height);
-      } catch (err) {
+      } catch {
         prev = null;
       }
 
@@ -193,7 +193,7 @@ export function useImageMasking<TImage extends MaskImage>({
 
       try {
         next = maskCtx.getImageData(0, 0, asset.width, asset.height);
-      } catch (err) {
+      } catch {
         next = null;
       }
 
@@ -204,13 +204,13 @@ export function useImageMasking<TImage extends MaskImage>({
             const a = assetsRef.current.get(imageId);
             if (!a) return;
             const ctx = a.maskCtx;
-            try {
-              ctx.putImageData(prev as ImageData, 0, 0);
-              updateTintOverlay(a);
-              setOverlayVersion((v) => v + 1);
-            } catch (err) {
-              /* ignore */
-            }
+                try {
+                  ctx.putImageData(prev as ImageData, 0, 0);
+                  updateTintOverlay(a);
+                  setOverlayVersion((v) => v + 1);
+                } catch {
+                  /* ignore */
+                }
           },
           redo: next
             ? () => {
@@ -221,24 +221,24 @@ export function useImageMasking<TImage extends MaskImage>({
                   ctx.putImageData(next as ImageData, 0, 0);
                   updateTintOverlay(a);
                   setOverlayVersion((v) => v + 1);
-                } catch (err) {
+                } catch {
                   /* ignore */
                 }
               }
             : undefined,
           description: `Mask: ${tool}`,
         };
-        try {
-          onPushUndo(undoAction);
-        } catch (err) {
-          /* ignore */
-        }
+                try {
+                  onPushUndo(undoAction);
+                } catch {
+                  /* ignore */
+                }
       }
 
       updateTintOverlay(asset);
       setOverlayVersion((v) => v + 1);
     },
-    [updateTintOverlay]
+    [updateTintOverlay, onPushUndo]
   );
 
   /** Release pointer capture + reset state */
@@ -269,7 +269,7 @@ export function useImageMasking<TImage extends MaskImage>({
       // prevent default to avoid context menu on right-click drag
       try {
         e.preventDefault();
-      } catch (err) {
+      } catch {
         /* ignore */
       }
 

@@ -1,6 +1,6 @@
 import type { Metrics } from './drawSelection';
 
-export type OverlayDrawer = (ctx: CanvasRenderingContext2D, metrics: Metrics, opts?: any) => void;
+export type OverlayDrawer = (ctx: CanvasRenderingContext2D, metrics: Metrics, opts?: unknown) => void;
 
 export class OverlayComposer {
   private drawers: OverlayDrawer[] = [];
@@ -13,12 +13,12 @@ export class OverlayComposer {
     this.drawers.length = 0;
   }
 
-  compose(ctx: CanvasRenderingContext2D, metrics: Metrics, opts?: any) {
+  compose(ctx: CanvasRenderingContext2D, metrics: Metrics, opts?: unknown) {
     for (const d of this.drawers) {
-      try {
-        d(ctx, metrics, opts);
-      } catch (err) {
-        // ignore drawer errors
+        try {
+          d(ctx, metrics, opts);
+        } catch {
+          // ignore drawer errors
       }
     }
   }

@@ -1,9 +1,8 @@
 'use client';
 
 import { Dropzone, PreviewCanvas, ThumbnailList, Toolbar } from './components';
-import { useImageWorkspaceController } from './hooks/useImageWorkspaceController';
-import { useEffect } from 'react';
-import { useRef } from 'react';
+import { useImageWorkspaceController } from './hooks';
+import { useEffect, useRef } from 'react';
 
 import './styles/workspace.css';
 
@@ -39,9 +38,8 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
     undo,
     canUndo,
     setSelectionDimensions,
-    selectionVisible,
-    setSelectionVisible,
-    selectionState,
+  selectionVisible,
+  setSelectionVisible,
   } = useImageWorkspaceController();
 
   // read current per-image selection state (offset + scale) from controller
@@ -52,16 +50,14 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
 
   useEffect(() => {
     try {
-      // @ts-ignore
       setSelectionDimensions?.(dimensions ?? null);
-    } catch (err) {
+    } catch {
       // ignore
     }
     // ensure redraw
     try {
-      // @ts-ignore
       if (dimensions) forceRedraw();
-    } catch (err) {
+    } catch {
       // ignore
     }
     // if dimensions are cleared, hide selection; if they just became filled, show selection
@@ -77,7 +73,7 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
         setSelectionVisible(true);
       }
       prevDimsRef.current = dimensions ?? null;
-    } catch (err) {
+    } catch {
       // ignore
     }
   // also run when selected image changes so provided `dimensions` are applied
@@ -94,7 +90,7 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
   useEffect(() => {
     try {
       onImagesChange?.(library.images.length);
-    } catch (err) {
+    } catch {
       // ignore
     }
   }, [library.images.length, onImagesChange]);

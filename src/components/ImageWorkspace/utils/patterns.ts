@@ -1,4 +1,4 @@
-export function createStripesPattern(scale = 1) {
+export function createStripesPattern() {
   const canvas = document.createElement('canvas');
   const size = 30;
   canvas.width = size;

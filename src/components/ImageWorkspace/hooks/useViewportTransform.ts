@@ -73,7 +73,7 @@ export function useViewportTransform({
         // Prevent native image dragging so the image can't be dragged out of the app
         try {
           img.draggable = false;
-        } catch (err) {
+        } catch {
           // Some environments may restrict setting draggable; ignore
         }
         const { scale, offset } = viewportRef.current;
@@ -199,7 +199,7 @@ export function useViewportTransform({
     const dv = { scale: defaultViewport.scale, offset: { x: sx, y: sy } };
     defaultViewportRef.current = dv;
     applyViewport(dv);
-  }, [applyViewport, cancelPan]);
+  }, [applyViewport, cancelPan, previewRef]);
 
   useEffect(() => {
     viewportRef.current = viewportState;

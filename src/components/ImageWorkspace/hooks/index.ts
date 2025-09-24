@@ -1,18 +1,3 @@
-export {
-  useViewportTransform,
-  createDefaultViewport,
-} from './useViewportTransform';
-export type { ViewportState } from './useViewportTransform';
-
-export {
-  useImageMasking,
-} from './useImageMasking';
-export type {
-  MaskTool,
-  MaskImage,
-  BooleanMask,
-  UseImageMaskingParams,
-  UseImageMaskingResult,
-} from './useImageMasking';
-
-export { useMaskOverlay } from './useMaskOverlay';
+// Only export what other files in the repo import from this folder.
+export { useImageWorkspaceController } from './useImageWorkspaceController';
+export type { UseImageMaskingResult } from './useImageMasking';

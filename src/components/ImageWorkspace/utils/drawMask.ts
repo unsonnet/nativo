@@ -1,14 +1,14 @@
 import type { Metrics } from './drawSelection';
 import { createStripesPattern } from './patterns';
 
-export function drawMask(ctx: CanvasRenderingContext2D, metrics: Metrics, tint: HTMLCanvasElement | null, img?: HTMLImageElement | null, maskVisible = true, scale = 1) {
+export function drawMask(ctx: CanvasRenderingContext2D, metrics: Metrics, tint: HTMLCanvasElement | null, img?: HTMLImageElement | null, maskVisible = true) {
   if (!ctx) return;
   ctx.save();
   if (maskVisible) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.fillRect(0, 0, metrics.containerWidth, metrics.containerHeight);
 
-    const stripes = createStripesPattern(scale);
+  const stripes = createStripesPattern();
     if (stripes) {
       const pattern = ctx.createPattern(stripes, 'repeat');
       if (pattern) {
@@ -40,7 +40,7 @@ export function drawMask(ctx: CanvasRenderingContext2D, metrics: Metrics, tint: 
           ctx.drawImage(tint, 0, 0, tint.width, tint.height, dstLeft, dstTop, dstWidth, dstHeight);
           ctx.globalCompositeOperation = 'source-over';
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
     }
