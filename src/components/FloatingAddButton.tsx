@@ -11,7 +11,7 @@ export function FloatingAddButton({ onClick }: FloatingAddButtonProps) {
 
   const handleClick = () => {
     onClick?.();
-    router.push('/dashboard/new');
+    router.push('/create');
   };
 
   return (

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useRouter } from 'next/navigation';
 
@@ -6,7 +6,7 @@ import { ImageWorkspace } from '@/components/ImageWorkspace';
 import { NewReportForm } from '@/components/NewReportForm';
 import { useState, useCallback } from 'react';
 
-export default function NewReportPage() {
+export default function CreatePage() {
   const router = useRouter();
   const [gridEnabled, setGridEnabled] = useState(false);
   const [dimensions, setDimensions] = useState<{ length: number | null; width: number | null; thickness: number | null }>({
@@ -47,4 +47,3 @@ export default function NewReportPage() {
     </div>
   );
 }
-
