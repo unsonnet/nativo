@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import type { FormEvent } from 'react';
 
 type FlooringOption = {
@@ -9,7 +10,8 @@ type FlooringOption = {
 };
 
 type NewReportFormProps = {
-  onSubmit?: (data: NewReportFormState) => void;
+  // onSubmit now receives the form state plus an `author` string (user id)
+  onSubmit?: (data: NewReportFormState & { author: string }) => void;
   onDimensionsChange?: (enabled: boolean) => void;
   onDimensionsValues?: (vals: { length: number | null; width: number | null; thickness: number | null }) => void;
   imageCount?: number;
@@ -50,6 +52,7 @@ const INITIAL_TOUCHED_STATE = {
 
 export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues, imageCount = 0 }: NewReportFormProps) {
   const [form, setForm] = useState<NewReportFormState>(INITIAL_FORM_STATE);
+  const { user } = useAuth();
   const [touched, setTouched] = useState(INITIAL_TOUCHED_STATE);
   const [isReportNameFocused, setIsReportNameFocused] = useState(false);
   const reportNameRef = useRef<HTMLInputElement>(null);
@@ -127,7 +130,9 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      onSubmit?.(form);
+      // attach author from current auth state if available
+      const author = user?.id ?? 'guest';
+      onSubmit?.({ ...form, author });
     } catch {
       setErrorMessage('Failed to create report. Please try again.');
     } finally {

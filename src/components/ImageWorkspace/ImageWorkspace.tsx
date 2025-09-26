@@ -1,18 +1,39 @@
-'use client';
+"use client";
 
 import { Dropzone, PreviewCanvas, ThumbnailList, Toolbar } from './components';
 import { useImageWorkspaceController } from './hooks';
 import { useEffect, useRef } from 'react';
+import type { ProductImage } from '@/types/report';
 
 import './styles/workspace.css';
+
+// Internal helper types for normalizing controller selection state without unsafe casts
+type SelectionValsLike = { length: number | null; width: number | null; thickness?: number | null } | null;
+type SelectionStateLike = {
+  sel?: SelectionValsLike;
+  offset?: { x: number; y: number };
+  scale?: number;
+  rotation?: { x: number; y: number; z: number; w: number } | null;
+} | SelectionValsLike;
+
+function isSelectionStateLike(v: unknown): v is SelectionStateLike {
+  if (v == null) return false;
+  if (typeof v !== 'object') return false;
+  return true;
+}
+
+function hasSelProp(v: unknown): v is { sel?: SelectionValsLike } {
+  return v != null && typeof v === 'object' && Object.prototype.hasOwnProperty.call(v, 'sel');
+}
 
 type ImageWorkspaceProps = {
   gridEnabled?: boolean;
   dimensions?: { length: number | null; width: number | null; thickness: number | null };
   onImagesChange?: (count: number) => void;
+  onImages?: (images: { id: string; name: string; url: string; mask?: string; selection?: ProductImage['selection'] }[]) => void;
 };
 
-export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange }: ImageWorkspaceProps) {
+export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange, onImages }: ImageWorkspaceProps) {
   const {
     library,
     activeTool,
@@ -38,8 +59,13 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
     undo,
     canUndo,
     setSelectionDimensions,
-  selectionVisible,
-  setSelectionVisible,
+    selectionVisible,
+    setSelectionVisible,
+    // controller helpers we need for safe exports
+    getMaskCanvas,
+    getSelectionState,
+    getSelectionForImage,
+    getOverlayMetrics,
   } = useImageWorkspaceController();
 
   // read current per-image selection state (offset + scale) from controller
@@ -90,10 +116,61 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
   useEffect(() => {
     try {
       onImagesChange?.(library.images.length);
+
+      const imgs = library.images.map((i) => {
+        // ask controller for the mask canvas for this image id
+        const maskCanvas = typeof getMaskCanvas === 'function' ? getMaskCanvas(i.id) : null;
+        const mask = maskCanvas ? maskCanvas.toDataURL('image/png') : undefined;
+
+        // selection is only available for the currently selected image via controller
+  let selection: ProductImage['selection'] | undefined = undefined;
+  let positionNormalized = { x: 0.5, y: 0.5 };
+        if (typeof getSelectionForImage === 'function') {
+          try {
+            const raw = getSelectionForImage(i.id);
+            if (isSelectionStateLike(raw)) {
+              const selCandidate: SelectionValsLike = hasSelProp(raw) ? raw.sel ?? null : (raw as SelectionValsLike);
+              if (selCandidate && selCandidate.length != null && selCandidate.width != null) {
+                // raw may be either the sel-only shape or an object with offset/scale/rotation
+                let offset = { x: 0, y: 0 };
+                let scale = 1;
+                let rot = { x: 0, y: 0, z: 0, w: 1 };
+                if (hasSelProp(raw)) {
+                  const obj = raw as { offset?: { x: number; y: number }; scale?: number; rotation?: { x: number; y: number; z: number; w: number } | null };
+                  offset = obj.offset ?? offset;
+                  scale = obj.scale ?? scale;
+                  rot = obj.rotation ?? rot;
+                }
+
+                const metrics = typeof getOverlayMetrics === 'function' ? getOverlayMetrics() : null;
+                if (metrics && metrics.width > 0 && metrics.height > 0) {
+                  const nx = 0.5 + (offset.x ?? 0) / metrics.width;
+                  const ny = 0.5 + (offset.y ?? 0) / metrics.height;
+                  positionNormalized = { x: Math.min(1, Math.max(0, nx)), y: Math.min(1, Math.max(0, ny)) };
+                }
+
+                selection = {
+                  shape: { width: selCandidate.width, height: selCandidate.length },
+                  position: { x: offset.x ?? 0, y: offset.y ?? 0 },
+                  scale,
+                  rotation: rot,
+                };
+              }
+            }
+          } catch {
+            selection = undefined;
+          }
+        }
+
+  return { id: i.id, name: i.name, url: i.url, mask, selection, positionNormalized };
+      });
+
+      onImages?.(imgs);
     } catch {
       // ignore
     }
-  }, [library.images.length, onImagesChange]);
+  // library.images and library.selectedId reflect the image set & selection; keep controller getters too
+  }, [library.images, library.selectedId, getMaskCanvas, getSelectionState, getSelectionForImage, getOverlayMetrics, onImagesChange, onImages]);
 
   return (
     <section

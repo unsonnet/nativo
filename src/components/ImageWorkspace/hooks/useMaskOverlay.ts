@@ -41,6 +41,8 @@ type UseMaskOverlayResult = {
   handleSelectionPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => boolean;
   handleSelectionWheel?: (e: WheelEvent) => boolean;
   getSelectionState: () => unknown | null;
+  getSelectionForImage: (id: string) => unknown | null;
+  getOverlayMetrics: () => OverlayMetricsEx | null;
 };
 
 export function useMaskOverlay({
@@ -167,12 +169,18 @@ export function useMaskOverlay({
       }
     });
     // only draw selection when explicitly visible and selection values exist
+    // The selection rectangle must only be drawn when both length and width are defined.
     c.addDrawer((ctx, metrics, opts) => {
       const o = opts as DrawerOpts;
       if (!o || o.selectionVisible === false) return;
-      if (!o.selection) return;
+      const selState = o.selection;
+      if (!selState) return;
+      const vals = selState.sel;
+      if (!vals) return;
+      // require both length and width to be non-null to draw a rectangle
+      if (vals.length == null || vals.width == null) return;
       try {
-        drawSelection(ctx, metrics, o.selection);
+        drawSelection(ctx, metrics, selState);
       } catch {
         // ignore
       }
@@ -670,6 +678,14 @@ export function useMaskOverlay({
     return st ?? null;
   }, [selectedImageId]);
 
+  const getSelectionForImage = useCallback((id: string) => {
+    if (!id) return null;
+    const persisted = selectionMapRef.current.get(id) ?? loadPersisted(id) ?? null;
+    return persisted ?? null;
+  }, [loadPersisted]);
+
+  const getOverlayMetrics = useCallback(() => overlayMetricsRef.current, []);
+
   return {
     tintOverlayRef,
     updateFromViewport,
@@ -681,5 +697,7 @@ export function useMaskOverlay({
     handleSelectionPointerUp: handleSelectionPointerUpCb,
     handleSelectionWheel: handleSelectionWheelCb,
     getSelectionState: getSelectionStateCb,
+    getSelectionForImage,
+    getOverlayMetrics,
   };
 }

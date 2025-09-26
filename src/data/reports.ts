@@ -1,6 +1,6 @@
-import type { Report } from "@/types/report";
+import type { Report, ProductIndex } from "@/types/report";
 
-export const reports: Report[] = [
+export const reports: Report<ProductIndex>[] = [
   {
     id: "1",
     title: "Office Building 2nd Floor",
@@ -12,7 +12,7 @@ export const reports: Report[] = [
       series: "",
       model: "X200",
       image: "https://picsum.photos/seed/building/800/800",
-    },
+  } as ProductIndex,
   },
   {
     id: "2",

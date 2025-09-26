@@ -2,18 +2,22 @@
 
 import Image from "next/image";
 
-import type { Report } from "@/types/report";
+import type { Report, Product, ProductIndex, ProductImage, ReportPreview } from "@/types/report";
 
-export function ReportCard({ report }: { report: Report }) {
-  const { title: subject, date, reference } = report;
+export function ReportCard({ report }: { report: Report<Product | ProductIndex> | ReportPreview }) {
+  const { title: subject, date, reference } = report as ReportPreview | Report<Product | ProductIndex>;
   // reference may be ProductIndex (has `image`) or Product (has `images` array)
+  // If this is already a ReportPreview, `reference` will be ProductImage.
   const previewImage: string | undefined =
-    // ProductIndex case
-    "image" in reference && typeof reference.image === "string"
-      ? reference.image
+    // ReportPreview / ProductImage case
+    (reference as ProductImage).url && typeof (reference as ProductImage).url === 'string'
+      ? (reference as ProductImage).url
+      : // ProductIndex case
+      (reference as ProductIndex).image && typeof (reference as ProductIndex).image === 'string'
+      ? (reference as ProductIndex).image
       : // Product case - pick first product image's url if available
-      "images" in reference && Array.isArray(reference.images) && reference.images.length > 0
-      ? reference.images[0].url
+      Array.isArray((reference as Product).images) && (reference as Product).images.length > 0
+      ? ((reference as Product).images[0] as ProductImage).url
       : undefined;
   const parsedDate = new Date(date);
   const formattedDate = parsedDate.toLocaleDateString("en-US", {

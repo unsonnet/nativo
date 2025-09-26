@@ -89,6 +89,8 @@ export function useImageWorkspaceController() {
     handleSelectionPointerUp,
     getSelectionState,
     handleSelectionWheel,
+    getSelectionForImage,
+    getOverlayMetrics,
   } = useMaskOverlay({
     previewRef,
     imageRef,
@@ -516,6 +518,10 @@ export function useImageWorkspaceController() {
       setCanUndoState(false);
     },
     getSelectionState,
+    // expose mask canvas getter for parents that need mask export
+    getMaskCanvas,
+    getSelectionForImage,
+    getOverlayMetrics,
     selectionState: currentSelection,
   };
 }

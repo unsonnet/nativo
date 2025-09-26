@@ -8,7 +8,7 @@ export type Dimensional<T> = {
 export type ProductImage = {
   id: string;
   url: string;
-  mask: string;
+  mask?: string;
   selection?: {
     shape: { width: number; height: number };
     position: { x: number; y: number };
@@ -32,8 +32,8 @@ export type Product = {
     edge?: string;
   };
   formats: {
-    length: Dimensional<'none' | 'in'>;
-    width: Dimensional<'none' | 'in'>;
+    length?: Dimensional<'none' | 'in'>;
+    width?: Dimensional<'none' | 'in'>;
     thickness?: Dimensional<'mm'>;
     vendors: {
       sku: string;
@@ -64,10 +64,15 @@ export type ProductIndex = {
   };
 };
 
-export type Report = {
+export type Report<T extends Product | ProductIndex = Product | ProductIndex> = {
   id: string;
   title: string;
   author: string;
   date: string; // ISO string
-  reference: ProductIndex | Product;
+  reference: T;
+};
+
+// A dashboard-friendly report where the reference is a single ProductImage used for previews
+export type ReportPreview = Omit<Report<Product | ProductIndex>, 'reference'> & {
+  reference: ProductImage;
 };
