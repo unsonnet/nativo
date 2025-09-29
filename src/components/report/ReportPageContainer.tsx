@@ -77,10 +77,10 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
 
         <div className="report-create__form">
           <div className="report-form">
-            <div className="report-form__body">
               {/* Image Gallery */}
               <ImageGallery images={report.reference.images} />
               
+            <div className="report-form__body">
               {/* Search Filters */}
               <SearchFilters 
                 referenceProduct={report.reference}

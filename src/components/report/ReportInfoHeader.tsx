@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, BarChart3 } from "lucide-react";
+import { Edit } from "lucide-react";
 import type { Report, Product } from "@/types/report";
 
 interface ReportInfoHeaderProps {
@@ -22,6 +22,37 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
     return `${length?.val || '?'} x ${width?.val || '?'} ${length?.unit || 'in'}`;
   };
 
+  // Helper to get all available categories
+  const getAvailableCategories = () => {
+    const categories = [];
+    
+    // Always include type and material first if available
+    if (reference.category.type) {
+      categories.push({ label: "Flooring Type", value: reference.category.type });
+    }
+    if (reference.category.material) {
+      categories.push({ label: "Material", value: reference.category.material });
+    }
+    
+    // Add other categories if they exist
+    if (reference.category.look) {
+      categories.push({ label: "Look", value: reference.category.look });
+    }
+    if (reference.category.texture) {
+      categories.push({ label: "Texture", value: reference.category.texture });
+    }
+    if (reference.category.finish) {
+      categories.push({ label: "Finish", value: reference.category.finish });
+    }
+    if (reference.category.edge) {
+      categories.push({ label: "Edge", value: reference.category.edge });
+    }
+    
+    return categories;
+  };
+
+  const availableCategories = getAvailableCategories();
+
   return (
     <div className="report-info-header">
       <div className="report-info-header__content">
@@ -31,21 +62,13 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
           <h2 className="report-info-header__value">{report.title}</h2>
         </div>
 
-        {/* Flooring Type */}
-        <div className="report-info-header__section">
-          <label className="report-info-header__label">Flooring Type</label>
-          <div className="report-info-header__value">
-            {reference.category.type || "Unknown"}
+        {/* All Available Categories */}
+        {availableCategories.map((category, index) => (
+          <div key={index} className="report-info-header__section">
+            <label className="report-info-header__label">{category.label}</label>
+            <div className="report-info-header__value">{category.value}</div>
           </div>
-        </div>
-
-        {/* Material */}
-        <div className="report-info-header__section">
-          <label className="report-info-header__label">Material</label>
-          <div className="report-info-header__value">
-            {reference.category.material || "Unknown"}
-          </div>
-        </div>
+        ))}
 
         {/* Dimensions */}
         <div className="report-info-header__section">
@@ -56,16 +79,11 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Edit Action */}
       <div className="report-info-header__actions">
-        <button className="button button--secondary report-info-header__edit-btn">
+        <button className="report-info-header__edit-btn">
           <Edit className="w-4 h-4" />
           Edit
-        </button>
-        
-        <button className="button button--secondary report-info-header__analysis-btn">
-          <BarChart3 className="w-4 h-4" />
-          Computed Analysis
         </button>
       </div>
     </div>

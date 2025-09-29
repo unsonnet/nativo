@@ -34,10 +34,10 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
   const [filters, setFilters] = useState<SearchFilters>({
     maxLengthDiff: 2,
     maxWidthDiff: 2,
-    colorPrimarySimilarity: 80,
-    colorSecondarySimilarity: 70,
-    patternPrimarySimilarity: 75,
-    patternSecondarySimilarity: 65,
+    colorPrimarySimilarity: 50,
+    colorSecondarySimilarity: 50,
+    patternPrimarySimilarity: 50,
+    patternSecondarySimilarity: 50,
     categories: {
       // Pre-populate with reference product categories for convenience
       type: referenceProduct.category.type ? [referenceProduct.category.type] : [],
@@ -82,10 +82,10 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
     setFilters({
       maxLengthDiff: 2,
       maxWidthDiff: 2,
-      colorPrimarySimilarity: 80,
-      colorSecondarySimilarity: 70,
-      patternPrimarySimilarity: 75,
-      patternSecondarySimilarity: 65,
+      colorPrimarySimilarity: 50,
+      colorSecondarySimilarity: 50,
+      patternPrimarySimilarity: 50,
+      patternSecondarySimilarity: 50,
       categories: {
         // Reset to reference product categories
         type: referenceProduct.category.type ? [referenceProduct.category.type] : [],
@@ -120,15 +120,20 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                 Max Length Difference ({format?.length?.unit})
               </label>
               <input
-                type="range"
+                type="number"
                 min="0"
                 max="10"
                 step="0.5"
-                value={filters.maxLengthDiff}
-                onChange={(e) => handleFilterChange('maxLengthDiff', parseFloat(e.target.value))}
-                className="search-filters__slider"
+                value={filters.maxLengthDiff || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                  if (!isNaN(value) && value >= 0 && value <= 10) {
+                    handleFilterChange('maxLengthDiff', value);
+                  }
+                }}
+                className="search-filters__number-input"
+                placeholder="0.0"
               />
-              <span className="search-filters__value">±{filters.maxLengthDiff}</span>
             </div>
 
             <div className="search-filters__field">
@@ -136,25 +141,33 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                 Max Width Difference ({format?.width?.unit})
               </label>
               <input
-                type="range"
+                type="number"
                 min="0"
                 max="10"
                 step="0.5"
-                value={filters.maxWidthDiff}
-                onChange={(e) => handleFilterChange('maxWidthDiff', parseFloat(e.target.value))}
-                className="search-filters__slider"
+                value={filters.maxWidthDiff || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                  if (!isNaN(value) && value >= 0 && value <= 10) {
+                    handleFilterChange('maxWidthDiff', value);
+                  }
+                }}
+                className="search-filters__number-input"
+                placeholder="0.0"
               />
-              <span className="search-filters__value">±{filters.maxWidthDiff}</span>
             </div>
           </div>
         )}
 
-        {/* Color & Pattern Similarity */}
+        {/* Color Similarity */}
         <div className="search-filters__section">
-          <h4 className="search-filters__section-title">Visual Similarity (%)</h4>
+          <h4 className="search-filters__section-title">Color Similarity</h4>
           
           <div className="search-filters__field">
-            <label className="search-filters__label">Primary Color</label>
+            <div className="search-filters__label-row">
+              <label className="search-filters__label">Primary</label>
+              <span className="search-filters__value">{filters.colorPrimarySimilarity}%</span>
+            </div>
             <input
               type="range"
               min="0"
@@ -163,11 +176,13 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
               onChange={(e) => handleFilterChange('colorPrimarySimilarity', parseInt(e.target.value))}
               className="search-filters__slider"
             />
-            <span className="search-filters__value">{filters.colorPrimarySimilarity}%</span>
           </div>
 
           <div className="search-filters__field">
-            <label className="search-filters__label">Secondary Color</label>
+            <div className="search-filters__label-row">
+              <label className="search-filters__label">Secondary</label>
+              <span className="search-filters__value">{filters.colorSecondarySimilarity}%</span>
+            </div>
             <input
               type="range"
               min="0"
@@ -176,11 +191,18 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
               onChange={(e) => handleFilterChange('colorSecondarySimilarity', parseInt(e.target.value))}
               className="search-filters__slider"
             />
-            <span className="search-filters__value">{filters.colorSecondarySimilarity}%</span>
           </div>
+        </div>
 
+        {/* Pattern Similarity */}
+        <div className="search-filters__section">
+          <h4 className="search-filters__section-title">Pattern Similarity</h4>
+          
           <div className="search-filters__field">
-            <label className="search-filters__label">Primary Pattern</label>
+            <div className="search-filters__label-row">
+              <label className="search-filters__label">Primary</label>
+              <span className="search-filters__value">{filters.patternPrimarySimilarity}%</span>
+            </div>
             <input
               type="range"
               min="0"
@@ -189,11 +211,13 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
               onChange={(e) => handleFilterChange('patternPrimarySimilarity', parseInt(e.target.value))}
               className="search-filters__slider"
             />
-            <span className="search-filters__value">{filters.patternPrimarySimilarity}%</span>
           </div>
 
           <div className="search-filters__field">
-            <label className="search-filters__label">Secondary Pattern</label>
+            <div className="search-filters__label-row">
+              <label className="search-filters__label">Secondary</label>
+              <span className="search-filters__value">{filters.patternSecondarySimilarity}%</span>
+            </div>
             <input
               type="range"
               min="0"
@@ -202,7 +226,6 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
               onChange={(e) => handleFilterChange('patternSecondarySimilarity', parseInt(e.target.value))}
               className="search-filters__slider"
             />
-            <span className="search-filters__value">{filters.patternSecondarySimilarity}%</span>
           </div>
         </div>
 
