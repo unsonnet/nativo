@@ -136,6 +136,11 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
       return;
     }
 
+    // Check dimensions when relative is selected
+    if (form.units === 'relative' && (form.length.trim() === '' || form.width.trim() === '')) {
+      return;
+    }
+
     if ((imageCount ?? 0) === 0) {
       setErrorMessage('Please add at least one image before creating a report.');
       return;
@@ -168,6 +173,12 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
     touched.reportName && !isReportNameFocused && form.reportName.trim() === '';
   const reportNameErrorId = isReportNameMissing ? 'report-name-error' : undefined;
 
+  // Validation for dimensions when relative is selected
+  const areDimensionsMissing = 
+    form.units === 'relative' && 
+    (form.length.trim() === '' || form.width.trim() === '');
+  const dimensionsErrorId = areDimensionsMissing ? 'dimensions-error' : undefined;
+
   const toggleSection = (id: string) => {
     setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
   };
@@ -176,316 +187,288 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Determine whether submit button should be enabled: needs report name and at least one image
-  const canSubmit = form.reportName.trim() !== '' && (imageCount ?? 0) > 0;
+  // Also needs length and width when relative is selected
+  const canSubmit = form.reportName.trim() !== '' && 
+    (imageCount ?? 0) > 0 && 
+    (form.units === 'absolute' || (form.length.trim() !== '' && form.width.trim() !== ''));
 
   return (
-    <form className="report-form" onSubmit={handleSubmit}>
-      <div className="report-form__body">
-      <section className={`form-section ${collapsed.reportName ? 'form-section--collapsed' : ''}`}>
-        <div className="form-section__header">
-          <button
-            type="button"
-            className="form-section__title"
-            aria-expanded={!collapsed.reportName}
-            aria-controls="report-name-content"
-            onClick={() => toggleSection('reportName')}
-          >
-            <span className="form-section__title-text">Report Name <span className="form-field__required">*</span></span>
-            <span className={`form-section__chev ${collapsed.reportName ? 'is-collapsed' : ''}`} aria-hidden />
-          </button>
-        </div>
-        <div id="report-name-content" className="form-section__content">
-          <input
-            id="report-name"
-            ref={reportNameRef}
-            value={form.reportName}
-            onChange={(event) => {
-              const value = event.target.value;
-              setForm((prev) => ({
-                ...prev,
-                reportName: value,
-              }));
-              setTouched((prev) => ({ ...prev, reportName: false }));
-            }}
-            placeholder="Enter report name"
-            onFocus={handleReportNameFocus}
-            onBlur={handleReportNameBlur}
-            aria-invalid={isReportNameMissing}
-            aria-describedby={reportNameErrorId}
-            className={`form-control${isReportNameMissing ? ' form-control--error' : ''}`}
-          />
-          {isReportNameMissing && (
-            <p className="form-field__hint" id={reportNameErrorId} role="alert">
-              Please enter a report name.
-            </p>
+    <div className="search-filters">
+      <div className="search-filters__header">
+        <h3 className="search-filters__title">
+          Create Report
+        </h3>
+      </div>
+
+      <div className="search-filters__content">
+        <form id="report-form" className="report-form" onSubmit={handleSubmit}>
+          <div className="search-filters__section">
+            <h4 className="search-filters__section-title">Report Name <span className="form-field__required-asterisk">*</span></h4>
+            <div className="form-field">
+              <input
+                id="report-name"
+                ref={reportNameRef}
+                value={form.reportName}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    reportName: value,
+                  }));
+                  setTouched((prev) => ({ ...prev, reportName: false }));
+                }}
+                placeholder="Enter report name"
+                onFocus={handleReportNameFocus}
+                onBlur={handleReportNameBlur}
+                aria-invalid={isReportNameMissing}
+                aria-describedby={reportNameErrorId}
+                className={`form-control${isReportNameMissing ? ' form-control--error' : ''}`}
+              />
+              {isReportNameMissing && (
+                <p className="form-field__hint" id={reportNameErrorId} role="alert">
+                  Please enter a report name.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="search-filters__section">
+            <h4 className="search-filters__section-title">Category</h4>
+            <div className="form-grid">
+              <div className="form-field">
+                <label htmlFor="flooring-type" className="form-field__label form-field__label--secondary">
+                  Type
+                </label>
+                <select
+                  id="flooring-type"
+                  value={form.flooringType}
+                  onChange={(event) => handleFlooringChange(event.target.value)}
+                  className="form-control select-control"
+                >
+                  {FLOORING_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.value}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="flooring-material" className="form-field__label form-field__label--secondary">
+                  Material
+                </label>
+                <select
+                  id="flooring-material"
+                  value={form.material}
+                  onChange={(event) => handleMaterialChange(event.target.value)}
+                  className="form-control select-control"
+                >
+                  <option value="Any">Any</option>
+                  {materialOptions.map((material) => (
+                    <option key={material} value={material}>
+                      {material}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="search-filters__section">
+            <h4 className="search-filters__section-title">Dimensions</h4>
+            <div className="form-grid">
+              <div className="form-field">
+                <label htmlFor="length" className="form-field__label form-field__label--secondary">
+                  Length{form.units === 'absolute' ? ' (inches)' : ''}{form.units === 'relative' && <span className="form-field__required-asterisk"> *</span>}
+                </label>
+                <input
+                  id="length"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="^\d*(?:\.\d*)?$"
+                  value={form.length}
+                  onChange={(event) => handleNumericChange('length', event.target.value)}
+                  aria-invalid={form.units === 'relative' && form.length.trim() === ''}
+                  aria-describedby={dimensionsErrorId}
+                  className={`form-control${form.units === 'relative' && form.length.trim() === '' ? ' form-control--error' : ''}`}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="width" className="form-field__label form-field__label--secondary">
+                  Width{form.units === 'absolute' ? ' (inches)' : ''}{form.units === 'relative' && <span className="form-field__required-asterisk"> *</span>}
+                </label>
+                <input
+                  id="width"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="^\d*(?:\.\d*)?$"
+                  value={form.width}
+                  onChange={(event) => handleNumericChange('width', event.target.value)}
+                  aria-invalid={form.units === 'relative' && form.width.trim() === ''}
+                  aria-describedby={dimensionsErrorId}
+                  className={`form-control${form.units === 'relative' && form.width.trim() === '' ? ' form-control--error' : ''}`}
+                />
+              </div>
+              {areDimensionsMissing && (
+                <div className="form-grid__full">
+                  <p className="form-field__hint" id={dimensionsErrorId} role="alert">
+                    Both length and width are required when using relative units.
+                  </p>
+                </div>
+              )}
+              <div className="form-field form-grid__full">
+                <label htmlFor="thickness" className="form-field__label form-field__label--secondary">
+                  Thickness (mm)
+                </label>
+                <input
+                  id="thickness"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="^\d*(?:\.\d*)?$"
+                  value={form.thickness}
+                  onChange={(event) => handleNumericChange('thickness', event.target.value)}
+                  className="form-control"
+                />
+              </div>
+              <div
+                className="form-field form-field--inline form-grid__full"
+                role="radiogroup"
+                aria-labelledby="units-label"
+              >
+                <span
+                  id="units-label"
+                  className="form-field__label form-field__label--secondary"
+                >
+                  Units
+                </span>
+                <div className="form-radio-group">
+                  <label className="form-radio">
+                    <input
+                      type="radio"
+                      name="units"
+                      value="absolute"
+                      checked={form.units === 'absolute'}
+                      onChange={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          units: 'absolute',
+                        }))
+                      }
+                    />
+                    <span>Absolute</span>
+                  </label>
+                  <label className="form-radio">
+                    <input
+                      type="radio"
+                      name="units"
+                      value="relative"
+                      checked={form.units === 'relative'}
+                      onChange={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          units: 'relative',
+                        }))
+                      }
+                    />
+                    <span>Relative</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="search-filters__section">
+            <h4 className="search-filters__section-title">Attributes</h4>
+            <div className="form-grid">
+              <div className="form-field">
+                <label htmlFor="look" className="form-field__label form-field__label--secondary">
+                  Look
+                </label>
+                <select
+                  id="look"
+                  value={form.look}
+                  onChange={(e) => setForm((prev) => ({ ...prev, look: e.target.value }))}
+                  className="form-control select-control"
+                >
+                  <option value="Any">Any</option>
+                  <option value="Modern">Modern</option>
+                  <option value="Rustic">Rustic</option>
+                  <option value="Industrial">Industrial</option>
+                  <option value="Traditional">Traditional</option>
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="texture" className="form-field__label form-field__label--secondary">
+                  Texture
+                </label>
+                <select
+                  id="texture"
+                  value={form.texture}
+                  onChange={(e) => setForm((prev) => ({ ...prev, texture: e.target.value }))}
+                  className="form-control select-control"
+                >
+                  <option value="Any">Any</option>
+                  <option value="Smooth">Smooth</option>
+                  <option value="Hand-scraped">Hand-scraped</option>
+                  <option value="Wire-brushed">Wire-brushed</option>
+                  <option value="Textured">Textured</option>
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="finish" className="form-field__label form-field__label--secondary">
+                  Finish
+                </label>
+                <select
+                  id="finish"
+                  value={form.finish}
+                  onChange={(e) => setForm((prev) => ({ ...prev, finish: e.target.value }))}
+                  className="form-control select-control"
+                >
+                  <option value="Any">Any</option>
+                  <option value="Matte">Matte</option>
+                  <option value="Satin">Satin</option>
+                  <option value="Gloss">Gloss</option>
+                  <option value="UV">UV</option>
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="edge" className="form-field__label form-field__label--secondary">
+                  Edge
+                </label>
+                <select
+                  id="edge"
+                  value={form.edge}
+                  onChange={(e) => setForm((prev) => ({ ...prev, edge: e.target.value }))}
+                  className="form-control select-control"
+                >
+                  <option value="Any">Any</option>
+                  <option value="Square">Square</option>
+                  <option value="Beveled">Beveled</option>
+                  <option value="Micro-bevel">Micro-bevel</option>
+                  <option value="Eased">Eased</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Error message within scrollable content */}
+          {errorMessage && (
+            <div className="form-field__hint" role="alert">
+              {errorMessage}
+            </div>
           )}
-        </div>
-      </section>
+        </form>
+      </div>
 
-  
-
-      <section className={`form-section ${collapsed.category ? 'form-section--collapsed' : ''}`}>
-        <div className="form-section__header">
-          <button
-            type="button"
-            className="form-section__title"
-            aria-expanded={!collapsed.category}
-            aria-controls="category-content"
-            onClick={() => toggleSection('category')}
-          >
-            Category
-            <span className={`form-section__chev ${collapsed.category ? 'is-collapsed' : ''}`} aria-hidden />
-          </button>
-        </div>
-        <div id="category-content" className="form-section__content">
-          <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor="flooring-type" className="form-field__label form-field__label--secondary">
-                Type
-              </label>
-              <select
-                id="flooring-type"
-                value={form.flooringType}
-                onChange={(event) => handleFlooringChange(event.target.value)}
-                className="form-control select-control"
-              >
-                {FLOORING_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.value}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="flooring-material" className="form-field__label form-field__label--secondary">
-                Material
-              </label>
-              <select
-                id="flooring-material"
-                value={form.material}
-                onChange={(event) => handleMaterialChange(event.target.value)}
-                className="form-control select-control"
-              >
-                <option value="Any">Any</option>
-                {materialOptions.map((material) => (
-                  <option key={material} value={material}>
-                    {material}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={`form-section ${collapsed.dimensions ? 'form-section--collapsed' : ''}`}>
-        <div className="form-section__header">
-          <button
-            type="button"
-            className="form-section__title"
-            aria-expanded={!collapsed.dimensions}
-            aria-controls="dimensions-content"
-            onClick={() => toggleSection('dimensions')}
-          >
-            Dimensions
-            <span className={`form-section__chev ${collapsed.dimensions ? 'is-collapsed' : ''}`} aria-hidden />
-          </button>
-        </div>
-        <div id="dimensions-content" className="form-section__content">
-        <div className="form-grid">
-          <div className="form-field">
-            <label htmlFor="length" className="form-field__label form-field__label--secondary">
-              Length{form.units === 'absolute' ? ' (inches)' : ''}
-            </label>
-            <input
-              id="length"
-              type="text"
-              inputMode="decimal"
-              pattern="^\d*(?:\.\d*)?$"
-              value={form.length}
-              onChange={(event) => handleNumericChange('length', event.target.value)}
-              className="form-control"
-            />
-          </div>
-          <div className="form-field">
-            <label htmlFor="width" className="form-field__label form-field__label--secondary">
-              Width{form.units === 'absolute' ? ' (inches)' : ''}
-            </label>
-            <input
-              id="width"
-              type="text"
-              inputMode="decimal"
-              pattern="^\d*(?:\.\d*)?$"
-              value={form.width}
-              onChange={(event) => handleNumericChange('width', event.target.value)}
-              className="form-control"
-            />
-          </div>
-          <div className="form-field form-grid__full">
-            <label htmlFor="thickness" className="form-field__label form-field__label--secondary">
-              Thickness (mm)
-            </label>
-            <input
-              id="thickness"
-              type="text"
-              inputMode="decimal"
-              pattern="^\d*(?:\.\d*)?$"
-              value={form.thickness}
-              onChange={(event) => handleNumericChange('thickness', event.target.value)}
-              className="form-control"
-            />
-          </div>
-          <div
-            className="form-field form-field--inline form-grid__full"
-            role="radiogroup"
-            aria-labelledby="units-label"
-          >
-            <span
-              id="units-label"
-              className="form-field__label form-field__label--secondary"
-            >
-              Units
-            </span>
-            <div className="form-radio-group">
-              <label className="form-radio">
-                <input
-                  type="radio"
-                  name="units"
-                  value="absolute"
-                  checked={form.units === 'absolute'}
-                  onChange={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      units: 'absolute',
-                    }))
-                  }
-                />
-                <span>Absolute</span>
-              </label>
-              <label className="form-radio">
-                <input
-                  type="radio"
-                  name="units"
-                  value="relative"
-                  checked={form.units === 'relative'}
-                  onChange={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      units: 'relative',
-                    }))
-                  }
-                />
-                <span>Relative</span>
-              </label>
-            </div>
-          </div>
-        </div>
-        </div>
-      </section>
-
-      {/* Attributes section: grouped like Dimensions with secondary labels */}
-      <section className={`form-section ${collapsed.attributes ? 'form-section--collapsed' : ''}`}>
-        <div className="form-section__header">
-          <button
-            type="button"
-            className="form-section__title"
-            aria-expanded={!collapsed.attributes}
-            aria-controls="attributes-content"
-            onClick={() => toggleSection('attributes')}
-          >
-            Attributes
-            <span className={`form-section__chev ${collapsed.attributes ? 'is-collapsed' : ''}`} aria-hidden />
-          </button>
-        </div>
-        <div id="attributes-content" className="form-section__content">
-        <div className="form-grid">
-          <div className="form-field">
-            <label htmlFor="look" className="form-field__label form-field__label--secondary">
-              Look
-            </label>
-            <select
-              id="look"
-              value={form.look}
-              onChange={(e) => setForm((prev) => ({ ...prev, look: e.target.value }))}
-              className="form-control select-control"
-            >
-              <option value="Any">Any</option>
-              <option value="Modern">Modern</option>
-              <option value="Rustic">Rustic</option>
-              <option value="Industrial">Industrial</option>
-              <option value="Traditional">Traditional</option>
-            </select>
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="texture" className="form-field__label form-field__label--secondary">
-              Texture
-            </label>
-            <select
-              id="texture"
-              value={form.texture}
-              onChange={(e) => setForm((prev) => ({ ...prev, texture: e.target.value }))}
-              className="form-control select-control"
-            >
-              <option value="Any">Any</option>
-              <option value="Smooth">Smooth</option>
-              <option value="Hand-scraped">Hand-scraped</option>
-              <option value="Wire-brushed">Wire-brushed</option>
-              <option value="Textured">Textured</option>
-            </select>
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="finish" className="form-field__label form-field__label--secondary">
-              Finish
-            </label>
-            <select
-              id="finish"
-              value={form.finish}
-              onChange={(e) => setForm((prev) => ({ ...prev, finish: e.target.value }))}
-              className="form-control select-control"
-            >
-              <option value="Any">Any</option>
-              <option value="Matte">Matte</option>
-              <option value="Satin">Satin</option>
-              <option value="Gloss">Gloss</option>
-              <option value="UV">UV</option>
-            </select>
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="edge" className="form-field__label form-field__label--secondary">
-              Edge
-            </label>
-            <select
-              id="edge"
-              value={form.edge}
-              onChange={(e) => setForm((prev) => ({ ...prev, edge: e.target.value }))}
-              className="form-control select-control"
-            >
-              <option value="Any">Any</option>
-              <option value="Square">Square</option>
-              <option value="Beveled">Beveled</option>
-              <option value="Micro-bevel">Micro-bevel</option>
-              <option value="Eased">Eased</option>
-            </select>
-          </div>
-        </div>
-        </div>
-      </section>
-
-      {/* keep error area and submit inside the scrollable body so they scroll with the form */}
-      {errorMessage && (
-        <div className="form-field__hint" role="alert">
-          {errorMessage}
-        </div>
-      )}
-
-      <div className="report-form__footer">
+      {/* Sticky footer with submit button */}
+      <div className="search-filters__footer">
         <button
           type="submit"
-          className="report-create__submit"
+          form="report-form"
+          className="button button--primary search-filters__search-btn"
           disabled={!canSubmit || isSubmitting}
           aria-disabled={!canSubmit || isSubmitting}
         >
@@ -499,9 +482,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
           )}
         </button>
       </div>
-
-      </div>
-    </form>
+    </div>
   );
 }
 

@@ -450,8 +450,10 @@ body::before {
 .form-field__hint {
   font-size: var(--text-size-sm);
   color: #fca5a5;
-  margin-top: 0.35rem;
-  margin-bottom: 0.4rem;
+}
+
+.form-field__required-asterisk {
+  color: #ef4444;
 }
 
 .form-control {

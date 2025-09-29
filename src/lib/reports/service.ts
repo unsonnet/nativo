@@ -2,6 +2,30 @@ import type { NewReportFormState } from '@/components/NewReportForm';
 import type { Report, ProductImage, Product } from '@/types/report';
 import { createReport } from '@/lib/api/reports';
 
+// Helper function to calculate greatest common divisor
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+// Helper function to simplify a ratio to its lowest terms
+function simplifyRatio(length: number, width: number): [number, number] {
+  // Convert to integers by multiplying by a scale factor to handle decimals
+  const scale = 1000; // Handle up to 3 decimal places
+  const lengthInt = Math.round(length * scale);
+  const widthInt = Math.round(width * scale);
+  
+  const divisor = gcd(lengthInt, widthInt);
+  const simplifiedLength = lengthInt / divisor;
+  const simplifiedWidth = widthInt / divisor;
+  
+  // Ensure larger number is on the left (length), smaller on the right (width)
+  if (simplifiedLength >= simplifiedWidth) {
+    return [simplifiedLength, simplifiedWidth];
+  } else {
+    return [simplifiedWidth, simplifiedLength];
+  }
+}
+
 // Convert workspace image to ProductImage. Mask/selection will be empty for now;
 // later we can extract mask canvas data from the overlay hook.
 function workspaceToProductImage(wi: { id: string; name: string; url: string; mask?: string; selection?: ProductImage['selection'] }) : ProductImage {
@@ -28,9 +52,19 @@ export async function packageAndCreateReport(
   // reorder so length is the larger dimension when both provided
   let lengthVal: number | undefined = undefined;
   let widthVal: number | undefined = undefined;
+  
   if (parsedLength !== undefined && parsedWidth !== undefined) {
-    lengthVal = Math.max(parsedLength, parsedWidth);
-    widthVal = Math.min(parsedLength, parsedWidth);
+    if (form.units === 'relative') {
+      // For relative units, simplify the ratio to lowest terms
+      // Examples: 4:2 becomes 2:1, 6:9 becomes 2:3, 12:8 becomes 3:2
+      const [simplifiedLength, simplifiedWidth] = simplifyRatio(parsedLength, parsedWidth);
+      lengthVal = simplifiedLength;
+      widthVal = simplifiedWidth;
+    } else {
+      // For absolute units, keep original behavior (larger value becomes length)
+      lengthVal = Math.max(parsedLength, parsedWidth);
+      widthVal = Math.min(parsedLength, parsedWidth);
+    }
   } else {
     lengthVal = parsedLength ?? parsedWidth ?? undefined;
     widthVal = parsedLength !== undefined && parsedWidth === undefined ? undefined : parsedWidth ?? undefined;
