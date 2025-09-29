@@ -28,7 +28,7 @@ export function ReportCard({ report }: { report: Report<Product | ProductIndex> 
   });
 
   return (
-    <Link href={`/report/${report.id}`} className="report-card-link">
+    <Link href={`/report#${report.id}`} className="report-card-link">
       <article className="report-card" aria-label={subject}>
         <time className="report-card__date" dateTime={parsedDate.toISOString()}>
           {formattedDate}
