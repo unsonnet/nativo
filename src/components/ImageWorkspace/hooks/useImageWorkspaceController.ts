@@ -523,5 +523,6 @@ export function useImageWorkspaceController() {
     getSelectionForImage,
     getOverlayMetrics,
     selectionState: currentSelection,
+    overlayVersion,
   };
 }

@@ -20,12 +20,12 @@ export type ProductImage = {
 export type Product = {
   id: string;
   brand: string;
-  series: string;
+  series?: string;
   model: string;
   images: ProductImage[];
   category: {
-    type: string;
-    material: string;
+    type?: string;
+    material?: string;
     look?: string;
     texture?: string;
     finish?: string;
@@ -54,7 +54,7 @@ export type Product = {
 export type ProductIndex = {
   id: string;
   brand: string;
-  series: string;
+  series?: string;
   model: string;
   image: string;
   analysis?: {

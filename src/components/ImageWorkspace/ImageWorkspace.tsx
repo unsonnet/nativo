@@ -66,6 +66,8 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
     getSelectionState,
     getSelectionForImage,
     getOverlayMetrics,
+    selectionState,
+    overlayVersion,
   } = useImageWorkspaceController();
 
   // read current per-image selection state (offset + scale) from controller
@@ -120,14 +122,50 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
       const imgs = library.images.map((i) => {
         // ask controller for the mask canvas for this image id
         const maskCanvas = typeof getMaskCanvas === 'function' ? getMaskCanvas(i.id) : null;
-        const mask = maskCanvas ? maskCanvas.toDataURL('image/png') : undefined;
+        
+        // Check if mask has been modified from its initial state (all white)
+        let mask: string | undefined = undefined;
+        if (maskCanvas) {
+          const ctx = maskCanvas.getContext('2d');
+          if (ctx) {
+            const imageData = ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            const pixels = imageData.data;
+            let hasBeenModified = false;
+            
+            // Check if any pixel has been erased (alpha < 255 or RGB < 250)
+            // Check a sample of pixels to improve performance for large images
+            const sampleSize = Math.min(pixels.length, 40000); // Sample max 10k pixels (40k bytes)
+            const step = Math.max(4, Math.floor(pixels.length / sampleSize));
+            
+            for (let i = 0; i < pixels.length; i += step) {
+              const r = pixels[i];
+              const g = pixels[i + 1];
+              const b = pixels[i + 2];
+              const a = pixels[i + 3];
+              
+              // Check if pixel has been modified from initial white (255,255,255,255)
+              // Allow for small variations in RGB (< 250) or any transparency (alpha < 255)
+              if (r < 250 || g < 250 || b < 250 || a < 255) {
+                hasBeenModified = true;
+                break;
+              }
+            }
+            
+            if (hasBeenModified) {
+              mask = maskCanvas.toDataURL('image/png');
+            }
+          }
+        }
 
-        // selection is only available for the currently selected image via controller
-  let selection: ProductImage['selection'] | undefined = undefined;
-  let positionNormalized = { x: 0.5, y: 0.5 };
+        // selection handling - check if this image should have a selection based on current dimensions
+        let selection: ProductImage['selection'] | undefined = undefined;
+        let positionNormalized = { x: 0.5, y: 0.5 };
+        
         if (typeof getSelectionForImage === 'function') {
           try {
-            const raw = getSelectionForImage(i.id);
+            // For currently selected image, use live selectionState; for others use persisted state
+            const raw = i.id === library.selectedId ? selectionState : getSelectionForImage(i.id);
+            
             if (isSelectionStateLike(raw)) {
               const selCandidate: SelectionValsLike = hasSelProp(raw) ? raw.sel ?? null : (raw as SelectionValsLike);
               if (selCandidate && selCandidate.length != null && selCandidate.width != null) {
@@ -142,27 +180,63 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
                   rot = obj.rotation ?? rot;
                 }
 
+                // Get metrics - this might only work for currently selected image
                 const metrics = typeof getOverlayMetrics === 'function' ? getOverlayMetrics() : null;
+                
                 if (metrics && metrics.width > 0 && metrics.height > 0) {
                   const nx = 0.5 + (offset.x ?? 0) / metrics.width;
                   const ny = 0.5 + (offset.y ?? 0) / metrics.height;
                   positionNormalized = { x: Math.min(1, Math.max(0, nx)), y: Math.min(1, Math.max(0, ny)) };
+                } else {
+                  // If no metrics available, try to use offset as-is if it seems reasonable
+                  // Assume typical image viewport size for fallback normalization
+                  const fallbackWidth = 800;
+                  const fallbackHeight = 600;
+                  if (Math.abs(offset.x) < fallbackWidth && Math.abs(offset.y) < fallbackHeight) {
+                    const nx = 0.5 + (offset.x ?? 0) / fallbackWidth;
+                    const ny = 0.5 + (offset.y ?? 0) / fallbackHeight;
+                    positionNormalized = { x: Math.min(1, Math.max(0, nx)), y: Math.min(1, Math.max(0, ny)) };
+                  }
                 }
 
                 selection = {
                   shape: { width: selCandidate.width, height: selCandidate.length },
-                  position: { x: offset.x ?? 0, y: offset.y ?? 0 },
+                  position: { x: positionNormalized.x, y: positionNormalized.y },
                   scale,
                   rotation: rot,
                 };
               }
+            } else if (dimensions && dimensions.length && dimensions.width) {
+              // If no existing selection but dimensions are provided, create a default centered selection
+              selection = {
+                shape: { width: dimensions.width, height: dimensions.length },
+                position: { x: 0.5, y: 0.5 },
+                scale: 1,
+                rotation: { x: 0, y: 0, z: 0, w: 1 },
+              };
             }
           } catch {
-            selection = undefined;
+            // If there's an error getting selection but dimensions exist, create default
+            if (dimensions && dimensions.length && dimensions.width) {
+              selection = {
+                shape: { width: dimensions.width, height: dimensions.length },
+                position: { x: 0.5, y: 0.5 },
+                scale: 1,
+                rotation: { x: 0, y: 0, z: 0, w: 1 },
+              };
+            }
           }
+        } else if (dimensions && dimensions.length && dimensions.width) {
+          // If getSelectionForImage is not available but dimensions exist, create default
+          selection = {
+            shape: { width: dimensions.width, height: dimensions.length },
+            position: { x: 0.5, y: 0.5 },
+            scale: 1,
+            rotation: { x: 0, y: 0, z: 0, w: 1 },
+          };
         }
 
-  return { id: i.id, name: i.name, url: i.url, mask, selection, positionNormalized };
+        return { id: i.id, name: i.name, url: i.url, mask, selection };
       });
 
       onImages?.(imgs);
@@ -170,7 +244,8 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
       // ignore
     }
   // library.images and library.selectedId reflect the image set & selection; keep controller getters too
-  }, [library.images, library.selectedId, getMaskCanvas, getSelectionState, getSelectionForImage, getOverlayMetrics, onImagesChange, onImages]);
+  // overlayVersion changes when mask is modified, triggering updates for current image
+  }, [library.images, library.selectedId, getMaskCanvas, getSelectionState, getSelectionForImage, getOverlayMetrics, onImagesChange, onImages, dimensions, selectionState, overlayVersion]);
 
   return (
     <section

@@ -243,6 +243,8 @@ body::before {
   backdrop-filter: blur(20px);
   z-index: 1;
   height: 100vh;
+  box-sizing: border-box; /* ensure padding doesn't increase computed width */
+  flex-shrink: 0; /* prevent the sidebar from shrinking/growing unexpectedly */
 }
 
 .report-create__back {
@@ -275,13 +277,65 @@ body::before {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  min-height: 0; /* allow children to shrink so internal scrolling works */
+}
+
+/* Make the top Back button visually sticky so it remains visible while the form body scrolls */
+.report-create__back {
+  position: sticky;
+  top: 1rem;
+  z-index: 3;
+  background: transparent;
 }
 
 .report-form {
   display: flex;
   flex-direction: column;
   gap: 1.35rem;
-  height: 100%;
+  flex: 1 1 auto; /* let the form grow/shrink inside its parent */
+  min-height: 0; /* allow internal overflow to work */
+}
+
+/* The main body of the form becomes a vertically scrollable region inside the sidebar.
+   This keeps the page itself from scrolling while allowing long forms to be navigated. */
+.report-form__body {
+  /* let the body grow/shrink to occupy available space and scroll internally */
+  flex: 1 1 auto;
+  min-height: 0; /* allow proper overflow in flex children */
+  overflow-y: auto;
+  /* keep the right padding small so the form width remains fixed; do NOT reserve additional gutter space */
+  padding-right: 0.25rem; /* original small padding so gap stays consistent */
+  /* allow the scrollbar to overlay into the sidebar gap without changing content width */
+  margin-right: -8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+/* Subtle scrollbar styles for WebKit-based browsers (macOS/Chrome). The thumb is translucent
+   and sits over the padded area; we avoid changing layout on show/hide because of scrollbar-gutter. */
+.report-form__body::-webkit-scrollbar {
+  width: 8px;
+}
+.report-form__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.report-form__body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.10);
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0); /* keep thumb visually inset without expanding layout */
+  background-clip: padding-box;
+}
+.report-form__body:hover::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+/* Footer holds the create button anchored at the bottom of the sidebar */
+.report-form__footer {
+  z-index: 4;
+  position: static;
+  background: transparent;
+  margin-top: 0.25rem;
 }
 
 /* Minimalist submit anchored to the very bottom of the sidebar */
@@ -428,7 +482,8 @@ body::before {
 .form-field__hint {
   font-size: var(--text-size-sm);
   color: #fca5a5;
-  margin-top: -0.35rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.4rem;
 }
 
 .form-control {
@@ -469,12 +524,13 @@ body::before {
 
 .select-control {
   appearance: none;
-  padding-right: 2.5rem;
-  background-image: linear-gradient(45deg, transparent 50%, rgba(148, 163, 184, 0.8) 50%),
-    linear-gradient(135deg, rgba(148, 163, 184, 0.8) 50%, transparent 50%);
-  background-position: right 1rem center, right 0.7rem center;
-  background-size: 0.7rem 0.7rem;
+  padding-right: 1.5rem;
+  /* single-line SVG chevron (small, subtle) encoded inline to avoid extra markup */
+  background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2010%206'%3E%3Cpath%20d='M1%201%20L5%205%20L9%201'%20stroke='%2394a3b8'%20stroke-opacity='0.65'%20stroke-width='1.5'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
+  /* place the chevron slightly closer to the right edge */
+  background-position: right 0.5rem center;
+  background-size: 0.6rem auto;
 }
 
 .select-control option {
@@ -485,6 +541,60 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+/* Collapsible section header */
+
+.form-section__header {
+  display: block;
+}
+
+/* make the header button span the full width and push the chevron to the far right */
+.form-section__header .form-section__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.6rem;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--text-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0; /* keep alignment tight */
+  /* reserve a small buffer on the right so the chevron isn't flush with an appearing scrollbar */
+  padding-right: 0.9rem;
+}
+
+.form-section__title-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem; /* keep the asterisk close to the label */
+}
+
+.form-section__chev {
+  display: inline-block;
+  width: 0.46rem;
+  height: 0.46rem;
+  border-right: 1px solid rgba(148, 163, 184, 0.48);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.48);
+  transform: rotate(-45deg);
+  transition: transform 180ms ease, opacity 120ms ease;
+  opacity: 0.75;
+  margin-left: 0; /* rely on header padding to provide spacing from right edge */
+}
+
+.form-section__chev.is-collapsed {
+  transform: rotate(45deg);
+}
+
+.form-section__content {
+  display: block;
+}
+
+.form-section--collapsed .form-section__content {
+  display: none;
 }
 
 .form-section__title {

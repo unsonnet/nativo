@@ -6,6 +6,7 @@ import { ImageWorkspace } from '@/components/ImageWorkspace';
 import { NewReportForm } from '@/components/NewReportForm';
 import { packageAndCreateReport } from '@/lib/reports/service';
 import { useState, useCallback } from 'react';
+import type { ProductImage } from '@/types/report';
 
 export default function CreatePage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function CreatePage() {
     thickness: null,
   });
   const [imageCount, setImageCount] = useState(0);
-  const [images, setImages] = useState<{ id: string; name: string; url: string }[]>([]);
+  const [images, setImages] = useState<{ id: string; name: string; url: string; mask?: string; selection?: ProductImage['selection'] }[]>([]);
 
   const handleDimensionsChange = useCallback((v: boolean) => setGridEnabled(v), []);
   const handleDimensionsValues = useCallback(
