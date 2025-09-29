@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 
 import type { Report, Product, ProductIndex, ProductImage, ReportPreview } from "@/types/report";
 
@@ -27,27 +28,29 @@ export function ReportCard({ report }: { report: Report<Product | ProductIndex> 
   });
 
   return (
-    <article className="report-card" aria-label={subject}>
-      <time className="report-card__date" dateTime={parsedDate.toISOString()}>
-        {formattedDate}
-      </time>
+    <Link href={`/report/${report.id}`} className="report-card-link">
+      <article className="report-card" aria-label={subject}>
+        <time className="report-card__date" dateTime={parsedDate.toISOString()}>
+          {formattedDate}
+        </time>
 
-      <figure className="report-card__media">
-        {previewImage ? (
-          <Image
-            src={previewImage}
-            alt={subject}
-            fill
-            unoptimized
-            className="report-card__image"
-            sizes="200px"
-          />
-        ) : (
-          <span className="report-card__placeholder" aria-hidden />
-        )}
-      </figure>
+        <figure className="report-card__media">
+          {previewImage ? (
+            <Image
+              src={previewImage}
+              alt={subject}
+              fill
+              unoptimized
+              className="report-card__image"
+              sizes="200px"
+            />
+          ) : (
+            <span className="report-card__placeholder" aria-hidden />
+          )}
+        </figure>
 
-      <h3 className="report-card__title">{subject}</h3>
-    </article>
+        <h3 className="report-card__title">{subject}</h3>
+      </article>
+    </Link>
   );
 }

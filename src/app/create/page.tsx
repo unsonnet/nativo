@@ -44,8 +44,9 @@ export default function CreatePage() {
             imageCount={imageCount}
             onSubmit={async (form) => {
               try {
-                await packageAndCreateReport(form, images);
-                router.push('/dashboard');
+                const createdReport = await packageAndCreateReport(form, images);
+                // Redirect to the new report page instead of dashboard
+                router.push(`/report/${createdReport.id || 'new'}`);
               } catch (err) {
                 console.error('Failed to create report', err);
               }
