@@ -211,10 +211,9 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
       </div>
 
       <div className="search-filters__content">
-        <form id="report-form" className="report-form" onSubmit={handleSubmit}>
           <div className="search-filters__section">
             <h4 className="search-filters__section-title">Report Name <span className="form-field__required-asterisk">*</span></h4>
-            <div className="form-field">
+            <div className="search-filters__field search-filters__field--vertical">
               <input
                 id="report-name"
                 ref={reportNameRef}
@@ -244,159 +243,155 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
 
           <div className="search-filters__section">
             <h4 className="search-filters__section-title">Category</h4>
-            <div className="form-grid">
-              <div className="form-field">
-                <label htmlFor="flooring-type" className="form-field__label form-field__label--secondary">
-                  Type
-                </label>
-                <select
-                  id="flooring-type"
-                  value={form.flooringType}
-                  onChange={(event) => handleFlooringChange(event.target.value)}
-                  className="form-control select-control"
-                >
-                  {FLOORING_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.value}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="search-filters__field">
+              <label htmlFor="flooring-type" className="search-filters__label">
+                Type
+              </label>
+              <select
+                id="flooring-type"
+                value={form.flooringType}
+                onChange={(event) => handleFlooringChange(event.target.value)}
+                className="form-control select-control"
+              >
+                {FLOORING_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.value}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              <div className="form-field">
-                <label htmlFor="flooring-material" className="form-field__label form-field__label--secondary">
-                  Material
-                </label>
-                <select
-                  id="flooring-material"
-                  value={form.material}
-                  onChange={(event) => handleMaterialChange(event.target.value)}
-                  className="form-control select-control"
-                >
-                  <option value="Any">Any</option>
-                  {materialOptions.map((material) => (
-                    <option key={material} value={material}>
-                      {material}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="search-filters__field">
+              <label htmlFor="flooring-material" className="search-filters__label">
+                Material
+              </label>
+              <select
+                id="flooring-material"
+                value={form.material}
+                onChange={(event) => handleMaterialChange(event.target.value)}
+                className="form-control select-control"
+              >
+                <option value="Any">Any</option>
+                {materialOptions.map((material) => (
+                  <option key={material} value={material}>
+                    {material}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
           <div className="search-filters__section">
             <h4 className="search-filters__section-title">Dimensions</h4>
-            <div className="form-grid">
-              <div className="form-field">
-                <label htmlFor="length" className="form-field__label form-field__label--secondary">
-                  Length{form.units === 'absolute' ? ' (inches)' : ''}{form.units === 'relative' && <span className="form-field__required-asterisk"> *</span>}
-                </label>
-                <input
-                  id="length"
-                  type="text"
-                  inputMode="decimal"
-                  pattern="^\d*(?:\.\d*)?$"
-                  value={form.length}
-                  onChange={(event) => handleNumericChange('length', event.target.value)}
-                  aria-invalid={form.units === 'relative' && form.length.trim() === ''}
-                  aria-describedby={dimensionsErrorId}
-                  className={`form-control${form.units === 'relative' && form.length.trim() === '' ? ' form-control--error' : ''}`}
-                />
+            <div className="search-filters__field">
+              <label htmlFor="length" className="search-filters__label">
+                Length{form.units === 'absolute' ? ' (in)' : ''}{form.units === 'relative' && <span className="form-field__required-asterisk"> *</span>}
+              </label>
+              <input
+                id="length"
+                type="text"
+                inputMode="decimal"
+                pattern="^\d*(?:\.\d*)?$"
+                value={form.length}
+                onChange={(event) => handleNumericChange('length', event.target.value)}
+                aria-invalid={form.units === 'relative' && form.length.trim() === ''}
+                aria-describedby={dimensionsErrorId}
+                className={`form-control${form.units === 'relative' && form.length.trim() === '' ? ' form-control--error' : ''}`}
+              />
+            </div>
+            <div className="search-filters__field">
+              <label htmlFor="width" className="search-filters__label">
+                Width{form.units === 'absolute' ? ' (in)' : ''}{form.units === 'relative' && <span className="form-field__required-asterisk"> *</span>}
+              </label>
+              <input
+                id="width"
+                type="text"
+                inputMode="decimal"
+                pattern="^\d*(?:\.\d*)?$"
+                value={form.width}
+                onChange={(event) => handleNumericChange('width', event.target.value)}
+                aria-invalid={form.units === 'relative' && form.width.trim() === ''}
+                aria-describedby={dimensionsErrorId}
+                className={`form-control${form.units === 'relative' && form.width.trim() === '' ? ' form-control--error' : ''}`}
+              />
+            </div>
+            {areDimensionsMissing && (
+              <div className="search-filters__field search-filters__field--vertical">
+                <p className="form-field__hint" id={dimensionsErrorId} role="alert">
+                  Both length and width are required when using relative units.
+                </p>
               </div>
-              <div className="form-field">
-                <label htmlFor="width" className="form-field__label form-field__label--secondary">
-                  Width{form.units === 'absolute' ? ' (inches)' : ''}{form.units === 'relative' && <span className="form-field__required-asterisk"> *</span>}
-                </label>
-                <input
-                  id="width"
-                  type="text"
-                  inputMode="decimal"
-                  pattern="^\d*(?:\.\d*)?$"
-                  value={form.width}
-                  onChange={(event) => handleNumericChange('width', event.target.value)}
-                  aria-invalid={form.units === 'relative' && form.width.trim() === ''}
-                  aria-describedby={dimensionsErrorId}
-                  className={`form-control${form.units === 'relative' && form.width.trim() === '' ? ' form-control--error' : ''}`}
-                />
-              </div>
-              {areDimensionsMissing && (
-                <div className="form-grid__full">
-                  <p className="form-field__hint" id={dimensionsErrorId} role="alert">
-                    Both length and width are required when using relative units.
-                  </p>
-                </div>
-              )}
-              <div className="form-field form-grid__full">
-                <label htmlFor="thickness" className="form-field__label form-field__label--secondary">
-                  Thickness (mm)
-                </label>
-                <input
-                  id="thickness"
-                  type="text"
-                  inputMode="decimal"
-                  pattern="^\d*(?:\.\d*)?$"
-                  value={form.thickness}
-                  onChange={(event) => handleNumericChange('thickness', event.target.value)}
-                  className="form-control"
-                />
-              </div>
-              <div
-                className="form-field form-field--inline form-grid__full"
-                role="radiogroup"
-                aria-labelledby="units-label"
+            )}
+            <div className="search-filters__field">
+              <label htmlFor="thickness" className="search-filters__label">
+                Depth (mm)
+              </label>
+              <input
+                id="thickness"
+                type="text"
+                inputMode="decimal"
+                pattern="^\d*(?:\.\d*)?$"
+                value={form.thickness}
+                onChange={(event) => handleNumericChange('thickness', event.target.value)}
+                className="form-control"
+              />
+            </div>
+            <div
+              className="form-field form-field--inline"
+              role="radiogroup"
+              aria-labelledby="units-label"
+            >
+              <span
+                id="units-label"
+                className="form-field__label form-field__label--secondary"
               >
-                <span
-                  id="units-label"
-                  className="form-field__label form-field__label--secondary"
-                >
-                  Units
-                </span>
-                <div className="form-radio-group">
-                  <label className="form-radio">
-                    <input
-                      type="radio"
-                      name="units"
-                      value="absolute"
-                      checked={form.units === 'absolute'}
-                      onChange={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          units: 'absolute',
-                        }))
-                      }
-                    />
-                    <span>Absolute</span>
-                  </label>
-                  <label className="form-radio">
-                    <input
-                      type="radio"
-                      name="units"
-                      value="relative"
-                      checked={form.units === 'relative'}
-                      onChange={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          units: 'relative',
-                        }))
-                      }
-                    />
-                    <span>Relative</span>
-                  </label>
-                </div>
+                Units
+              </span>
+              <div className="form-radio-group">
+                <label className="form-radio">
+                  <input
+                    type="radio"
+                    name="units"
+                    value="absolute"
+                    checked={form.units === 'absolute'}
+                    onChange={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        units: 'absolute',
+                      }))
+                    }
+                  />
+                  <span>Absolute</span>
+                </label>
+                <label className="form-radio">
+                  <input
+                    type="radio"
+                    name="units"
+                    value="relative"
+                    checked={form.units === 'relative'}
+                    onChange={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        units: 'relative',
+                      }))
+                    }
+                  />
+                  <span>Relative</span>
+                </label>
               </div>
             </div>
           </div>
 
           <div className="search-filters__section">
             <h4 className="search-filters__section-title">Reference Images <span className="form-field__required-asterisk">*</span></h4>
-            <div className="form-field">
+            <div className="search-filters__field search-filters__field--vertical">
               {(imageCount ?? 0) === 0 && (
-                <p className="form-field__hint form-field__hint--tight">
+                <p className="form-field__hint">
                   Add images using the workspace on the right. At least one image is required.
                 </p>
               )}
               {imageCount > 0 && (
-                <p className="form-field__hint form-field__hint--tight" style={{ color: 'var(--text-subtle)' }}>
+                <p className="form-field__hint" style={{ color: 'var(--text-subtle)' }}>
                   {imageCount} image{imageCount !== 1 ? 's' : ''} added
                 </p>
               )}
@@ -405,78 +400,76 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
 
           <div className="search-filters__section">
             <h4 className="search-filters__section-title">Attributes</h4>
-            <div className="form-grid">
-              <div className="form-field">
-                <label htmlFor="look" className="form-field__label form-field__label--secondary">
-                  Look
-                </label>
-                <select
-                  id="look"
-                  value={form.look}
-                  onChange={(e) => setForm((prev) => ({ ...prev, look: e.target.value }))}
-                  className="form-control select-control"
-                >
-                  <option value="Any">Any</option>
-                  <option value="Modern">Modern</option>
-                  <option value="Rustic">Rustic</option>
-                  <option value="Industrial">Industrial</option>
-                  <option value="Traditional">Traditional</option>
-                </select>
-              </div>
+            <div className="search-filters__field">
+              <label htmlFor="look" className="search-filters__label">
+                Look
+              </label>
+              <select
+                id="look"
+                value={form.look}
+                onChange={(e) => setForm((prev) => ({ ...prev, look: e.target.value }))}
+                className="form-control select-control"
+              >
+                <option value="Any">Any</option>
+                <option value="Modern">Modern</option>
+                <option value="Rustic">Rustic</option>
+                <option value="Industrial">Industrial</option>
+                <option value="Traditional">Traditional</option>
+              </select>
+            </div>
 
-              <div className="form-field">
-                <label htmlFor="texture" className="form-field__label form-field__label--secondary">
-                  Texture
-                </label>
-                <select
-                  id="texture"
-                  value={form.texture}
-                  onChange={(e) => setForm((prev) => ({ ...prev, texture: e.target.value }))}
-                  className="form-control select-control"
-                >
-                  <option value="Any">Any</option>
-                  <option value="Smooth">Smooth</option>
-                  <option value="Hand-scraped">Hand-scraped</option>
-                  <option value="Wire-brushed">Wire-brushed</option>
-                  <option value="Textured">Textured</option>
-                </select>
-              </div>
+            <div className="search-filters__field">
+              <label htmlFor="texture" className="search-filters__label">
+                Texture
+              </label>
+              <select
+                id="texture"
+                value={form.texture}
+                onChange={(e) => setForm((prev) => ({ ...prev, texture: e.target.value }))}
+                className="form-control select-control"
+              >
+                <option value="Any">Any</option>
+                <option value="Smooth">Smooth</option>
+                <option value="Hand-scraped">Hand-scraped</option>
+                <option value="Wire-brushed">Wire-brushed</option>
+                <option value="Textured">Textured</option>
+              </select>
+            </div>
 
-              <div className="form-field">
-                <label htmlFor="finish" className="form-field__label form-field__label--secondary">
-                  Finish
-                </label>
-                <select
-                  id="finish"
-                  value={form.finish}
-                  onChange={(e) => setForm((prev) => ({ ...prev, finish: e.target.value }))}
-                  className="form-control select-control"
-                >
-                  <option value="Any">Any</option>
-                  <option value="Matte">Matte</option>
-                  <option value="Satin">Satin</option>
-                  <option value="Gloss">Gloss</option>
-                  <option value="UV">UV</option>
-                </select>
-              </div>
+            <div className="search-filters__field">
+              <label htmlFor="finish" className="search-filters__label">
+                Finish
+              </label>
+              <select
+                id="finish"
+                value={form.finish}
+                onChange={(e) => setForm((prev) => ({ ...prev, finish: e.target.value }))}
+                className="form-control select-control"
+              >
+                <option value="Any">Any</option>
+                <option value="Matte">Matte</option>
+                <option value="Satin">Satin</option>
+                <option value="Gloss">Gloss</option>
+                <option value="UV">UV</option>
+              </select>
+            </div>
 
-              <div className="form-field">
-                <label htmlFor="edge" className="form-field__label form-field__label--secondary">
-                  Edge
-                </label>
-                <select
-                  id="edge"
-                  value={form.edge}
-                  onChange={(e) => setForm((prev) => ({ ...prev, edge: e.target.value }))}
-                  className="form-control select-control"
-                >
-                  <option value="Any">Any</option>
-                  <option value="Square">Square</option>
-                  <option value="Beveled">Beveled</option>
-                  <option value="Micro-bevel">Micro-bevel</option>
-                  <option value="Eased">Eased</option>
-                </select>
-              </div>
+            <div className="search-filters__field">
+              <label htmlFor="edge" className="search-filters__label">
+                Edge
+              </label>
+              <select
+                id="edge"
+                value={form.edge}
+                onChange={(e) => setForm((prev) => ({ ...prev, edge: e.target.value }))}
+                className="form-control select-control"
+              >
+                <option value="Any">Any</option>
+                <option value="Square">Square</option>
+                <option value="Beveled">Beveled</option>
+                <option value="Micro-bevel">Micro-bevel</option>
+                <option value="Eased">Eased</option>
+              </select>
             </div>
           </div>
 
@@ -486,14 +479,13 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
               {errorMessage}
             </div>
           )}
-        </form>
       </div>
 
       {/* Sticky footer with submit button */}
       <div className="search-filters__footer">
+        <form id="report-form" onSubmit={handleSubmit}>
         <button
           type="submit"
-          form="report-form"
           className="button button--primary search-filters__search-btn"
           disabled={!canSubmit || isSubmitting}
           aria-disabled={!canSubmit || isSubmitting}
@@ -507,6 +499,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
             'Create Report'
           )}
         </button>
+        </form>
       </div>
     </div>
   );

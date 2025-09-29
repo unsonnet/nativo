@@ -112,14 +112,14 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
         </button>
       </div>
 
-      <div className="search-filters__content">
+            <div className="search-filters__content">
         {/* Dimension Filters - only show if reference has absolute dimensions */}
         {hasAbsoluteDimensions && (
           <div className="search-filters__section">
             <h4 className="search-filters__section-title">Dimension Similarity</h4>
             
-            <div className="search-filters__dimension-row">
-              <label className="search-filters__dimension-label">
+            <div className="search-filters__field">
+              <label className="search-filters__label">
                 Δ Length ({format?.length?.unit || 'in'})
               </label>
               <input
@@ -134,13 +134,13 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                     handleFilterChange('maxLengthDiff', value);
                   }
                 }}
-                className="search-filters__dimension-input"
+                className="form-control"
                 placeholder="1.0"
               />
             </div>
 
-            <div className="search-filters__dimension-row">
-              <label className="search-filters__dimension-label">
+            <div className="search-filters__field">
+              <label className="search-filters__label">
                 Δ Width ({format?.width?.unit || 'in'})
               </label>
               <input
@@ -155,14 +155,14 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                     handleFilterChange('maxWidthDiff', value);
                   }
                 }}
-                className="search-filters__dimension-input"
+                className="form-control"
                 placeholder="1.0"
               />
             </div>
 
-            <div className="search-filters__dimension-row">
-              <label className="search-filters__dimension-label">
-                Δ Thickness (mm)
+            <div className="search-filters__field">
+              <label className="search-filters__label">
+                Δ Depth (mm)
               </label>
               <input
                 type="number"
@@ -176,7 +176,7 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                     handleFilterChange('maxThicknessDiff', value);
                   }
                 }}
-                className="search-filters__dimension-input"
+                className="form-control"
                 placeholder="1.0"
               />
             </div>
@@ -187,10 +187,10 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
         <div className="search-filters__section">
           <h4 className="search-filters__section-title">Color Similarity</h4>
           
-          <div className="search-filters__field">
-            <div className="search-filters__label-row">
+          <div className="search-filters__field search-filters__field--vertical">
+            <div className="slider-label-row">
               <label className="search-filters__label">Primary</label>
-              <span className="search-filters__value">{filters.colorPrimarySimilarity}%</span>
+              <span className="slider-value">{filters.colorPrimarySimilarity}%</span>
             </div>
             <input
               type="range"
@@ -198,14 +198,14 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
               max="100"
               value={filters.colorPrimarySimilarity}
               onChange={(e) => handleFilterChange('colorPrimarySimilarity', parseInt(e.target.value))}
-              className="search-filters__slider"
+              className="slider-control"
             />
           </div>
 
-          <div className="search-filters__field">
-            <div className="search-filters__label-row">
+          <div className="search-filters__field search-filters__field--vertical">
+            <div className="slider-label-row">
               <label className="search-filters__label">Secondary</label>
-              <span className="search-filters__value">{filters.colorSecondarySimilarity}%</span>
+              <span className="slider-value">{filters.colorSecondarySimilarity}%</span>
             </div>
             <input
               type="range"
@@ -213,7 +213,7 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
               max="100"
               value={filters.colorSecondarySimilarity}
               onChange={(e) => handleFilterChange('colorSecondarySimilarity', parseInt(e.target.value))}
-              className="search-filters__slider"
+              className="slider-control"
             />
           </div>
         </div>
@@ -222,10 +222,10 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
         <div className="search-filters__section">
           <h4 className="search-filters__section-title">Pattern Similarity</h4>
           
-          <div className="search-filters__field">
-            <div className="search-filters__label-row">
+          <div className="search-filters__field search-filters__field--vertical">
+            <div className="slider-label-row">
               <label className="search-filters__label">Primary</label>
-              <span className="search-filters__value">{filters.patternPrimarySimilarity}%</span>
+              <span className="slider-value">{filters.patternPrimarySimilarity}%</span>
             </div>
             <input
               type="range"
@@ -233,14 +233,14 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
               max="100"
               value={filters.patternPrimarySimilarity}
               onChange={(e) => handleFilterChange('patternPrimarySimilarity', parseInt(e.target.value))}
-              className="search-filters__slider"
+              className="slider-control"
             />
           </div>
 
-          <div className="search-filters__field">
-            <div className="search-filters__label-row">
+          <div className="search-filters__field search-filters__field--vertical">
+            <div className="slider-label-row">
               <label className="search-filters__label">Secondary</label>
-              <span className="search-filters__value">{filters.patternSecondarySimilarity}%</span>
+              <span className="slider-value">{filters.patternSecondarySimilarity}%</span>
             </div>
             <input
               type="range"
@@ -248,7 +248,7 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
               max="100"
               value={filters.patternSecondarySimilarity}
               onChange={(e) => handleFilterChange('patternSecondarySimilarity', parseInt(e.target.value))}
-              className="search-filters__slider"
+              className="slider-control"
             />
           </div>
         </div>
@@ -258,20 +258,20 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
           <h4 className="search-filters__section-title">Categories</h4>
           
           {Object.entries(categoryOptions).map(([category, options]) => (
-            <div key={category} className="search-filters__category">
-              <label className="search-filters__category-label">
+            <div key={category} className="search-filters__field search-filters__field--vertical">
+              <label className="search-filters__label">
                 {category.charAt(0).toUpperCase() + category.slice(1)}
               </label>
-              <div className="search-filters__checkboxes">
+              <div className="checkbox-group">
                 {options.map(option => (
-                  <label key={option} className="search-filters__checkbox-label">
+                  <label key={option} className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={(filters.categories[category as keyof SearchFilters["categories"]] || []).includes(option)}
                       onChange={(e) => handleCategoryChange(category as keyof SearchFilters["categories"], option, e.target.checked)}
-                      className="search-filters__checkbox"
+                      className="checkbox-input"
                     />
-                    <span className="search-filters__checkbox-custom"></span>
+                    <span className="checkbox-custom"></span>
                     {option}
                   </label>
                 ))}

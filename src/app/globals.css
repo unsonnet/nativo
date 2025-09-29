@@ -409,7 +409,7 @@ body::before {
   gap: 1.5rem;
   border: none;
   padding: 0;
-  margin: 0;
+  margin: 0 0 1.25rem 0;
   width: 100%;
 }
 
@@ -466,13 +466,13 @@ body::before {
 
 .form-control {
   width: 100%;
-  border-radius: 0.5rem;
-  border: 1px solid transparent;
+  border-radius: 4px;
+  border: 1px solid var(--control-border);
   background-color: var(--control-background);
   color: var(--text-primary);
   font-size: var(--text-size-sm);
-  padding: 0.6rem 0.85rem;
-  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  padding: 0.5rem 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
 .form-control--error {
@@ -487,17 +487,17 @@ body::before {
 
 .form-control:hover {
   background-color: var(--control-background-hover);
-  border-color: rgba(148, 163, 184, 0.25);
+  border-color: var(--control-border);
 }
 
 .form-control:focus {
   outline: none;
-  border-color: var(--text-subtle);
-  box-shadow: 0 0 0 2px var(--control-ring);
+  border-color: var(--control-ring);
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.25);
 }
 
 .form-control::placeholder {
-  color: rgba(148, 163, 184, 0.6);
+  color: var(--text-muted);
 }
 
 .select-control {
@@ -509,6 +509,13 @@ body::before {
   /* place the chevron slightly closer to the right edge */
   background-position: right 0.5rem center;
   background-size: 0.6rem auto;
+}
+
+/* Make inputs and selects flexible when inside search-filters__field */
+.search-filters__field .select-control,
+.search-filters__field .form-control {
+  flex: 1;
+  min-width: 0;
 }
 
 .select-control option {
@@ -974,11 +981,141 @@ body::before {
 .search-filters__content {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 0;
-  padding-right: 1rem;
+  padding: 1rem 1rem 0 0;
 }
 
-/* Custom scrollbar styling for search filters to match aesthetic */
+/* Slider controls for search filters - same styling as search-filters__slider */
+.slider-control {
+  width: 100%;
+  height: 6px;
+  background: var(--control-background);
+  border-radius: 3px;
+  outline: none;
+  margin-bottom: 0;
+  border: 1px solid var(--control-border);
+  transition: border-color 0.2s ease;
+}
+
+.slider-control:focus {
+  border-color: var(--control-ring);
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.25);
+}
+
+.slider-control::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--button-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--control-border);
+  transition: all 0.2s ease;
+}
+
+.slider-control::-webkit-slider-thumb:hover {
+  background: var(--button-primary-hover);
+  transform: scale(1.1);
+}
+
+.slider-control::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--button-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--control-border);
+  transition: all 0.2s ease;
+}
+
+.slider-control::-moz-range-thumb:hover {
+  background: var(--button-primary-hover);
+  transform: scale(1.1);
+}
+
+/* Slider label row - same as search-filters__label-row */
+.slider-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.slider-label-row .search-filters__label {
+  margin-bottom: 0;
+  flex: 0 0 auto;
+}
+
+.slider-value {
+  font-weight: 600;
+  margin-left: auto;
+  text-align: right;
+  font-size: var(--text-size-sm);
+  color: var(--text-primary);
+}
+
+/* Checkbox controls - same as search-filters__checkboxes */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: var(--text-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  position: relative;
+  padding-left: 0;
+}
+
+.checkbox-input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkbox-custom {
+  height: 16px;
+  width: 16px;
+  background: var(--control-background);
+  border: 1px solid var(--control-border);
+  border-radius: 3px;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.checkbox-label:hover .checkbox-custom {
+  border-color: var(--control-ring);
+}
+
+.checkbox-input:checked ~ .checkbox-custom {
+  background: var(--button-primary);
+  border-color: var(--button-primary);
+}
+
+.checkbox-input:checked ~ .checkbox-custom::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #0f172a;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox-input:focus ~ .checkbox-custom {
+  border-color: var(--control-ring);
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.25);
+}
 .search-filters__content::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -1021,35 +1158,58 @@ body::before {
   font-size: var(--text-size-sm);
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.75rem 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .search-filters__field {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-filters__field--inline {
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.search-filters__field--vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 
 .search-filters__label-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   margin-bottom: 0.5rem;
 }
 
 .search-filters__label-row .search-filters__label {
   margin-bottom: 0;
+  flex: 0 0 auto;
 }
 
 .search-filters__label-row .search-filters__value {
   font-weight: 600;
+  margin-left: auto;
+  text-align: right;
 }
 
 .search-filters__label {
   display: block;
   font-size: var(--text-size-sm);
   color: var(--text-muted);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 80px;
+  flex-shrink: 0;
 }
 
 .search-filters__number-input {
@@ -1089,8 +1249,9 @@ body::before {
 }
 
 .search-filters__dimension-input {
-  width: 80px;
-  padding: 0.4rem 0.6rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
   font-size: var(--text-size-sm);
   color: var(--text-primary);
   background: var(--control-background);
@@ -1115,7 +1276,7 @@ body::before {
   background: var(--control-background);
   border-radius: 3px;
   outline: none;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0;
   border: 1px solid var(--control-border);
   transition: border-color 0.2s ease;
 }
@@ -1163,13 +1324,13 @@ body::before {
 }
 
 .search-filters__category {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .search-filters__category-label {
   display: block;
   font-size: var(--text-size-sm);
-  color: var(--text-primary);
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
