@@ -289,7 +289,7 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
           className="button button--primary search-filters__search-btn"
         >
           <Search className="w-4 h-4" />
-          {isSearching ? "Searching..." : "Search Similar Reports"}
+          {isSearching ? "Searching..." : "Search Similar Products"}
         </button>
       </div>
     </div>

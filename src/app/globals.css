@@ -25,6 +25,14 @@
   --button-primary-hover: #e2e8f0;
   --button-secondary: rgba(255, 255, 255, 0.08);
   --button-secondary-hover: rgba(255, 255, 255, 0.12);
+  --accent-primary: #ef4444;
+  --accent-primary-hover: #dc2626;
+  --similarity-excellent: #10b981;
+  --similarity-good: #22c55e;
+  --similarity-fair: #f59e0b;
+  --similarity-poor: #f97316;
+  --similarity-very-poor: #ef4444;
+  --text-size-xs: 0.75rem;
   --text-size-sm: 0.8rem;
   --text-size-md: 0.95rem;
   --text-size-lg: 1.25rem;
@@ -1344,23 +1352,22 @@ body::before {
 /* Search Results Grid */
 .search-results__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.25rem;
 }
 
 .search-result-card {
   background: var(--surface-panel);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   transition: all 0.2s ease;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .search-result-card:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-elevated);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .search-result-card__image {
@@ -1375,27 +1382,115 @@ body::before {
 }
 
 .search-result-card__similarity {
+  background: transparent;
+  border: 1.5px solid;
+  color: var(--text-primary);
+  font-size: var(--text-size-xs);
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+/* Similarity color coding */
+.search-result-card__similarity.similarity-excellent {
+  border-color: var(--similarity-excellent);
+  color: var(--similarity-excellent);
+}
+
+.search-result-card__similarity.similarity-good {
+  border-color: var(--similarity-good);
+  color: var(--similarity-good);
+}
+
+.search-result-card__similarity.similarity-fair {
+  border-color: var(--similarity-fair);
+  color: var(--similarity-fair);
+}
+
+.search-result-card__similarity.similarity-poor {
+  border-color: var(--similarity-poor);
+  color: var(--similarity-poor);
+}
+
+.search-result-card__similarity.similarity-very-poor {
+  border-color: var(--similarity-very-poor);
+  color: var(--similarity-very-poor);
+}
+
+.search-result-card__favorite {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  background: var(--surface-panel-strong);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--text-muted);
+  border: none;
+  padding: 0.5rem;
+  border-radius: 50%;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-result-card__favorite:hover {
+  background: rgba(0, 0, 0, 0.6);
   color: var(--text-primary);
-  font-size: var(--text-size-sm);
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  backdrop-filter: blur(4px);
+  transform: scale(1.05);
+}
+
+.search-result-card__favorite--active {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.search-result-card__favorite--active:hover {
+  background: var(--accent-primary-hover);
 }
 
 .search-result-card__content {
-  padding: 1rem;
+  padding: 0.75rem 0 1rem 0;
+}
+
+.search-result-card__info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
 .search-result-card__title {
-  font-size: var(--text-size-md);
+  font-size: var(--text-size-xs);
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  flex: 1;
+}
+
+.search-result-card__name-line {
+  line-height: 1.2;
+}
+
+.search-result-card__name-line:not(:last-child) {
+  color: var(--text-muted);
+  opacity: 0.8;
+  margin-bottom: 0.25rem;
+}
+
+.search-result-card__name-line:last-child {
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 0.5rem 0;
+}
+
+.search-result-card__separator {
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin: 0 0.5rem;
+  font-size: var(--text-size-xs);
+  font-weight: 400;
 }
 
 .search-result-card__details {
