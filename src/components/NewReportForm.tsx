@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { FileText } from 'lucide-react';
 import type { FormEvent } from 'react';
 
 type FlooringOption = {
@@ -69,6 +70,8 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
   const { user } = useAuth();
   const [touched, setTouched] = useState(INITIAL_TOUCHED_STATE);
   const [isReportNameFocused, setIsReportNameFocused] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const reportNameRef = useRef<HTMLInputElement>(null);
 
   const selectedFlooring = useMemo(
@@ -128,6 +131,15 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
     }
   }, [form.length, form.width, form.thickness, onDimensionsChange, onDimensionsValues]);
 
+  // Clear error message when images are added
+  useEffect(() => {
+    if ((imageCount ?? 0) > 0) {
+      if (errorMessage && errorMessage.includes('Please add at least one image')) {
+        setErrorMessage(null);
+      }
+    }
+  }, [imageCount, errorMessage]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (form.reportName.trim() === '') {
@@ -183,9 +195,6 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
     setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   // Determine whether submit button should be enabled: needs report name and at least one image
   // Also needs length and width when relative is selected
   const canSubmit = form.reportName.trim() !== '' && 
@@ -194,8 +203,9 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
 
   return (
     <div className="search-filters">
-      <div className="search-filters__header">
+      <div className="search-filters__header search-filters__header--strip-top">
         <h3 className="search-filters__title">
+          <FileText className="w-4 h-4" />
           Create Report
         </h3>
       </div>
@@ -374,6 +384,22 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
                   </label>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="search-filters__section">
+            <h4 className="search-filters__section-title">Reference Images <span className="form-field__required-asterisk">*</span></h4>
+            <div className="form-field">
+              {(imageCount ?? 0) === 0 && (
+                <p className="form-field__hint form-field__hint--tight">
+                  Add images using the workspace on the right. At least one image is required.
+                </p>
+              )}
+              {imageCount > 0 && (
+                <p className="form-field__hint form-field__hint--tight" style={{ color: 'var(--text-subtle)' }}>
+                  {imageCount} image{imageCount !== 1 ? 's' : ''} added
+                </p>
+              )}
             </div>
           </div>
 

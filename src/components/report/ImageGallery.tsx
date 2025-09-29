@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Images } from "lucide-react";
 import type { ProductImage } from "@/types/report";
 
 interface ImageGalleryProps {
@@ -38,8 +38,11 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 
   return (
     <div className="image-gallery">
-      <div className="image-gallery__header">
-        <h3 className="image-gallery__title">Selected Report</h3>
+      <div className="search-filters__header search-filters__header--strip-top">
+        <h3 className="search-filters__title">
+          <Images className="w-4 h-4" />
+          Reference Images
+        </h3>
       </div>
 
       {/* Main image viewer with side navigation */}

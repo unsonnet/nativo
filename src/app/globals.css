@@ -864,16 +864,16 @@ body::before {
 }
 
 .image-gallery__nav--left {
-  left: 8px;
+  left: 5px;
 }
 
 .image-gallery__nav--right {
-  right: 8px;
+  right: 5px;
 }
 
 .image-gallery__indicators {
   position: absolute;
-  bottom: 12px;
+  bottom: 5px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
@@ -933,6 +933,10 @@ body::before {
   justify-content: space-between;
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.search-filters__header--strip-top {
+  padding-top: 0;
 }
 
 .search-filters__title {
