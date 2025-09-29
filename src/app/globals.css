@@ -309,7 +309,6 @@ body::before {
   margin-right: -8px;
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
 }
 
 /* Subtle scrollbar styles for WebKit-based browsers (macOS/Chrome). The thumb is translucent
@@ -865,11 +864,12 @@ body::before {
   margin: 0;
 }
 
-.image-gallery__main {
-  margin-bottom: 1rem;
+.image-gallery__viewer {
+  position: relative;
+  margin-bottom: 0.5rem;
 }
 
-.image-gallery__main-container {
+.image-gallery__main {
   position: relative;
   width: 100%;
   height: 200px;
@@ -882,63 +882,66 @@ body::before {
   object-fit: cover;
 }
 
-.image-gallery__thumbnails {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.image-gallery__nav-button {
+.image-gallery__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
-  background: var(--control-background);
-  border: 1px solid var(--control-border);
-  border-radius: 4px;
-  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: 50%;
+  color: white;
   cursor: pointer;
   transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
 }
 
-.image-gallery__nav-button:hover:not(:disabled) {
-  background: var(--control-background-hover);
-  color: var(--text-primary);
+.image-gallery__nav:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: translateY(-50%) scale(1.1);
 }
 
-.image-gallery__nav-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.image-gallery__nav--left {
+  left: 8px;
 }
 
-.image-gallery__thumbnail-list {
+.image-gallery__nav--right {
+  right: 8px;
+}
+
+.image-gallery__indicators {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0;
+  margin-bottom: 0.5rem;
 }
 
-.image-gallery__thumbnail {
-  position: relative;
-  width: 100%;
-  height: 60px;
-  background: var(--surface-muted);
-  border: 2px solid transparent;
-  border-radius: 6px;
-  overflow: hidden;
+.image-gallery__dot {
+  width: 6px;
+  height: 6px;
+  border: none;
+  border-radius: 50%;
+  background: var(--text-muted);
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
+  opacity: 0.4;
 }
 
-.image-gallery__thumbnail:hover {
-  border-color: var(--border-strong);
+.image-gallery__dot:hover {
+  opacity: 0.7;
+  transform: scale(1.3);
 }
 
-.image-gallery__thumbnail--active {
-  border-color: var(--button-primary);
-}
-
-.image-gallery__thumbnail-image {
-  object-fit: cover;
+.image-gallery__dot--active {
+  background: var(--text-primary);
+  opacity: 1;
+  transform: scale(1.5);
 }
 
 .image-gallery__empty {
@@ -963,7 +966,7 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 

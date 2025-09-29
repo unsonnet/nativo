@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ProductImage } from "@/types/report";
 
 interface ImageGalleryProps {
@@ -11,24 +11,19 @@ interface ImageGalleryProps {
 
 export function ImageGallery({ images }: ImageGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [thumbnailStartIndex, setThumbnailStartIndex] = useState(0);
   
-  const visibleThumbnailCount = 3; // Reduced for better fit in sidebar
-  
-  const handlePrevThumbnails = () => {
-    setThumbnailStartIndex(Math.max(0, thumbnailStartIndex - 1));
+  const handlePrevious = () => {
+    setSelectedIndex(prev => prev > 0 ? prev - 1 : images.length - 1);
   };
   
-  const handleNextThumbnails = () => {
-    const maxStartIndex = Math.max(0, images.length - visibleThumbnailCount);
-    setThumbnailStartIndex(Math.min(maxStartIndex, thumbnailStartIndex + 1));
+  const handleNext = () => {
+    setSelectedIndex(prev => prev < images.length - 1 ? prev + 1 : 0);
   };
   
-  const visibleThumbnails = images.slice(
-    thumbnailStartIndex, 
-    thumbnailStartIndex + visibleThumbnailCount
-  );
-  
+  const goToImage = (index: number) => {
+    setSelectedIndex(index);
+  };
+
   if (!images || images.length === 0) {
     return (
       <div className="image-gallery">
@@ -39,75 +34,66 @@ export function ImageGallery({ images }: ImageGalleryProps) {
     );
   }
 
+  const hasMultipleImages = images.length > 1;
+
   return (
     <div className="image-gallery">
       <div className="image-gallery__header">
         <h3 className="image-gallery__title">Selected Report</h3>
       </div>
 
-      {/* Main selected image */}
-      <div className="image-gallery__main">
-        <div className="image-gallery__main-container">
+      {/* Main image viewer with side navigation */}
+      <div className="image-gallery__viewer">
+        {/* Left chevron */}
+        {hasMultipleImages && (
+          <button
+            onClick={handlePrevious}
+            className="image-gallery__nav image-gallery__nav--left"
+            aria-label="Previous image"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Main image container */}
+        <div className="image-gallery__main">
           <Image
             src={images[selectedIndex]?.url || "/placeholder.svg"}
             alt={`Product image ${selectedIndex + 1}`}
             fill
             className="image-gallery__main-image"
-            sizes="300px"
+            sizes="280px"
             unoptimized
           />
         </div>
-      </div>
 
-      {/* Thumbnail navigation */}
-      <div className="image-gallery__thumbnails">
-        {images.length > visibleThumbnailCount && (
+        {/* Right chevron */}
+        {hasMultipleImages && (
           <button
-            onClick={handlePrevThumbnails}
-            disabled={thumbnailStartIndex === 0}
-            className="image-gallery__nav-button image-gallery__nav-button--up"
-            aria-label="Previous thumbnails"
+            onClick={handleNext}
+            className="image-gallery__nav image-gallery__nav--right"
+            aria-label="Next image"
           >
-            <ChevronUp className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           </button>
         )}
+      </div>
 
-        <div className="image-gallery__thumbnail-list">
-          {visibleThumbnails.map((image, index) => {
-            const actualIndex = thumbnailStartIndex + index;
-            return (
-              <button
-                key={image.id}
-                onClick={() => setSelectedIndex(actualIndex)}
-                className={`image-gallery__thumbnail ${
-                  selectedIndex === actualIndex ? "image-gallery__thumbnail--active" : ""
-                }`}
-                aria-label={`Select image ${actualIndex + 1}`}
-              >
-                <Image
-                  src={image.url}
-                  alt={`Thumbnail ${actualIndex + 1}`}
-                  fill
-                  className="image-gallery__thumbnail-image"
-                  sizes="60px"
-                  unoptimized
-                />
-              </button>
-            );
-          })}
+      {/* Dot indicators */}
+      {hasMultipleImages && (
+        <div className="image-gallery__indicators">
+          {images.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => goToImage(index)}
+              className={`image-gallery__dot ${
+                selectedIndex === index ? "image-gallery__dot--active" : ""
+              }`}
+              aria-label={`Go to image ${index + 1}`}
+            />
+          ))}
         </div>
-
-        {images.length > visibleThumbnailCount && (
-          <button
-            onClick={handleNextThumbnails}
-            disabled={thumbnailStartIndex >= images.length - visibleThumbnailCount}
-            className="image-gallery__nav-button image-gallery__nav-button--down"
-            aria-label="Next thumbnails"
-          >
-            <ChevronDown className="w-4 h-4" />
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 }

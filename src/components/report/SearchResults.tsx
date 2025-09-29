@@ -3,12 +3,12 @@
 import Image from "next/image";
 import { Grid, List, Package } from "lucide-react";
 import { useState } from "react";
-import type { Product } from "@/types/report";
+import type { ProductIndex, Product } from "@/types/report";
 
 interface SearchResultsProps {
-  results: Product[];
+  results: ProductIndex[];
   isLoading: boolean;
-  referenceProduct?: Product;
+  referenceProduct?: Product; // Keep as Product since the reference in reports is the full Product
 }
 
 interface ViewMode {
@@ -18,27 +18,24 @@ interface ViewMode {
 export function SearchResults({ results, isLoading }: SearchResultsProps) {
   const [viewMode, setViewMode] = useState<ViewMode["type"]>("grid");
 
-  const formatDimensions = (product: Product) => {
-    const format = product.formats?.[0];
-    if (!format) return "Unknown";
-    
-    const { length, width } = format;
-    if (length?.unit === 'none' || width?.unit === 'none') {
-      return "Variable";
-    }
-    
-    return `${length?.val || '?'} x ${width?.val || '?'} ${length?.unit || 'in'}`;
+  const formatProductName = (product: ProductIndex) => {
+    const parts = [];
+    if (product.brand) parts.push(product.brand);
+    if (product.series) parts.push(product.series);
+    if (product.model) parts.push(product.model);
+    return parts.join(' ') || 'Unknown Product';
   };
 
-  const calculateSimilarity = () => {
-    // Mock similarity calculation - in real app this would be computed by your backend
-    return Math.floor(Math.random() * 20) + 80; // Random 80-100%
+  const getSimilarity = (product: ProductIndex) => {
+    return product.analysis?.similarity ? 
+      Math.round(product.analysis.similarity * 100) : 
+      Math.floor(Math.random() * 20) + 80; // Fallback for demo
   };
 
-  const handleProductClick = (product: Product) => {
+  const handleProductClick = (product: ProductIndex) => {
     // In a real implementation, this could open a product detail modal
     // or navigate to a detailed product view
-    console.log("Product clicked:", product.id, product.brand);
+    console.log("Product clicked:", product.id, formatProductName(product));
   };
 
   if (isLoading) {
@@ -113,30 +110,22 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
               >
                 <div className="search-result-card__image">
                   <Image
-                    src={product.images[0]?.url || "/placeholder.svg"}
-                    alt={`${product.brand} ${product.model}`}
+                    src={product.image || "/placeholder.svg"}
+                    alt={formatProductName(product)}
                     fill
                     className="search-result-card__img"
                     sizes="200px"
                     unoptimized
                   />
                   <div className="search-result-card__similarity">
-                    {calculateSimilarity()}%
+                    {getSimilarity(product)}%
                   </div>
                 </div>
                 
                 <div className="search-result-card__content">
                   <h3 className="search-result-card__title">
-                    {product.brand} {product.model}
+                    {formatProductName(product)}
                   </h3>
-                  <div className="search-result-card__details">
-                    <span className="search-result-card__material">
-                      {product.category.material}
-                    </span>
-                    <span className="search-result-card__dimensions">
-                      {formatDimensions(product)}
-                    </span>
-                  </div>
                 </div>
               </div>
             ))}
@@ -151,8 +140,8 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
               >
                 <div className="search-result-row__image">
                   <Image
-                    src={product.images[0]?.url || "/placeholder.svg"}
-                    alt={`${product.brand} ${product.model}`}
+                    src={product.image || "/placeholder.svg"}
+                    alt={formatProductName(product)}
                     fill
                     className="search-result-row__img"
                     sizes="80px"
@@ -163,23 +152,15 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
                 <div className="search-result-row__content">
                   <div className="search-result-row__main">
                     <h3 className="search-result-row__title">
-                      {product.brand} {product.model}
+                      {formatProductName(product)}
                     </h3>
-                    <div className="search-result-row__meta">
-                      <span className="search-result-row__category">
-                        {product.category.type} • {product.category.material}
-                      </span>
-                      <span className="search-result-row__dimensions">
-                        {formatDimensions(product)}
-                      </span>
-                    </div>
                   </div>
                   
                   <div className="search-result-row__similarity">
                     <span className="search-result-row__similarity-label">Similarity</span>
-                                      <div className="search-result-row__similarity-value">
-                    {calculateSimilarity()}%
-                  </div>
+                    <div className="search-result-row__similarity-value">
+                      {getSimilarity(product)}%
+                    </div>
                   </div>
                 </div>
               </div>
