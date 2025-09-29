@@ -23,14 +23,18 @@ function ReportPageContent() {
 
   if (!reportId) {
     return (
-      <div className="report-page">
-        <div className="report-page__error">
-          <p>No report ID provided. Please access this page with a report ID.</p>
-          <p>Example: /report#123 or /report?id=123</p>
-          <a href="/dashboard" className="button button--secondary">
-            Back to Dashboard
+      <div className="report-create">
+        <aside className="report-create__sidebar">
+          <a href="/dashboard" className="report-create__back">
+            <span aria-hidden className="report-create__back-icon">←</span>
+            Back to Reports
           </a>
-        </div>
+          <div className="report-page__error">
+            <p>No report ID provided. Please access this page with a report ID.</p>
+            <p>Example: /report#123 or /report?id=123</p>
+          </div>
+        </aside>
+        <div style={{ flex: 1, background: 'var(--background)' }}></div>
       </div>
     );
   }
@@ -40,7 +44,17 @@ function ReportPageContent() {
 
 export default function ReportPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="report-create">
+        <aside className="report-create__sidebar">
+          <div className="report-page__loading">
+            <div className="loading-spinner"></div>
+            <p>Loading...</p>
+          </div>
+        </aside>
+        <div style={{ flex: 1, background: 'var(--background)' }}></div>
+      </div>
+    }>
       <ReportPageContent />
     </Suspense>
   );

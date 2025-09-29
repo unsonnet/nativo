@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { 
   ReportInfoHeader, 
   ImageGallery, 
@@ -26,63 +25,85 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
 
   if (isLoading) {
     return (
-      <div className="report-page">
-        <div className="report-page__loading">
-          <div className="loading-spinner"></div>
-          <p>Loading report...</p>
-        </div>
+      <div className="report-create">
+        <aside className="report-create__sidebar">
+          <div className="report-create__form">
+            <div className="report-form">
+              <div className="report-form__body">
+                <div className="report-page__loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading report...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+        <div style={{ flex: 1, background: 'var(--background)' }}></div>
       </div>
     );
   }
 
   if (error || !report) {
     return (
-      <div className="report-page">
-        <div className="report-page__error">
-          <p>{error || "Report not found"}</p>
-          <Link href="/dashboard" className="button button--secondary">
-            Back to Dashboard
+      <div className="report-create">
+        <aside className="report-create__sidebar">
+          <Link href="/dashboard" className="report-create__back">
+            <span aria-hidden className="report-create__back-icon">←</span>
+            Back to Reports
           </Link>
-        </div>
+          <div className="report-create__form">
+            <div className="report-form">
+              <div className="report-form__body">
+                <div className="report-page__error">
+                  <p>{error || "Report not found"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+        <div style={{ flex: 1, background: 'var(--background)' }}></div>
       </div>
     );
   }
 
   return (
-    <div className="report-page">
-      {/* Header with back button and report info */}
-      <header className="report-page__header">
-        <Link href="/dashboard" className="report-page__back-button">
-          <ArrowLeft className="w-5 h-5" />
+    <div className="report-create">
+      {/* Left sidebar with back button, gallery and filters */}
+      <aside className="report-create__sidebar">
+        <Link href="/dashboard" className="report-create__back">
+          <span aria-hidden className="report-create__back-icon">←</span>
           Back to Reports
         </Link>
-        <h1 className="report-page__title">Report Details & Search</h1>
-      </header>
 
-      {/* Report information strip */}
-      <ReportInfoHeader report={report} />
+        <div className="report-create__form">
+          <div className="report-form">
+            <div className="report-form__body">
+              {/* Image Gallery */}
+              <ImageGallery images={report.reference.images} />
+              
+              {/* Search Filters */}
+              <SearchFilters 
+                referenceProduct={report.reference}
+                onSearch={handleSearch}
+                isSearching={isSearching}
+              />
+            </div>
+          </div>
+        </div>
+      </aside>
 
-      {/* Main content area */}
-      <div className="report-page__content">
-        {/* Left sidebar with gallery and filters */}
-        <aside className="report-page__sidebar">
-          <ImageGallery images={report.reference.images} />
-          <SearchFilters 
-            referenceProduct={report.reference}
-            onSearch={handleSearch}
-            isSearching={isSearching}
-          />
-        </aside>
-
-        {/* Right content area for search results */}
-        <main className="report-page__main">
-          <SearchResults 
-            results={searchResults}
-            isLoading={isSearching}
-            referenceProduct={report.reference}
-          />
-        </main>
-      </div>
+      {/* Right content area with report info header and search results */}
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {/* Report information strip spans the full width */}
+        <ReportInfoHeader report={report} />
+        
+        {/* Search Results */}
+        <SearchResults 
+          results={searchResults}
+          isLoading={isSearching}
+          referenceProduct={report.reference}
+        />
+      </main>
     </div>
   );
 }
