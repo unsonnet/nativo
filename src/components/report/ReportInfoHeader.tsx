@@ -1,6 +1,5 @@
 "use client";
 
-import { Edit } from "lucide-react";
 import type { Report, Product } from "@/types/report";
 
 interface ReportInfoHeaderProps {
@@ -14,12 +13,26 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
   const formatDimensions = () => {
     if (!format) return "Unknown";
     
-    const { length, width } = format;
-    if (length?.unit === 'none' || width?.unit === 'none') {
-      return "Variable dimensions";
-    }
+    const { length, width, thickness } = format;
     
-    return `${length?.val || '?'} x ${width?.val || '?'} ${length?.unit || 'in'}`;
+    // Check if dimensions are absolute (have actual units) or relative (unit is 'none')
+    const isAbsolute = length?.unit !== 'none' && width?.unit !== 'none';
+    
+    if (isAbsolute) {
+      // Absolute dimensions: length x width x thickness with units
+      const lengthStr = length?.val ? `${length.val}"` : '?';
+      const widthStr = width?.val ? `${width.val}"` : '?';
+      const thicknessStr = thickness?.val ? `${thickness.val}mm` : '?';
+      
+      return `${lengthStr} x ${widthStr} x ${thicknessStr}`;
+    } else {
+      // Relative dimensions: length : width x thickness
+      const lengthStr = length?.val ? `${length.val}` : '?';
+      const widthStr = width?.val ? `${width.val}` : '?';
+      const thicknessStr = thickness?.val ? `${thickness.val}mm` : '?';
+      
+      return `${lengthStr} : ${widthStr} x ${thicknessStr}`;
+    }
   };
 
   // Helper to get all available categories
@@ -77,14 +90,6 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
             {formatDimensions()}
           </div>
         </div>
-      </div>
-
-      {/* Edit Action */}
-      <div className="report-info-header__actions">
-        <button className="report-info-header__edit-btn">
-          <Edit className="w-4 h-4" />
-          Edit
-        </button>
       </div>
     </div>
   );

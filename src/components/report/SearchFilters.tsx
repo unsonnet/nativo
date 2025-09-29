@@ -7,6 +7,7 @@ import type { Product } from "@/types/report";
 export interface SearchFilters {
   maxLengthDiff?: number;
   maxWidthDiff?: number;
+  maxThicknessDiff?: number;
   colorPrimarySimilarity?: number;
   colorSecondarySimilarity?: number;
   patternPrimarySimilarity?: number;
@@ -32,8 +33,9 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
   const hasAbsoluteDimensions = format?.length?.unit !== 'none' && format?.width?.unit !== 'none';
   
   const [filters, setFilters] = useState<SearchFilters>({
-    maxLengthDiff: 2,
-    maxWidthDiff: 2,
+    maxLengthDiff: 1,
+    maxWidthDiff: 1,
+    maxThicknessDiff: 1,
     colorPrimarySimilarity: 50,
     colorSecondarySimilarity: 50,
     patternPrimarySimilarity: 50,
@@ -80,8 +82,9 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
 
   const resetFilters = () => {
     setFilters({
-      maxLengthDiff: 2,
-      maxWidthDiff: 2,
+      maxLengthDiff: 1,
+      maxWidthDiff: 1,
+      maxThicknessDiff: 1,
       colorPrimarySimilarity: 50,
       colorSecondarySimilarity: 50,
       patternPrimarySimilarity: 50,
@@ -115,9 +118,9 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
           <div className="search-filters__section">
             <h4 className="search-filters__section-title">Dimension Similarity</h4>
             
-            <div className="search-filters__field">
-              <label className="search-filters__label">
-                Max Length Difference ({format?.length?.unit})
+            <div className="search-filters__dimension-row">
+              <label className="search-filters__dimension-label">
+                Δ Length ({format?.length?.unit || 'in'})
               </label>
               <input
                 type="number"
@@ -131,14 +134,14 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                     handleFilterChange('maxLengthDiff', value);
                   }
                 }}
-                className="search-filters__number-input"
-                placeholder="0.0"
+                className="search-filters__dimension-input"
+                placeholder="1.0"
               />
             </div>
 
-            <div className="search-filters__field">
-              <label className="search-filters__label">
-                Max Width Difference ({format?.width?.unit})
+            <div className="search-filters__dimension-row">
+              <label className="search-filters__dimension-label">
+                Δ Width ({format?.width?.unit || 'in'})
               </label>
               <input
                 type="number"
@@ -152,8 +155,29 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                     handleFilterChange('maxWidthDiff', value);
                   }
                 }}
-                className="search-filters__number-input"
-                placeholder="0.0"
+                className="search-filters__dimension-input"
+                placeholder="1.0"
+              />
+            </div>
+
+            <div className="search-filters__dimension-row">
+              <label className="search-filters__dimension-label">
+                Δ Thickness (mm)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="20"
+                step="0.5"
+                value={filters.maxThicknessDiff || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                  if (!isNaN(value) && value >= 0 && value <= 20) {
+                    handleFilterChange('maxThicknessDiff', value);
+                  }
+                }}
+                className="search-filters__dimension-input"
+                placeholder="1.0"
               />
             </div>
           </div>
@@ -247,6 +271,7 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                       onChange={(e) => handleCategoryChange(category as keyof SearchFilters["categories"], option, e.target.checked)}
                       className="search-filters__checkbox"
                     />
+                    <span className="search-filters__checkbox-custom"></span>
                     {option}
                   </label>
                 ))}

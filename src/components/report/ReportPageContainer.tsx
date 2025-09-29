@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { 
   ReportInfoHeader, 
   ImageGallery, 
@@ -47,10 +46,6 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
     return (
       <div className="report-create">
         <aside className="report-create__sidebar">
-          <Link href="/dashboard" className="report-create__back">
-            <span aria-hidden className="report-create__back-icon">←</span>
-            Back to Reports
-          </Link>
           <div className="report-create__form">
             <div className="report-form">
               <div className="report-form__body">
@@ -68,13 +63,8 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
 
   return (
     <div className="report-create">
-      {/* Left sidebar with back button, gallery and filters */}
+      {/* Left sidebar with gallery and filters */}
       <aside className="report-create__sidebar">
-        <Link href="/dashboard" className="report-create__back">
-          <span aria-hidden className="report-create__back-icon">←</span>
-          Back to Reports
-        </Link>
-
         <div className="report-create__form">
           <div className="report-form">
               {/* Image Gallery */}

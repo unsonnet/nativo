@@ -25,10 +25,6 @@ function ReportPageContent() {
     return (
       <div className="report-create">
         <aside className="report-create__sidebar">
-          <a href="/dashboard" className="report-create__back">
-            <span aria-hidden className="report-create__back-icon">←</span>
-            Back to Reports
-          </a>
           <div className="report-page__error">
             <p>No report ID provided. Please access this page with a report ID.</p>
             <p>Example: /report#123 or /report?id=123</p>

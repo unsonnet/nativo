@@ -77,23 +77,23 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             <ChevronRight className="w-5 h-5" />
           </button>
         )}
-      </div>
 
-      {/* Dot indicators */}
-      {hasMultipleImages && (
-        <div className="image-gallery__indicators">
-          {images.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToImage(index)}
-              className={`image-gallery__dot ${
-                selectedIndex === index ? "image-gallery__dot--active" : ""
-              }`}
-              aria-label={`Go to image ${index + 1}`}
-            />
-          ))}
-        </div>
-      )}
+        {/* Dot indicators - now positioned over the image */}
+        {hasMultipleImages && (
+          <div className="image-gallery__indicators">
+            {images.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goToImage(index)}
+                className={`image-gallery__dot ${
+                  selectedIndex === index ? "image-gallery__dot--active" : ""
+                }`}
+                aria-label={`Go to image ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
