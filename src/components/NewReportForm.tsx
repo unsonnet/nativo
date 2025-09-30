@@ -61,12 +61,6 @@ const INITIAL_TOUCHED_STATE = {
 
 export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues, imageCount = 0 }: NewReportFormProps) {
   const [form, setForm] = useState<NewReportFormState>(INITIAL_FORM_STATE);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    reportName: false,
-    category: false,
-    dimensions: false,
-    attributes: false,
-  });
   const { user } = useAuth();
   const [touched, setTouched] = useState(INITIAL_TOUCHED_STATE);
   const [isReportNameFocused, setIsReportNameFocused] = useState(false);
@@ -190,10 +184,6 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
     form.units === 'relative' && 
     (form.length.trim() === '' || form.width.trim() === '');
   const dimensionsErrorId = areDimensionsMissing ? 'dimensions-error' : undefined;
-
-  const toggleSection = (id: string) => {
-    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
 
   // Determine whether submit button should be enabled: needs report name and at least one image
   // Also needs length and width when relative is selected

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { AppHeader } from "@/components/AppHeader";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +31,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <AppHeader />
+          <Suspense fallback={<div className="app-header-universal" style={{ height: '64px' }}></div>}>
+            <AppHeader />
+          </Suspense>
           {children}
         </AuthProvider>
       </body>
