@@ -6,18 +6,18 @@ import { useState, useEffect, useRef } from "react";
 import { reportsApi } from "@/lib/api/reports";
 
 export function AppHeader() {
-  const { user, loading, signInWithDummy, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [reportTitle, setReportTitle] = useState<string | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Track hydration to ensure consistent rendering
   useEffect(() => {
-    setIsHydrated(true);
+    setMounted(true);
   }, []);
 
   // Handle clicking outside to close menu
@@ -104,7 +104,7 @@ export function AppHeader() {
     }
     if (pathname === '/create' || pathname === '/create/') {
       console.log('Create page detected!');
-      return 'Create Report';
+      return 'Create Search';
     }
     if (pathname.startsWith('/fetch')) {
       console.log('Fetch page detected!');
@@ -120,15 +120,15 @@ export function AppHeader() {
       }
       return reportTitle ? (
         <>
-          <span>Report:</span>
+          <span>Search Results:</span>
           <span className="app-header-universal__subtitle">{reportTitle}</span>
         </>
-      ) : 'Report';
+      ) : 'Search Results';
     }
-    if (pathname.startsWith('/edit')) return 'Edit Report';
+    if (pathname.startsWith('/edit')) return 'Edit Search';
     
-    console.log('Fallback to FloorPlan Reports');
-    return 'FloorPlan Reports';
+    console.log('Fallback to K9 Search');
+    return 'K9 Search';
   };
 
   return (
@@ -161,7 +161,7 @@ export function AppHeader() {
       </div>
 
       <div className="app-header-universal__right">
-        {!isHydrated || loading ? (
+        {!mounted || loading ? (
           <div className="app-header-universal__user">
             <span className="app-header-universal__username">Loading...</span>
             <div className="app-header-universal__avatar skeleton" />
@@ -211,13 +211,12 @@ export function AppHeader() {
           </div>
         ) : (
           <div className="app-header-universal__user">
-            <span className="app-header-universal__username">Guest</span>
             <button
-              onClick={() => signInWithDummy()}
-              className="app-header-universal__avatar app-header-universal__avatar--guest"
-              title="Sign in"
+              onClick={() => router.push('/')}
+              className="app-header-universal__login-btn"
+              title="Log in"
             >
-              ?
+              Log In
             </button>
           </div>
         )}

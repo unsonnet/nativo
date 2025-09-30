@@ -18,8 +18,8 @@ function FetchPageContent() {
         flexDirection: 'column',
         gap: '1rem'
       }}>
-        <h2>Report ID Required</h2>
-        <p>Please provide a report ID in the URL: /fetch?report=YOUR_REPORT_ID</p>
+        <h2>Search ID Required</h2>
+        <p>Please provide a search ID in the URL: /fetch?report=YOUR_SEARCH_ID</p>
       </div>
     );
   }

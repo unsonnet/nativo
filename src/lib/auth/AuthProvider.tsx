@@ -24,43 +24,26 @@ const DUMMY_USER: User = {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ user: null, loading: true });
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     // Mark as hydrated to indicate client-side has taken over
-    setIsHydrated(true);
+    setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    let mounted = true;
+    let isCancelled = false;
 
     async function init() {
       // Only run initialization on the client side after hydration
-      if (!isHydrated) return;
+      if (!isMounted) return;
 
-      // If tokens are present and valid, parse idToken and set user
-      const tokens = tokenService.all;
-      if (tokens && !tokenService.expired) {
-        const claims = parseJwtPayload<Record<string, unknown>>(tokens.idToken);
-        if (claims && mounted) {
-          setState({
-            user: {
-              id: String(claims.sub ?? ""),
-              name: String(claims.name ?? claims['cognito:username'] ?? ""),
-              email: typeof claims.email === "string" ? claims.email : undefined,
-            },
-            loading: false,
-          });
-          return;
-        }
-      }
-
-      // If refresh token exists try to refresh
-      if (tokenService.refreshToken) {
-        const r = await authRefresh();
-        if (r.body && tokenService.idToken) {
-          const claims = parseJwtPayload<Record<string, unknown>>(tokenService.idToken as string);
-          if (claims && mounted) {
+      try {
+        // If tokens are present and valid, parse idToken and set user
+        const tokens = tokenService.all;
+        if (tokens && !tokenService.expired) {
+          const claims = parseJwtPayload<Record<string, unknown>>(tokens.idToken);
+          if (claims && !isCancelled) {
             setState({
               user: {
                 id: String(claims.sub ?? ""),
@@ -72,23 +55,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
         }
-      }
 
-      // Fallback: in development, provide a dummy user for convenience
-      // Only set dummy user on client side in development
-      if (typeof window !== 'undefined' && process.env.NODE_ENV === "development") {
-        setState({ user: DUMMY_USER, loading: false });
-      } else {
-        setState({ user: null, loading: false });
+        // If refresh token exists try to refresh with timeout
+        if (tokenService.refreshToken) {
+          try {
+            const refreshPromise = authRefresh();
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Refresh timeout')), 5000)
+            );
+            
+            const r = await Promise.race([refreshPromise, timeoutPromise]);
+            if (r && typeof r === 'object' && 'body' in r && r.body && tokenService.idToken) {
+              const claims = parseJwtPayload<Record<string, unknown>>(tokenService.idToken as string);
+              if (claims && !isCancelled) {
+                setState({
+                  user: {
+                    id: String(claims.sub ?? ""),
+                    name: String(claims.name ?? claims['cognito:username'] ?? ""),
+                    email: typeof claims.email === "string" ? claims.email : undefined,
+                  },
+                  loading: false,
+                });
+                return;
+              }
+            }
+          } catch (refreshError) {
+            console.log('Refresh failed or timed out:', refreshError);
+            // Continue to fallback
+          }
+        }
+
+        // Fallback: no user logged in
+        if (!isCancelled) {
+          setState({ user: null, loading: false });
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        // Ensure we always set loading to false even if something goes wrong
+        if (!isCancelled) {
+          setState({ user: null, loading: false });
+        }
       }
     }
 
     init();
 
     return () => {
-      mounted = false;
+      isCancelled = true;
     };
-  }, [isHydrated]); // Depend on isHydrated to re-run when client takes over
+  }, [isMounted]);
 
   async function signIn(username: string, password: string) {
     setState((s) => ({ ...s, loading: true }));
