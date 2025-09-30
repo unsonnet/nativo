@@ -9,6 +9,8 @@ import { useFavorites } from "@/hooks/useFavorites";
 interface SearchResultsProps {
   results: ProductIndex[];
   isLoading: boolean;
+  hasSearched: boolean;
+  reportId: string;
   referenceProduct?: Product; // Keep as Product since the reference in reports is the full Product
 }
 
@@ -16,9 +18,9 @@ interface ViewMode {
   type: "grid" | "favorites";
 }
 
-export function SearchResults({ results, isLoading }: SearchResultsProps) {
+export function SearchResults({ results, isLoading, hasSearched, reportId }: SearchResultsProps) {
   const [viewMode, setViewMode] = useState<ViewMode["type"]>("grid");
-  const { favorites, isFavorited, toggleFavorite } = useFavorites();
+  const { favorites, isFavorited, toggleFavorite } = useFavorites(reportId);
 
   const getProductNameText = (product: ProductIndex) => {
     const parts = [];
@@ -66,7 +68,7 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
   const getSimilarity = (product: ProductIndex) => {
     return product.analysis?.similarity ? 
       Math.round(product.analysis.similarity * 100) : 
-      Math.floor(Math.random() * 20) + 80; // Fallback for demo
+      0; // Products without similarity data go to bottom
   };
 
   const getSimilarityColorClass = (similarity: number) => {
@@ -109,17 +111,17 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
   const displayProducts = sortProducts(
     viewMode === "favorites" 
       ? favorites.map(fav => {
-          // Try to find similarity from current results, fallback to stored or random
+          // Try to find similarity from current results, fallback to stored analysis
           const resultMatch = results.find(r => r.id === fav.id);
+          const finalAnalysis = resultMatch?.analysis || fav.analysis;
+          
           return {
             id: fav.id,
             brand: fav.brand,
             series: fav.series,
             model: fav.model,
             image: fav.image,
-            analysis: resultMatch?.analysis || {
-              similarity: Math.floor(Math.random() * 20) + 80 / 100 // Fallback similarity as decimal
-            }
+            analysis: finalAnalysis
           } as ProductIndex;
         })
       : results
@@ -178,12 +180,41 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
     return (
       <div className="search-results">
         <div className="search-results__header">
-          <h2 className="search-results__title">Search Results</h2>
+          <div className="search-results__title-section">
+            <h2 className="search-results__title">Search Results</h2>
+            <span className="search-results__count">0 products found</span>
+          </div>
+          
+          <div className="search-results__view-controls">
+            <button
+              onClick={() => setViewMode("grid")}
+              className="search-results__view-btn search-results__view-btn--active"
+              aria-label="Grid view"
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("favorites")}
+              className="search-results__view-btn"
+              aria-label="Favorites view"
+            >
+              <Heart className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <div className="search-results__empty">
           <Package className="w-12 h-12 text-gray-400" />
-          <h3>No search performed</h3>
-          <p>Adjust your filters in the left sidebar and click &quot;Search Similar Products&quot; to find matching products.</p>
+          {!hasSearched ? (
+            <>
+              <h3>No search performed</h3>
+              <p>Adjust your filters in the left sidebar and click &quot;Search Similar Products&quot; to find matching products.</p>
+            </>
+          ) : (
+            <>
+              <h3>No products found</h3>
+              <p>No products match your current search criteria. Try adjusting your filters and search again.</p>
+            </>
+          )}
         </div>
       </div>
     );
@@ -198,7 +229,10 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
             {viewMode === "favorites" ? "Favorites" : "Search Results"}
           </h2>
           <span className="search-results__count">
-            {displayProducts.length} {viewMode === "favorites" ? "favorites" : "products found"}
+            {displayProducts.length} {viewMode === "favorites" 
+              ? (displayProducts.length === 1 ? "favorite" : "favorites")
+              : (displayProducts.length === 1 ? "product found" : "products found")
+            }
           </span>
         </div>
         

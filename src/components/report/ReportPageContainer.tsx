@@ -19,6 +19,7 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
     error,
     searchResults,
     isSearching,
+    hasSearched,
     handleSearch
   } = useReportData({ reportId });
 
@@ -91,6 +92,8 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
         <SearchResults 
           results={searchResults}
           isLoading={isSearching}
+          hasSearched={hasSearched}
+          reportId={reportId}
           referenceProduct={report.reference}
         />
       </main>

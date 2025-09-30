@@ -16,6 +16,7 @@ interface UseReportDataReturn {
   error: string | null;
   searchResults: ProductIndex[];
   isSearching: boolean;
+  hasSearched: boolean;
   handleSearch: (filters: SearchFiltersType) => Promise<void>;
 }
 
@@ -25,6 +26,7 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
   const [error, setError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<ProductIndex[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     const loadReport = async () => {
@@ -55,13 +57,22 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
 
   const handleSearch = async (filters: SearchFiltersType) => {
     setIsSearching(true);
+    setHasSearched(true); // Mark that a search has been performed
     console.log("Searching with filters:", filters);
     
     try {
       // Mock search results - in real implementation, this would call your search API
       await simulateApiDelay(1000); // Simulate API call
       
-      setSearchResults(mockSearchResults);
+      // Return a random subset of mock results (0 to all results)
+      const totalResults = mockSearchResults.length;
+      const randomCount = Math.floor(Math.random() * (totalResults + 1)); // 0 to totalResults inclusive
+      
+      // Shuffle the array and take the first randomCount items
+      const shuffled = [...mockSearchResults].sort(() => Math.random() - 0.5);
+      const randomResults = shuffled.slice(0, randomCount);
+      
+      setSearchResults(randomResults);
     } catch (err) {
       console.error("Search failed:", err);
     } finally {
@@ -75,6 +86,7 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
     error,
     searchResults,
     isSearching,
+    hasSearched,
     handleSearch
   };
 }

@@ -70,6 +70,7 @@ export type Report<T extends Product | ProductIndex = Product | ProductIndex> = 
   author: string;
   date: string; // ISO string
   reference: T;
+  favorites?: string[]; // Array of favorited ProductIndex IDs for this report
 };
 
 // A dashboard-friendly report where the reference is a single ProductImage used for previews

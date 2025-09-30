@@ -2,24 +2,26 @@
  * Utilities for managing favorited products in localStorage
  */
 
+import type { ProductIndex } from '@/types/report';
+
 const FAVORITES_STORAGE_KEY = 'k9.favorites';
 
-export interface FavoriteProduct {
-  id: string;
-  brand: string;
-  series?: string;
-  model: string;
-  image: string;
+// Helper to get report-specific storage key
+function getReportFavoritesKey(reportId: string): string {
+  return `${FAVORITES_STORAGE_KEY}.${reportId}`;
+}
+
+export interface FavoriteProduct extends ProductIndex {
   favoritedAt: string; // ISO timestamp
 }
 
 /**
- * Get all favorited product IDs from localStorage
+ * Get all favorited product IDs from localStorage for a specific report
  */
-export function getFavoriteIds(): string[] {
+export function getFavoriteIds(reportId: string): string[] {
   try {
     if (typeof window === 'undefined') return [];
-    const stored = localStorage.getItem(FAVORITES_STORAGE_KEY);
+    const stored = localStorage.getItem(getReportFavoritesKey(reportId));
     if (!stored) return [];
     const favorites: FavoriteProduct[] = JSON.parse(stored);
     return favorites.map(f => f.id);
@@ -30,14 +32,16 @@ export function getFavoriteIds(): string[] {
 }
 
 /**
- * Get all favorited products from localStorage
+ * Get all favorited products from localStorage for a specific report
  */
-export function getFavorites(): FavoriteProduct[] {
+export function getFavorites(reportId: string): FavoriteProduct[] {
   try {
     if (typeof window === 'undefined') return [];
-    const stored = localStorage.getItem(FAVORITES_STORAGE_KEY);
+    const stored = localStorage.getItem(getReportFavoritesKey(reportId));
     if (!stored) return [];
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored);
+    
+    return parsed;
   } catch (error) {
     console.warn('Failed to load favorites from localStorage:', error);
     return [];
@@ -45,19 +49,13 @@ export function getFavorites(): FavoriteProduct[] {
 }
 
 /**
- * Add a product to favorites
+ * Add a product to favorites for a specific report
  */
-export function addToFavorites(product: {
-  id: string;
-  brand: string;
-  series?: string;
-  model: string;
-  image: string;
-}): void {
+export function addToFavorites(reportId: string, product: ProductIndex): void {
   try {
     if (typeof window === 'undefined') return;
     
-    const favorites = getFavorites();
+    const favorites = getFavorites(reportId);
     const exists = favorites.some(f => f.id === product.id);
     
     if (!exists) {
@@ -67,7 +65,7 @@ export function addToFavorites(product: {
       };
       
       const updatedFavorites = [...favorites, newFavorite];
-      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(updatedFavorites));
+      localStorage.setItem(getReportFavoritesKey(reportId), JSON.stringify(updatedFavorites));
     }
   } catch (error) {
     console.warn('Failed to add product to favorites:', error);
@@ -75,45 +73,39 @@ export function addToFavorites(product: {
 }
 
 /**
- * Remove a product from favorites
+ * Remove a product from favorites for a specific report
  */
-export function removeFromFavorites(productId: string): void {
+export function removeFromFavorites(reportId: string, productId: string): void {
   try {
     if (typeof window === 'undefined') return;
     
-    const favorites = getFavorites();
+    const favorites = getFavorites(reportId);
     const updatedFavorites = favorites.filter(f => f.id !== productId);
-    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(updatedFavorites));
+    localStorage.setItem(getReportFavoritesKey(reportId), JSON.stringify(updatedFavorites));
   } catch (error) {
     console.warn('Failed to remove product from favorites:', error);
   }
 }
 
 /**
- * Check if a product is favorited
+ * Check if a product is favorited for a specific report
  */
-export function isFavorited(productId: string): boolean {
-  const favoriteIds = getFavoriteIds();
+export function isFavorited(reportId: string, productId: string): boolean {
+  const favoriteIds = getFavoriteIds(reportId);
   return favoriteIds.includes(productId);
 }
 
 /**
- * Toggle favorite status of a product
+ * Toggle favorite status of a product for a specific report
  */
-export function toggleFavorite(product: {
-  id: string;
-  brand: string;
-  series?: string;
-  model: string;
-  image: string;
-}): boolean {
-  const isCurrentlyFavorited = isFavorited(product.id);
+export function toggleFavorite(reportId: string, product: ProductIndex): boolean {
+  const isCurrentlyFavorited = isFavorited(reportId, product.id);
   
   if (isCurrentlyFavorited) {
-    removeFromFavorites(product.id);
+    removeFromFavorites(reportId, product.id);
     return false;
   } else {
-    addToFavorites(product);
+    addToFavorites(reportId, product);
     return true;
   }
 }
