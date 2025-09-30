@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
+import { Home } from 'lucide-react';
 import { Product, Report, ProductImage } from '@/types/report';
 import './ProductComparison.css';
 
@@ -73,6 +74,175 @@ function ProductInfoPanel({ product }: ProductInfoPanelProps) {
 function ImageComparisonPanel({ selectedProductImages, referenceProductImages, selectedProductName, referenceProductName }: ImageComparisonPanelProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [referenceImageIndex, setReferenceImageIndex] = useState(0);
+  
+  // Store transformations for each image by ID
+  const [imageTransforms, setImageTransforms] = useState<{[imageId: string]: {
+    x: number;
+    y: number;
+    scale: number;
+    rotation: number;
+  }}>({});
+  
+  // Track interaction state
+  const [isInteracting, setIsInteracting] = useState<{
+    type: 'pan' | 'rotate' | null;
+    startX: number;
+    startY: number;
+    imageId: string;
+    initialTransform: {x: number; y: number; scale: number; rotation: number};
+    imageCenterX: number;
+    imageCenterY: number;
+    initialAngle: number;
+  } | null>(null);
+
+  // Get transform for a specific image (with defaults)
+  const getImageTransform = useCallback((imageId: string) => {
+    return imageTransforms[imageId] || { x: 0, y: 0, scale: 1, rotation: 0 };
+  }, [imageTransforms]);
+
+  // Update transform for a specific image
+  const updateImageTransform = (imageId: string, updates: Partial<{x: number; y: number; scale: number; rotation: number}>) => {
+    setImageTransforms(prev => ({
+      ...prev,
+      [imageId]: { ...getImageTransform(imageId), ...updates }
+    }));
+  };
+
+  // Check if an image has any transformations applied
+  const hasTransformations = useCallback((imageId: string) => {
+    const transform = getImageTransform(imageId);
+    return transform.x !== 0 || transform.y !== 0 || transform.scale !== 1 || transform.rotation !== 0;
+  }, [getImageTransform]);
+
+  // Reset transform for a specific image
+  const resetImageTransform = (imageId: string) => {
+    setImageTransforms(prev => {
+      const newTransforms = { ...prev };
+      delete newTransforms[imageId];
+      return newTransforms;
+    });
+  };
+
+  // Handle mouse down (start pan or rotate)
+  const handleMouseDown = (e: React.MouseEvent, imageId: string) => {
+    e.preventDefault();
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const imageCenterX = rect.left + rect.width / 2;
+    const imageCenterY = rect.top + rect.height / 2;
+    
+    // Calculate initial angle for rotation
+    const initialAngle = Math.atan2(e.clientY - imageCenterY, e.clientX - imageCenterX) * (180 / Math.PI);
+    
+    setIsInteracting({
+      type: e.button === 0 ? 'pan' : e.button === 2 ? 'rotate' : null,
+      startX: e.clientX,
+      startY: e.clientY,
+      imageId,
+      initialTransform: getImageTransform(imageId),
+      imageCenterX,
+      imageCenterY,
+      initialAngle
+    });
+  };
+
+  // Handle mouse move (perform pan or rotate)
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isInteracting) return;
+    
+    const deltaX = e.clientX - isInteracting.startX;
+    const deltaY = e.clientY - isInteracting.startY;
+    
+    if (isInteracting.type === 'pan') {
+      updateImageTransform(isInteracting.imageId, {
+        x: isInteracting.initialTransform.x + deltaX,
+        y: isInteracting.initialTransform.y + deltaY
+      });
+    } else if (isInteracting.type === 'rotate') {
+      // Calculate current angle from center
+      const currentAngle = Math.atan2(e.clientY - isInteracting.imageCenterY, e.clientX - isInteracting.imageCenterX) * (180 / Math.PI);
+      const angleDifference = currentAngle - isInteracting.initialAngle;
+      
+      updateImageTransform(isInteracting.imageId, {
+        rotation: isInteracting.initialTransform.rotation + angleDifference
+      });
+    }
+  };
+
+  // Handle mouse up (end interaction)
+  const handleMouseUp = () => {
+    setIsInteracting(null);
+  };
+
+  // Handle wheel (zoom)
+  const handleWheel = (e: React.WheelEvent, imageId: string) => {
+    e.preventDefault();
+    const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const currentTransform = getImageTransform(imageId);
+    const newScale = Math.max(0.1, Math.min(5, currentTransform.scale * scaleFactor));
+    
+    updateImageTransform(imageId, { scale: newScale });
+  };
+
+  // Prevent context menu on right click
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+  };
+
+  // Generate transform CSS
+  const getTransformStyle = (imageId: string) => {
+    const transform = getImageTransform(imageId);
+    return {
+      transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotation}deg)`,
+      transformOrigin: 'center center',
+      transition: isInteracting?.imageId === imageId ? 'none' : 'transform 0.1s ease-out'
+    };
+  };
+
+  // Add global mouse event listeners
+  useEffect(() => {
+    if (isInteracting) {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        const deltaX = e.clientX - isInteracting.startX;
+        const deltaY = e.clientY - isInteracting.startY;
+        
+        if (isInteracting.type === 'pan') {
+          setImageTransforms(prev => ({
+            ...prev,
+            [isInteracting.imageId]: {
+              ...getImageTransform(isInteracting.imageId),
+              x: isInteracting.initialTransform.x + deltaX,
+              y: isInteracting.initialTransform.y + deltaY
+            }
+          }));
+        } else if (isInteracting.type === 'rotate') {
+          // Calculate current angle from center
+          const currentAngle = Math.atan2(e.clientY - isInteracting.imageCenterY, e.clientX - isInteracting.imageCenterX) * (180 / Math.PI);
+          const angleDifference = currentAngle - isInteracting.initialAngle;
+          
+          setImageTransforms(prev => ({
+            ...prev,
+            [isInteracting.imageId]: {
+              ...getImageTransform(isInteracting.imageId),
+              rotation: isInteracting.initialTransform.rotation + angleDifference
+            }
+          }));
+        }
+      };
+
+      const handleGlobalMouseUp = () => {
+        setIsInteracting(null);
+      };
+
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isInteracting, getImageTransform]);
 
   return (
     <div className="h-full flex flex-col">
@@ -83,14 +253,39 @@ function ImageComparisonPanel({ selectedProductImages, referenceProductImages, s
             <h3 className="product-comparison__column-title">{referenceProductName}</h3>
             <span className="product-comparison__reference-label">Reference</span>
           </div>
-          <div className="product-comparison__image-container aspect-square flex items-center justify-center">
+          <div 
+            className="product-comparison__image-container aspect-square flex items-center justify-center"
+            onMouseDown={(e) => handleMouseDown(e, referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onWheel={(e) => handleWheel(e, referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
+            onContextMenu={handleContextMenu}
+            style={{ cursor: isInteracting?.type === 'pan' ? 'grabbing' : isInteracting?.type === 'rotate' ? 'crosshair' : 'grab' }}
+          >
+            <div className="product-comparison__controls-hint">
+              Drag: Pan • Right+Drag: Rotate • Scroll: Zoom
+            </div>
+            <button
+              className="product-comparison__reset-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                resetImageTransform(referenceProductImages[referenceImageIndex]?.id || 'ref-default');
+              }}
+              aria-label="Reset image transformations"
+              style={{ 
+                display: hasTransformations(referenceProductImages[referenceImageIndex]?.id || 'ref-default') ? 'flex' : 'none' 
+              }}
+            >
+              <Home className="w-4 h-4" />
+            </button>
             {referenceProductImages.length > 0 ? (
               <Image 
                 src={referenceProductImages[referenceImageIndex]?.url || referenceProductImages[0].url} 
                 alt={referenceProductName}
                 width={400}
                 height={400}
-                className="max-w-full max-h-full object-contain"
+                className="max-w-full max-h-full object-contain pointer-events-none"
+                style={getTransformStyle(referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
                 unoptimized
               />
             ) : (
@@ -129,14 +324,39 @@ function ImageComparisonPanel({ selectedProductImages, referenceProductImages, s
             <h3 className="product-comparison__column-title">{selectedProductName}</h3>
             <span className="product-comparison__product-label">Product</span>
           </div>
-          <div className="product-comparison__image-container aspect-square flex items-center justify-center">
+          <div 
+            className="product-comparison__image-container aspect-square flex items-center justify-center"
+            onMouseDown={(e) => handleMouseDown(e, selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onWheel={(e) => handleWheel(e, selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
+            onContextMenu={handleContextMenu}
+            style={{ cursor: isInteracting?.type === 'pan' ? 'grabbing' : isInteracting?.type === 'rotate' ? 'crosshair' : 'grab' }}
+          >
+            <div className="product-comparison__controls-hint">
+              Drag: Pan • Right+Drag: Rotate • Scroll: Zoom
+            </div>
+            <button
+              className="product-comparison__reset-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                resetImageTransform(selectedProductImages[selectedImageIndex]?.id || 'sel-default');
+              }}
+              aria-label="Reset image transformations"
+              style={{ 
+                display: hasTransformations(selectedProductImages[selectedImageIndex]?.id || 'sel-default') ? 'flex' : 'none' 
+              }}
+            >
+              <Home className="w-4 h-4" />
+            </button>
             {selectedProductImages.length > 0 ? (
               <Image 
                 src={selectedProductImages[selectedImageIndex]?.url || selectedProductImages[0].url} 
                 alt={selectedProductName}
                 width={400}
                 height={400}
-                className="max-w-full max-h-full object-contain"
+                className="max-w-full max-h-full object-contain pointer-events-none"
+                style={getTransformStyle(selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
                 unoptimized
               />
             ) : (
