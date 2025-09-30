@@ -1,17 +1,17 @@
 # K9 API Backend
 
-A serverless API backend for the K9 application using AWS Lambda, API Gateway, and DuckDB with multi-layer architecture for optimal performance.
+A serverless API backend for the K9 application using AWS Lambda, API Gateway, and DynamoDB with multi-layer architecture for optimal performance.
 
 ## 🏗️ Architecture
 
 ### Multi-Layer Lambda Design
 - **Core Layer** (~5MB): Essential dependencies (boto3, pydantic, python-jose)
-- **Data Layer** (~20MB): Database and data processing (duckdb, pandas)
+- **Data Layer** (~20MB): Data processing (pandas, numpy)
 - **ML Layer** (~200MB): Heavy ML dependencies (onnxruntime, opencv, hdbscan)
 
 ### Tech Stack
 - **Runtime**: Python 3.9 with uv package management
-- **Database**: DuckDB (local SQL database)
+- **Database**: AWS DynamoDB (managed NoSQL database)
 - **Authentication**: AWS Cognito JWT tokens
 - **Storage**: AWS S3 for file uploads
 - **Deployment**: AWS SAM (Serverless Application Model)
@@ -52,8 +52,7 @@ The API will be available at `http://localhost:3001`
 chmod +x scripts/deploy.sh
 ./scripts/deploy.sh \
   --environment dev \
-  --user-pool-id us-east-1_XXXXXXXXX \
-  --bucket-name k9-storage-dev
+  --user-pool-id us-east-1_XXXXXXXXX
 ```
 
 ## 📁 Project Structure
@@ -65,7 +64,7 @@ api/
 │   │   ├── models.py     # Pydantic models matching React types
 │   │   ├── utils.py      # Lambda utilities and helpers
 │   │   ├── auth.py       # JWT authentication
-│   │   └── database.py   # DuckDB repository pattern
+│   │   └── database.py   # DynamoDB repository pattern
 │   └── handlers/         # Lambda function handlers
 │       ├── user.py       # User profile management
 │       ├── reports.py    # Report CRUD operations
@@ -110,14 +109,16 @@ api/
 ### Environment Variables
 - `ENVIRONMENT` - Deployment environment (dev/staging/prod)
 - `COGNITO_USER_POOL_ID` - AWS Cognito User Pool ID
-- `S3_BUCKET_NAME` - S3 bucket for file storage
-- `DUCKDB_PATH` - DuckDB database file path
+- `SIMILARITY_BUCKET` - S3 bucket for similarity matrices
+- `DYNAMODB_USERS_TABLE` - DynamoDB table for user data
+- `DYNAMODB_REPORTS_TABLE` - DynamoDB table for reports
+- `DYNAMODB_EMBEDDINGS_TABLE` - DynamoDB table for embeddings
 
 ### Lambda Layers
 The multi-layer architecture optimizes cold start times:
 
 1. **Core Layer**: Always loaded, contains essential dependencies
-2. **Data Layer**: Loaded for database operations
+2. **Data Layer**: Loaded for data processing operations
 3. **ML Layer**: Only loaded for embedding computations
 
 ## 🧪 Development Commands
@@ -149,53 +150,68 @@ The API uses AWS Cognito JWT tokens:
 
 ## 💾 Database Schema
 
-### Reports Table
-```sql
-CREATE TABLE reports (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+### DynamoDB Tables
+
+#### Users Table (k9-users-{environment})
+```json
+{
+  "user_id": "string (partition key)",
+  "name": "string",
+  "email": "string",
+  "avatar_url": "string",
+  "preferences": "object",
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+}
 ```
 
-### Products Table
-```sql
-CREATE TABLE products (
-  id TEXT PRIMARY KEY,
-  report_id TEXT NOT NULL,
-  title TEXT NOT NULL,
-  price DECIMAL(10,2),
-  currency TEXT DEFAULT 'USD',
-  images TEXT[], -- JSON array
-  embedding FLOAT[],
-  category TEXT,
-  FOREIGN KEY (report_id) REFERENCES reports(id)
-);
+#### Reports Table (k9-reports-{environment})
+```json
+{
+  "id": "string (partition key)",
+  "user_id": "string (GSI partition key)",
+  "title": "string",
+  "author": "string",
+  "date": "string",
+  "reference": "object",
+  "favorites": "array",
+  "created_at": "timestamp (GSI sort key)",
+  "updated_at": "timestamp"
+}
+```
+
+#### Embeddings Table (k9-embeddings-{environment})
+```json
+{
+  "product_id": "string (partition key)",
+  "embedding_vector": "array",
+  "model_version": "string (GSI partition key)",
+  "vector_dimension": "number",
+  "created_at": "timestamp"
+}
 ```
 
 ## 🚀 Deployment Environments
 
 ### Development
 ```bash
-./scripts/deploy.sh --environment dev --user-pool-id <dev-pool> --bucket-name k9-dev
+./scripts/deploy.sh --environment dev --user-pool-id <dev-pool>
 ```
 
 ### Staging  
 ```bash
-./scripts/deploy.sh --environment staging --user-pool-id <staging-pool> --bucket-name k9-staging
+./scripts/deploy.sh --environment staging --user-pool-id <staging-pool>
 ```
 
 ### Production
 ```bash
-./scripts/deploy.sh --environment prod --user-pool-id <prod-pool> --bucket-name k9-prod
+./scripts/deploy.sh --environment prod --user-pool-id <prod-pool>
 ```
 
 ## 🔍 Monitoring
 
 - **CloudWatch Logs**: Automatic logging for all Lambda functions
+- **DynamoDB Metrics**: Read/write capacity, throttling, and error monitoring
 - **X-Ray Tracing**: Distributed tracing enabled
 - **CloudWatch Metrics**: Performance and error metrics
 
@@ -203,13 +219,21 @@ CREATE TABLE products (
 
 ### Common Issues
 
-1. **Cold Start Times**: Heavy ML layer only loads for embedding operations
-2. **Memory Limits**: Adjust Lambda memory based on layer usage
-3. **Timeout Issues**: Increase timeout for ML operations
+1. **DynamoDB Throttling**: Monitor read/write capacity usage
+2. **Permission Errors**: Ensure Lambda functions have DynamoDB access
+3. **Cold Start Times**: Heavy ML layer only loads for embedding operations
+4. **Memory Limits**: Adjust Lambda memory based on layer usage
 
 ### Debug Mode
 ```bash
 ./scripts/dev.sh --debug --debug-port 5678
+```
+
+### DynamoDB Local Development
+For local development, consider using DynamoDB Local:
+```bash
+# Install DynamoDB Local (optional)
+docker run -p 8000:8000 amazon/dynamodb-local
 ```
 
 ### Logs
@@ -224,8 +248,8 @@ sam local start-api --debug
 ## 📦 Dependencies
 
 See `requirements/` directory for layer-specific dependencies:
-- `core.txt`: Essential Lambda dependencies
-- `data.txt`: Database and data processing
+- `core.txt`: Essential Lambda dependencies (boto3, pydantic, python-jose)
+- `data.txt`: Data processing (pandas, numpy)
 - `ml.txt`: Machine learning and computer vision
 
 ## 🤝 Integration with React App
@@ -237,3 +261,22 @@ The API exactly matches the React app's expectations:
 3. **Responses**: JSON responses match frontend interface contracts
 
 Update your React app's API base URL to the deployed API Gateway URL.
+
+## 🚀 Benefits of DynamoDB Architecture
+
+### **Reliability & Safety:**
+- ✅ **Zero Data Loss** - No dependency on Lambda container lifecycle
+- ✅ **Automatic Backups** - Point-in-time recovery included
+- ✅ **Multi-AZ Replication** - Built-in high availability
+- ✅ **Managed Service** - AWS handles scaling and maintenance
+
+### **Performance:**
+- ✅ **Single-Digit Latency** - Consistent 2-5ms operations
+- ✅ **Auto-Scaling** - Handles traffic spikes automatically
+- ✅ **No Cold Start Issues** - Direct database access
+- ✅ **Concurrent Access** - No file locking concerns
+
+### **Cost Optimization:**
+- ✅ **Pay-Per-Request** - Only pay for actual usage
+- ✅ **No Idle Costs** - No server maintenance required
+- ✅ **Efficient Scaling** - Scales to zero when not in use

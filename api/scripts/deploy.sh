@@ -21,7 +21,6 @@ ENVIRONMENT="dev"
 REGION="us-east-1"
 STACK_NAME="k9-api"
 COGNITO_USER_POOL_ID=""
-BUCKET_NAME=""
 
 # Help function
 show_help() {
@@ -34,12 +33,13 @@ show_help() {
     echo "  -r, --region REGION       AWS region [default: us-east-1]"
     echo "  -s, --stack-name NAME     CloudFormation stack name [default: k9-api]"
     echo "  -u, --user-pool-id ID     Cognito User Pool ID (required)"
-    echo "  -b, --bucket-name NAME    S3 bucket name for file storage (required)"
     echo "  -h, --help               Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 --environment dev --user-pool-id us-east-1_XXXXXXXXX --bucket-name k9-storage-dev"
-    echo "  $0 -e prod -u us-east-1_YYYYYYYYY -b k9-storage-prod -r us-west-2"
+    echo "  $0 --environment dev --user-pool-id us-east-1_XXXXXXXXX"
+    echo "  $0 -e prod -u us-east-1_YYYYYYYYY -r us-west-2"
+    echo ""
+    echo "Note: DynamoDB tables and S3 buckets are automatically created and managed."
 }
 
 # Parse command line arguments
@@ -61,10 +61,6 @@ while [[ $# -gt 0 ]]; do
             COGNITO_USER_POOL_ID="$2"
             shift 2
             ;;
-        -b|--bucket-name)
-            BUCKET_NAME="$2"
-            shift 2
-            ;;
         -h|--help)
             show_help
             exit 0
@@ -82,12 +78,6 @@ validate_parameters() {
     if [[ -z "$COGNITO_USER_POOL_ID" ]]; then
         echo -e "${RED}❌ Cognito User Pool ID is required${NC}"
         echo -e "${YELLOW}Use: --user-pool-id <pool-id>${NC}"
-        exit 1
-    fi
-    
-    if [[ -z "$BUCKET_NAME" ]]; then
-        echo -e "${RED}❌ S3 bucket name is required${NC}"
-        echo -e "${YELLOW}Use: --bucket-name <bucket-name>${NC}"
         exit 1
     fi
     
@@ -160,7 +150,6 @@ deploy_with_sam() {
         --parameter-overrides \
             Environment="${ENVIRONMENT}" \
             CognitoUserPoolId="${COGNITO_USER_POOL_ID}" \
-            S3BucketName="${BUCKET_NAME}" \
         --resolve-s3 \
         --no-fail-on-empty-changeset
     
@@ -187,8 +176,8 @@ get_stack_outputs() {
     echo -e "${BLUE}Region:${NC} ${REGION}"
     echo -e "${BLUE}API Gateway URL:${NC} ${api_url}"
     echo -e "${BLUE}Cognito User Pool:${NC} ${COGNITO_USER_POOL_ID}"
-    echo -e "${BLUE}S3 Bucket:${NC} ${BUCKET_NAME}"
     echo -e ""
+    echo -e "${YELLOW}💡 DynamoDB tables and S3 buckets are automatically managed by CloudFormation${NC}"
     echo -e "${YELLOW}💡 Update your React app's API configuration with the API Gateway URL${NC}"
 }
 
