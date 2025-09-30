@@ -30,7 +30,9 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
     isSearching,
     hasSearched,
     handleSearch,
-    initialFavorites
+    initialFavorites,
+    searchFilters,
+    setSearchFilters
   } = useReportData({ reportId: activeReportId });
 
   // If we have a product parameter, show product comparison instead
@@ -97,6 +99,8 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
                 referenceProduct={report.reference}
                 onSearch={handleSearch}
                 isSearching={isSearching}
+                filters={searchFilters}
+                onFiltersChange={setSearchFilters}
               />
             </div>
           </div>

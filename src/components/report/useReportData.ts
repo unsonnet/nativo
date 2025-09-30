@@ -6,6 +6,11 @@ import { reportsApi } from "@/lib/api/reports";
 import { simulateApiDelay } from "@/data/mockSearchResults";
 import type { SearchFilters as SearchFiltersType } from "./SearchFilters";
 
+// Session storage keys
+const getFilterStorageKey = (reportId: string) => `report_filters_${reportId}`;
+const getResultsStorageKey = (reportId: string) => `report_results_${reportId}`;
+const getSearchedStorageKey = (reportId: string) => `report_searched_${reportId}`;
+
 interface UseReportDataProps {
   reportId: string;
 }
@@ -20,6 +25,10 @@ interface UseReportDataReturn {
   handleSearch: (filters: SearchFiltersType) => Promise<void>;
   /** Initial favorites from the database (for useFavorites initialization) */
   initialFavorites: string[];
+  /** Current search filters state */
+  searchFilters: SearchFiltersType | null;
+  /** Update search filters */
+  setSearchFilters: (filters: SearchFiltersType) => void;
 }
 
 export function useReportData({ reportId }: UseReportDataProps): UseReportDataReturn {
@@ -29,6 +38,55 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
   const [searchResults, setSearchResults] = useState<ProductIndex[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchFilters, setSearchFilters] = useState<SearchFiltersType | null>(null);
+
+  // Load persisted data from sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && reportId) {
+      try {
+        // Load persisted filters
+        const storedFilters = sessionStorage.getItem(getFilterStorageKey(reportId));
+        if (storedFilters) {
+          setSearchFilters(JSON.parse(storedFilters));
+        }
+
+        // Load persisted search results
+        const storedResults = sessionStorage.getItem(getResultsStorageKey(reportId));
+        if (storedResults) {
+          setSearchResults(JSON.parse(storedResults));
+        }
+
+        // Load persisted search state
+        const storedSearched = sessionStorage.getItem(getSearchedStorageKey(reportId));
+        if (storedSearched) {
+          setHasSearched(JSON.parse(storedSearched));
+        }
+      } catch (error) {
+        console.warn('Failed to load persisted search data:', error);
+      }
+    }
+  }, [reportId]);
+
+  // Persist data to sessionStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && reportId) {
+      if (searchFilters) {
+        sessionStorage.setItem(getFilterStorageKey(reportId), JSON.stringify(searchFilters));
+      }
+    }
+  }, [searchFilters, reportId]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && reportId) {
+      sessionStorage.setItem(getResultsStorageKey(reportId), JSON.stringify(searchResults));
+    }
+  }, [searchResults, reportId]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && reportId) {
+      sessionStorage.setItem(getSearchedStorageKey(reportId), JSON.stringify(hasSearched));
+    }
+  }, [hasSearched, reportId]);
 
   useEffect(() => {
     const loadReport = async () => {
@@ -57,9 +115,15 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
     }
   }, [reportId]);
 
+  const updateSearchFilters = (filters: SearchFiltersType) => {
+    setSearchFilters(filters);
+    // sessionStorage will be updated by the useEffect above
+  };
+
   const handleSearch = async (filters: SearchFiltersType) => {
     setIsSearching(true);
     setHasSearched(true); // Mark that a search has been performed
+    setSearchFilters(filters); // Store the filters used for this search
     console.log("Searching with filters:", filters);
     
     try {
@@ -101,6 +165,8 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
     isSearching,
     hasSearched,
     handleSearch,
-    initialFavorites: report?.favorites || []
+    initialFavorites: report?.favorites || [],
+    searchFilters,
+    setSearchFilters: updateSearchFilters
   };
 }

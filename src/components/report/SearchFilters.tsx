@@ -27,9 +27,11 @@ interface SearchFiltersProps {
   referenceProduct: Product;
   onSearch: (filters: SearchFilters) => void;
   isSearching: boolean;
+  filters?: SearchFilters | null;
+  onFiltersChange?: (filters: SearchFilters) => void;
 }
 
-export function SearchFilters({ referenceProduct, onSearch, isSearching }: SearchFiltersProps) {
+export function SearchFilters({ referenceProduct, onSearch, isSearching, filters: externalFilters, onFiltersChange }: SearchFiltersProps) {
   const format = referenceProduct.formats?.[0];
   const hasAbsoluteDimensions = format?.length?.unit !== 'none' && format?.width?.unit !== 'none';
   
@@ -51,6 +53,27 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
     return null;
   })();
   
+  // Default filter values
+  const getDefaultFilters = (): SearchFilters => ({
+    maxLengthDiff: 1,
+    maxWidthDiff: 1,
+    maxThicknessDiff: 1,
+    aspectRatioTolerance: 2,
+    colorPrimarySimilarity: 50,
+    colorSecondarySimilarity: 50,
+    patternPrimarySimilarity: 50,
+    patternSecondarySimilarity: 50,
+    categories: {
+      // Pre-populate with reference product categories for convenience
+      type: referenceProduct.category.type ? [referenceProduct.category.type] : [],
+      material: referenceProduct.category.material ? [referenceProduct.category.material] : [],
+    }
+  });
+
+  // Use external filters if provided, otherwise use local state
+  const [localFilters, setLocalFilters] = useState<SearchFilters>(getDefaultFilters);
+  const filters = externalFilters || localFilters;
+  
   // Calculate tolerance range for display
   const getToleranceRange = () => {
     if (referenceAspectRatio) {
@@ -67,22 +90,6 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
     }
     return null;
   };
-  
-  const [filters, setFilters] = useState<SearchFilters>({
-    maxLengthDiff: 1,
-    maxWidthDiff: 1,
-    maxThicknessDiff: 1,
-    aspectRatioTolerance: 2,
-    colorPrimarySimilarity: 50,
-    colorSecondarySimilarity: 50,
-    patternPrimarySimilarity: 50,
-    patternSecondarySimilarity: 50,
-    categories: {
-      // Pre-populate with reference product categories for convenience
-      type: referenceProduct.category.type ? [referenceProduct.category.type] : [],
-      material: referenceProduct.category.material ? [referenceProduct.category.material] : [],
-    }
-  });
 
   // Mock category options - in real app, these would come from your database
   const categoryOptions = {
@@ -95,22 +102,34 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
   };
 
   const handleFilterChange = (key: keyof SearchFilters, value: unknown) => {
-    setFilters(prev => ({
-      ...prev,
+    const newFilters = {
+      ...filters,
       [key]: value
-    }));
+    };
+    
+    if (onFiltersChange) {
+      onFiltersChange(newFilters);
+    } else {
+      setLocalFilters(newFilters);
+    }
   };
 
   const handleCategoryChange = (category: keyof SearchFilters["categories"], option: string, checked: boolean) => {
-    setFilters(prev => ({
-      ...prev,
+    const newFilters = {
+      ...filters,
       categories: {
-        ...prev.categories,
+        ...filters.categories,
         [category]: checked 
-          ? [...(prev.categories[category] || []), option]
-          : (prev.categories[category] || []).filter(item => item !== option)
+          ? [...(filters.categories[category] || []), option]
+          : (filters.categories[category] || []).filter((item: string) => item !== option)
       }
-    }));
+    };
+    
+    if (onFiltersChange) {
+      onFiltersChange(newFilters);
+    } else {
+      setLocalFilters(newFilters);
+    }
   };
 
   const handleSearch = () => {
@@ -118,21 +137,13 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
   };
 
   const resetFilters = () => {
-    setFilters({
-      maxLengthDiff: 1,
-      maxWidthDiff: 1,
-      maxThicknessDiff: 1,
-      aspectRatioTolerance: 2,
-      colorPrimarySimilarity: 50,
-      colorSecondarySimilarity: 50,
-      patternPrimarySimilarity: 50,
-      patternSecondarySimilarity: 50,
-      categories: {
-        // Reset to reference product categories
-        type: referenceProduct.category.type ? [referenceProduct.category.type] : [],
-        material: referenceProduct.category.material ? [referenceProduct.category.material] : [],
-      }
-    });
+    const defaultFilters = getDefaultFilters();
+    
+    if (onFiltersChange) {
+      onFiltersChange(defaultFilters);
+    } else {
+      setLocalFilters(defaultFilters);
+    }
   };
 
   return (

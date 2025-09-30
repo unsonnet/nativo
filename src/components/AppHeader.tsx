@@ -86,6 +86,16 @@ export function AppHeader() {
         router.push(backUrl);
       } else {
         // Regular report page, go back to dashboard
+        // Clear session storage for this report when leaving fetch page
+        if (reportParam && typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem(`report_filters_${reportParam}`);
+            sessionStorage.removeItem(`report_results_${reportParam}`);
+            sessionStorage.removeItem(`report_searched_${reportParam}`);
+          } catch (error) {
+            console.warn('Failed to clear report session data:', error);
+          }
+        }
         console.log('🔙 Going back to dashboard');
         router.push('/dashboard');
       }
