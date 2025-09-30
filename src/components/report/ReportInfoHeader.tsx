@@ -19,52 +19,43 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
     const isAbsolute = length?.unit !== 'none' && width?.unit !== 'none';
     
     if (isAbsolute) {
-      // Absolute dimensions: length x width x thickness with units
-      const lengthStr = length?.val ? `${length.val}"` : '?';
-      const widthStr = width?.val ? `${width.val}"` : '?';
-      const thicknessStr = thickness?.val ? `${thickness.val}mm` : '?';
+      // Absolute dimensions: length x width [x thickness if set] with units
+      const lengthStr = length?.val ? `${length.val}"` : 'unset';
+      const widthStr = width?.val ? `${width.val}"` : 'unset';
+      const thicknessStr = thickness?.val ? `${thickness.val}mm` : null;
       
-      return `${lengthStr} x ${widthStr} x ${thicknessStr}`;
+      if (thicknessStr) {
+        return `${lengthStr} x ${widthStr} x ${thicknessStr}`;
+      } else {
+        return `${lengthStr} x ${widthStr}`;
+      }
     } else {
-      // Relative dimensions: length : width x thickness
-      const lengthStr = length?.val ? `${length.val}` : '?';
-      const widthStr = width?.val ? `${width.val}` : '?';
-      const thicknessStr = thickness?.val ? `${thickness.val}mm` : '?';
+      // Relative dimensions: length : width [x thickness if set]
+      const lengthStr = length?.val ? `${length.val}` : 'unset';
+      const widthStr = width?.val ? `${width.val}` : 'unset';
+      const thicknessStr = thickness?.val ? `${thickness.val}mm` : null;
       
-      return `${lengthStr} : ${widthStr} x ${thicknessStr}`;
+      if (thicknessStr) {
+        return `${lengthStr} : ${widthStr} x ${thicknessStr}`;
+      } else {
+        return `${lengthStr} : ${widthStr}`;
+      }
     }
   };
 
-  // Helper to get all available categories in preferred order
-  const getAvailableCategories = () => {
-    const categories = [];
-    
-    // Always include type and material first if available
-    if (reference.category.type) {
-      categories.push({ label: "Type", value: reference.category.type });
-    }
-    if (reference.category.material) {
-      categories.push({ label: "Material", value: reference.category.material });
-    }
-    
-    // Add other categories if they exist
-    if (reference.category.look) {
-      categories.push({ label: "Look", value: reference.category.look });
-    }
-    if (reference.category.texture) {
-      categories.push({ label: "Texture", value: reference.category.texture });
-    }
-    if (reference.category.finish) {
-      categories.push({ label: "Finish", value: reference.category.finish });
-    }
-    if (reference.category.edge) {
-      categories.push({ label: "Edge", value: reference.category.edge });
-    }
-    
-    return categories;
+  // Helper to get all categories in preferred order, including unset ones
+  const getAllCategories = () => {
+    return [
+      { label: "Type", value: reference.category.type },
+      { label: "Material", value: reference.category.material },
+      { label: "Look", value: reference.category.look },
+      { label: "Texture", value: reference.category.texture },
+      { label: "Finish", value: reference.category.finish },
+      { label: "Edge", value: reference.category.edge }
+    ];
   };
 
-  const availableCategories = getAvailableCategories();
+  const allCategories = getAllCategories();
 
   return (
     <div className="report-info-header">
@@ -77,11 +68,13 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
           </div>
         </div>
 
-        {/* All Available Categories */}
-        {availableCategories.map((category, index) => (
+        {/* All Categories - show even if unset */}
+        {allCategories.map((category, index) => (
           <div key={index} className="report-info-header__section">
             <label className="report-info-header__label">{category.label}</label>
-            <div className="report-info-header__value">{category.value}</div>
+            <div className={`report-info-header__value ${!category.value ? 'report-info-header__value--unset' : ''}`}>
+              {category.value || 'unset'}
+            </div>
           </div>
         ))}
       </div>

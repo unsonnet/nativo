@@ -1006,10 +1006,16 @@ body {
 }
 
 .report-info-header__value {
-  font-size: var(--text-size-md);
+  font-size: var(--text-size-sm);
   color: var(--text-primary);
   font-weight: 500;
   margin: 0;
+}
+
+.report-info-header__value--unset {
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-style: italic;
 }
 
 /* Image Gallery */
@@ -1673,6 +1679,11 @@ body {
 .search-results__view-btn--active {
   background: var(--button-primary);
   color: #0f172a;
+}
+
+.search-results__view-btn--active:hover {
+  background: var(--button-primary-hover);
+  color: #0f172a; /* Keep the dark text/icon on white background */
 }
 
 .search-results__content {
