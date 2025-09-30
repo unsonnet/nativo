@@ -300,6 +300,21 @@
   background: var(--background);
 }
 
+.product-info__vendor--link {
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 150ms ease;
+}
+
+.product-info__vendor--link:hover {
+  background: var(--background-subtle);
+  cursor: pointer;
+}
+
+.product-info__vendor--link:hover .product-info__vendor-icon {
+  color: var(--text-primary);
+}
+
 .product-info__vendor:last-child {
   border-bottom: none;
 }

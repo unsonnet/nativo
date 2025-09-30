@@ -140,7 +140,7 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
       <div className="search-filters__header">
         <h3 className="search-filters__title">
           <Sliders className="w-4 h-4" />
-          Search Filters
+          Filters
         </h3>
         <button 
           onClick={resetFilters}

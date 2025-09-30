@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Home, ExternalLink, ChevronDown, Info, Images } from 'lucide-react';
+import { Home, ExternalLink, Info, Images } from 'lucide-react';
 import { Product, Report, ProductImage } from '@/types/report';
 import { ReportInfoHeader } from '@/components/report';
 
@@ -31,6 +31,10 @@ function ProductInfoPanel({ product }: ProductInfoPanelProps) {
     });
   };
 
+  const handleTabChange = (newTab: 'specs' | 'buy' | 'analysis') => {
+    setActiveTab(newTab);
+  };
+
   return (
     <div className="search-filters">
       <div className="search-filters__header search-filters__header--strip-top">
@@ -55,19 +59,19 @@ function ProductInfoPanel({ product }: ProductInfoPanelProps) {
       <div className="product-info__tabs">
         <button
           className={`product-info__tab ${activeTab === 'specs' ? 'product-info__tab--active' : ''}`}
-          onClick={() => setActiveTab('specs')}
+          onClick={() => handleTabChange('specs')}
         >
           Specs
         </button>
         <button
           className={`product-info__tab ${activeTab === 'buy' ? 'product-info__tab--active' : ''}`}
-          onClick={() => setActiveTab('buy')}
+          onClick={() => handleTabChange('buy')}
         >
           Buy
         </button>
         <button
           className={`product-info__tab ${activeTab === 'analysis' ? 'product-info__tab--active' : ''}`}
-          onClick={() => setActiveTab('analysis')}
+          onClick={() => handleTabChange('analysis')}
         >
           Analysis
         </button>
@@ -133,7 +137,13 @@ function ProductInfoPanel({ product }: ProductInfoPanelProps) {
                     <div className="product-info__size-details">
                       <div className="product-info__vendor-list">
                         {format.vendors.map((vendor, vendorIndex) => (
-                          <div key={vendorIndex} className="product-info__vendor">
+                          <a 
+                            key={vendorIndex} 
+                            href={vendor.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="product-info__vendor product-info__vendor--link"
+                          >
                             <ExternalLink className="product-info__vendor-icon" />
                             <div className="product-info__vendor-content">
                               <div className="product-info__vendor-main-row">
@@ -171,7 +181,7 @@ function ProductInfoPanel({ product }: ProductInfoPanelProps) {
                                 </div>
                               </div>
                             </div>
-                          </div>
+                          </a>
                         ))}
                       </div>
                     </div>
@@ -631,8 +641,6 @@ interface ProductComparisonState {
 }
 
 export function ProductComparisonContainer({ reportId, productId }: ProductComparisonContainerProps) {
-  console.log('🔧 ProductComparisonContainer props:', { reportId, productId });
-  
   const [state, setState] = useState<ProductComparisonState>({
     selectedProduct: null,
     referenceReport: null,

@@ -22,15 +22,6 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
   // Use the report ID from query params if available, otherwise use the prop
   const activeReportId = queryReportId || reportId;
   
-  console.log('🔍 ReportPageContainer state:', { 
-    propReportId: reportId,
-    queryReportId,
-    activeReportId,
-    productId,
-    currentURL: typeof window !== 'undefined' ? window.location.href : 'SSR',
-    searchParamsString: searchParams.toString()
-  });
-  
   const {
     report,
     isLoading,
@@ -44,7 +35,6 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
 
   // If we have a product parameter, show product comparison instead
   if (productId && report) {
-    console.log('🎯 Switching to product comparison view:', { reportId: activeReportId, productId });
     return (
       <ProductComparisonContainer 
         reportId={activeReportId} 

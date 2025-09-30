@@ -317,7 +317,7 @@ export const mockProductsDatabase: Product[] = [
 /**
  * Generate random embeddings for analysis
  */
-function generateEmbedding(seed: string): Embedding {
+function generateEmbedding(seed: string, similarity?: number): Embedding {
   // Simple seed-based random for consistent results
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -332,7 +332,7 @@ function generateEmbedding(seed: string): Embedding {
     vector.push((hash / 0x7fffffff - 0.5) * 2);
   }
   
-  return { vector };
+  return { vector, similarity };
 }
 
 function generateMiniEmbedding(seed: string, similarity?: number): MiniEmbedding {
@@ -356,6 +356,8 @@ function generateMiniEmbedding(seed: string, similarity?: number): MiniEmbedding
 
 /**
  * Generate analysis for a product given a report context
+ * This function generates full embeddings for comprehensive analysis
+ * Currently unused but available for more detailed analysis needs
  */
 function generateAnalysisForProduct(productId: string, reportId: string): {
   color: { primary: Embedding; secondary: Embedding };
@@ -402,12 +404,12 @@ function generateMiniAnalysisForProduct(productId: string, reportId: string): {
   }
   
   const similarity = 0.7 + (Math.abs(hash) % 30) / 100; // 0.7 to 0.99
-  const primaryColorSim = Math.floor(similarity * 100);
-  const secondaryColorSim = Math.floor(similarity * 95);
-  const primaryPatternSim = Math.floor(similarity * 98);
-  const secondaryPatternSim = Math.floor(similarity * 90);
+  const primaryColorSim = similarity * 0.95; // 0-1 range, slightly lower than main
+  const secondaryColorSim = similarity * 0.90; // 0-1 range, even lower
+  const primaryPatternSim = similarity * 0.98; // 0-1 range, very close to main
+  const secondaryPatternSim = similarity * 0.85; // 0-1 range, lower
   
-  return {
+  const result = {
     color: {
       primary: generateMiniEmbedding(`${seed}_color_primary`, primaryColorSim),
       secondary: generateMiniEmbedding(`${seed}_color_secondary`, secondaryColorSim)
@@ -418,6 +420,20 @@ function generateMiniAnalysisForProduct(productId: string, reportId: string): {
     },
     similarity
   };
+  
+  console.log(`🔍 Generated analysis for ${productId}:`, {
+    overall: similarity,
+    colorPrimary: primaryColorSim,
+    colorSecondary: secondaryColorSim,
+    patternPrimary: primaryPatternSim,
+    patternSecondary: secondaryPatternSim,
+    resultColorPrimary: result.color.primary.similarity,
+    resultColorSecondary: result.color.secondary.similarity,
+    resultPatternPrimary: result.pattern.primary.similarity,
+    resultPatternSecondary: result.pattern.secondary.similarity
+  });
+  
+  return result;
 }
 
 /**
@@ -429,7 +445,7 @@ export function getProductWithAnalysis(productId: string, reportId: string): Pro
   
   return {
     ...baseProduct,
-    analysis: generateAnalysisForProduct(productId, reportId)
+    analysis: generateMiniAnalysisForProduct(productId, reportId)
   };
 }
 

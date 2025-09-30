@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Grid, Heart, Package } from "lucide-react";
+import { Grid, Heart, Package, Search } from "lucide-react";
 import { useState } from "react";
 import type { ProductIndex, Product } from "@/types/report";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -146,8 +146,31 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
   if (isLoading) {
     return (
       <div className="search-results">
-        <div className="search-results__header">
-          <h2 className="search-results__title">Search Results</h2>
+        <div className="search-filters__header">
+          <h3 className="search-filters__title">
+            <Search className="w-4 h-4" />
+            Results
+          </h3>
+          <div className="search-results__view-controls">
+            <button
+              disabled
+              className={`search-results__view-btn ${
+                viewMode === "grid" ? "search-results__view-btn--active" : ""
+              }`}
+              aria-label="Grid view"
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button
+              disabled
+              className={`search-results__view-btn ${
+                viewMode === "favorites" ? "search-results__view-btn--active" : ""
+              }`}
+              aria-label="Favorites view"
+            >
+              <Heart className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <div className="search-results__loading">
           <div className="loading-spinner"></div>
@@ -160,15 +183,15 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
   if (viewMode === "favorites" && displayProducts.length === 0) {
     return (
       <div className="search-results">
-        <div className="search-results__header">
-          <div className="search-results__title-section">
-            <h2 className="search-results__title">Favorites</h2>
-            <span className="search-results__count">0 favorites</span>
-          </div>
-          
+        <div className="search-filters__header">
+          <h3 className="search-filters__title">
+            <Heart className="w-4 h-4" />
+            Favorites
+          </h3>
           <div className="search-results__view-controls">
             <button
               onClick={() => setViewMode("grid")}
+              disabled={isLoading}
               className="search-results__view-btn"
               aria-label="Grid view"
             >
@@ -176,6 +199,7 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
             </button>
             <button
               onClick={() => setViewMode("favorites")}
+              disabled={isLoading}
               className="search-results__view-btn search-results__view-btn--active"
               aria-label="Favorites view"
             >
@@ -195,15 +219,15 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
   if (viewMode === "grid" && results.length === 0) {
     return (
       <div className="search-results">
-        <div className="search-results__header">
-          <div className="search-results__title-section">
-            <h2 className="search-results__title">Search Results</h2>
-            <span className="search-results__count">0 products found</span>
-          </div>
-          
+        <div className="search-filters__header">
+          <h3 className="search-filters__title">
+            <Search className="w-4 h-4" />
+            Results
+          </h3>
           <div className="search-results__view-controls">
             <button
               onClick={() => setViewMode("grid")}
+              disabled={isLoading}
               className="search-results__view-btn search-results__view-btn--active"
               aria-label="Grid view"
             >
@@ -211,6 +235,7 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
             </button>
             <button
               onClick={() => setViewMode("favorites")}
+              disabled={isLoading}
               className="search-results__view-btn"
               aria-label="Favorites view"
             >
@@ -239,11 +264,21 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
   return (
     <div className="search-results">
       {/* Header with view controls */}
-      <div className="search-results__header">
+      <div className="search-filters__header">
         <div className="search-results__title-section">
-          <h2 className="search-results__title">
-            {viewMode === "favorites" ? "Favorites" : "Search Results"}
-          </h2>
+          <h3 className="search-filters__title">
+            {viewMode === "favorites" ? (
+              <>
+                <Heart className="w-4 h-4" />
+                Favorites
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4" />
+                Results
+              </>
+            )}
+          </h3>
           <span className="search-results__count">
             {displayProducts.length} {viewMode === "favorites" 
               ? (displayProducts.length === 1 ? "favorite" : "favorites")
@@ -255,6 +290,7 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
         <div className="search-results__view-controls">
           <button
             onClick={() => setViewMode("grid")}
+            disabled={isLoading}
             className={`search-results__view-btn ${
               viewMode === "grid" ? "search-results__view-btn--active" : ""
             }`}
@@ -264,6 +300,7 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
           </button>
           <button
             onClick={() => setViewMode("favorites")}
+            disabled={isLoading}
             className={`search-results__view-btn ${
               viewMode === "favorites" ? "search-results__view-btn--active" : ""
             }`}

@@ -104,7 +104,7 @@ export function AppHeader() {
     }
     if (pathname === '/create' || pathname === '/create/') {
       console.log('Create page detected!');
-      return 'Create Search';
+      return 'Create';
     }
     if (pathname.startsWith('/fetch')) {
       console.log('Fetch page detected!');
@@ -113,17 +113,17 @@ export function AppHeader() {
         console.log('Product comparison view detected!');
         return reportTitle ? (
           <>
-            <span>Product Comparison:</span>
+            <span>Compare:</span>
             <span className="app-header-universal__subtitle">{reportTitle}</span>
           </>
-        ) : 'Product Comparison';
+        ) : 'Compare';
       }
       return reportTitle ? (
         <>
-          <span>Search Results:</span>
+          <span>Fetch:</span>
           <span className="app-header-universal__subtitle">{reportTitle}</span>
         </>
-      ) : 'Search Results';
+      ) : 'Fetch';
     }
     if (pathname.startsWith('/edit')) return 'Edit Search';
     

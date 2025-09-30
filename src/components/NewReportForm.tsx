@@ -148,7 +148,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
     }
 
     if ((imageCount ?? 0) === 0) {
-      setErrorMessage('Please add at least one image before creating a search.');
+      setErrorMessage('Please add at least one image before creating a report.');
       return;
     }
 
@@ -159,7 +159,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
       const author = user?.id ?? 'guest';
       onSubmit?.({ ...form, author });
     } catch {
-      setErrorMessage('Failed to create search. Please try again.');
+      setErrorMessage('Failed to create report. Please try again.');
     } finally {
       // leave loading state briefly to show spinner; real API should control this
       setTimeout(() => setIsSubmitting(false), 600);
@@ -196,13 +196,13 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
       <div className="search-filters__header search-filters__header--strip-top">
         <h3 className="search-filters__title">
           <FileText className="w-4 h-4" />
-          Create Search
+          New Report
         </h3>
       </div>
 
       <div className="search-filters__content">
           <div className="search-filters__section">
-            <h4 className="search-filters__section-title">Search Name <span className="form-field__required-asterisk">*</span></h4>
+            <h4 className="search-filters__section-title">Report Name <span className="form-field__required-asterisk">*</span></h4>
             <div className="search-filters__field search-filters__field--vertical">
               <input
                 id="report-name"
@@ -216,7 +216,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
                   }));
                   setTouched((prev) => ({ ...prev, reportName: false }));
                 }}
-                placeholder="Enter search name"
+                placeholder="Enter report name"
                 onFocus={handleReportNameFocus}
                 onBlur={handleReportNameBlur}
                 aria-invalid={isReportNameMissing}
@@ -225,7 +225,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
               />
               {isReportNameMissing && (
                 <p className="form-field__hint" id={reportNameErrorId} role="alert">
-                  Please enter a search name.
+                  Please enter a report name.
                 </p>
               )}
             </div>
@@ -486,7 +486,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
               <path d="M22 12A10 10 0 0 1 12 22" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
             </svg>
           ) : (
-            'Create Search'
+            'Create Report'
           )}
         </button>
         </form>
