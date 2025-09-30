@@ -16,10 +16,6 @@ Parameters:
   CognitoUserPoolClientId:
     Type: String
     Description: Existing Cognito User Pool Client ID
-    
-  S3BucketName:
-    Type: String
-    Description: S3 bucket name for database and file storage
 
 Globals:
   Function:
@@ -32,8 +28,9 @@ Globals:
         COGNITO_USER_POOL_ID: !Ref CognitoUserPoolId
         SIMILARITY_BUCKET: !Ref SimilarityBucket
         EMBEDDINGS_FUNCTION_NAME: !Ref EmbeddingsFunction
-        DATABASE_S3_BUCKET: !Ref S3BucketName
-        DATABASE_S3_KEY: !Sub "databases/k9_api_${Environment}.db"
+        DYNAMODB_USERS_TABLE: !Ref UsersTable
+        DYNAMODB_REPORTS_TABLE: !Ref ReportsTable
+        DYNAMODB_EMBEDDINGS_TABLE: !Ref EmbeddingsTable
 
 Resources:
   # Lambda Layers for Multi-Layer Architecture
@@ -80,6 +77,92 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  # DynamoDB Tables
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "k9-users-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: K9API
+
+  ReportsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "k9-reports-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserReportsIndex
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: K9API
+
+  EmbeddingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "k9-embeddings-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: product_id
+          AttributeType: S
+        - AttributeName: model_version
+          AttributeType: S
+      KeySchema:
+        - AttributeName: product_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ModelVersionIndex
+          KeySchema:
+            - AttributeName: model_version
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: K9API
+
   # API Gateway with Cognito Authorization
   K9Api:
     Type: AWS::Serverless::Api
@@ -110,6 +193,11 @@ Resources:
       Environment:
         Variables:
           HANDLER_TYPE: user
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - S3ReadPolicy:
+            BucketName: !Ref SimilarityBucket
       Events:
         # GET /user/profile
         GetProfile:
@@ -145,6 +233,10 @@ Resources:
         - !Ref CoreLayer
         - !Ref DataLayer
       Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReportsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
         - S3ReadPolicy:
             BucketName: !Ref SimilarityBucket
         - LambdaInvokeFunction:
@@ -239,6 +331,10 @@ Resources:
         - !Ref DataLayer
         - !Ref MLLayer
       Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EmbeddingsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ReportsTable
         - S3FullAccessPolicy:
             BucketName: !Ref SimilarityBucket
       Environment:
