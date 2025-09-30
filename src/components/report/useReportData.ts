@@ -124,7 +124,6 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
     setIsSearching(true);
     setHasSearched(true); // Mark that a search has been performed
     setSearchFilters(filters); // Store the filters used for this search
-    console.log("Searching with filters:", filters);
     
     try {
       if (!report) {

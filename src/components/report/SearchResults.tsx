@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Grid, Heart, Package, Search, Download } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { ProductIndex, Product } from "@/types/report";
 import { useFavorites } from "@/hooks/useFavorites";
 import { ImageWithPlaceholder } from "@/components/ImageWithPlaceholder";
@@ -104,20 +104,10 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
     });
   };
 
-      const handleProductClick = (productId: string) => {
-    console.log('SearchResults: handleProductClick called with productId:', productId);
-    console.log('SearchResults: Current reportId:', reportId);
-    
-    if (!reportId) {
-      console.error('SearchResults: No reportId available for navigation');
-      return;
-    }
-    
-    // Navigate to product comparison using query parameters
+      const handleProductClick = useCallback((productId: string) => {
     const url = `/fetch?report=${reportId}&product=${productId}`;
-    console.log('SearchResults: Navigating to URL:', url);
     router.push(url);
-  };
+  }, [reportId, router]);
 
   const handleFavoriteClick = (e: React.MouseEvent, product: ProductIndex) => {
     e.stopPropagation(); // Prevent triggering product click
@@ -464,13 +454,11 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
       <div className="search-results__content">
         <div className="search-results__grid">
           {displayProducts.map((product) => {
-            console.log('🎯 Rendering product card:', { id: product.id, brand: product.brand, model: product.model });
             return (
             <div 
               key={product.id} 
               className="search-result-card"
               onClick={() => {
-                console.log('🖱️ Product clicked:', product.id);
                 handleProductClick(product.id);
               }}
             >

@@ -421,18 +421,6 @@ function generateMiniAnalysisForProduct(productId: string, reportId: string): {
     similarity
   };
   
-  console.log(`🔍 Generated analysis for ${productId}:`, {
-    overall: similarity,
-    colorPrimary: primaryColorSim,
-    colorSecondary: secondaryColorSim,
-    patternPrimary: primaryPatternSim,
-    patternSecondary: secondaryPatternSim,
-    resultColorPrimary: result.color.primary.similarity,
-    resultColorSecondary: result.color.secondary.similarity,
-    resultPatternPrimary: result.pattern.primary.similarity,
-    resultPatternSecondary: result.pattern.secondary.similarity
-  });
-  
   return result;
 }
 

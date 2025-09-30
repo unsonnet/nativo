@@ -29,7 +29,6 @@ function simplifyRatio(length: number, width: number): [number, number] {
 // Convert workspace image to ProductImage. Mask/selection will be empty for now;
 // later we can extract mask canvas data from the overlay hook.
 function workspaceToProductImage(wi: { id: string; name: string; url: string; mask?: string; selection?: ProductImage['selection'] }) : ProductImage {
-  console.log('Converting workspace image:', { id: wi.id, hasMask: !!wi.mask, maskLength: wi.mask?.length });
   return {
     // leave id blank per request
     id: '',

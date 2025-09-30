@@ -65,14 +65,11 @@ export function AppHeader() {
   }, [pathname, searchParams]);
 
   const shouldShowBackButton = () => {
-    console.log('Checking back button for pathname:', pathname);
     const shouldShow = pathname !== '/dashboard' && pathname !== '/dashboard/' && pathname !== '/';
-    console.log('Should show back button:', shouldShow);
     return shouldShow;
   };
 
   const handleBackClick = () => {
-    console.log('🔙 Back button clicked from:', pathname, 'with product param:', searchParams.get('product'));
     if (pathname === '/create') {
       router.push('/dashboard');
     } else if (pathname.startsWith('/fetch')) {
@@ -82,7 +79,6 @@ export function AppHeader() {
       if (productParam && reportParam) {
         // In product comparison view, go back to report by removing product parameter
         const backUrl = `/fetch?report=${reportParam}`;
-        console.log('🔙 Going back to report:', backUrl);
         router.push(backUrl);
       } else {
         // Regular report page, go back to dashboard
@@ -96,7 +92,6 @@ export function AppHeader() {
             console.warn('Failed to clear report session data:', error);
           }
         }
-        console.log('🔙 Going back to dashboard');
         router.push('/dashboard');
       }
     } else {
@@ -105,22 +100,15 @@ export function AppHeader() {
   };
 
   const getPageTitle = () => {
-    // Debug logging to see what pathname we're getting
-    console.log('Current pathname:', pathname);
-    
     if (pathname === '/dashboard' || pathname === '/dashboard/' || pathname === '/') {
-      console.log('Dashboard detected!');
       return 'Dashboard';
     }
     if (pathname === '/create' || pathname === '/create/') {
-      console.log('Create page detected!');
       return 'Create';
     }
     if (pathname.startsWith('/fetch')) {
-      console.log('Fetch page detected!');
       const productParam = searchParams.get('product');
       if (productParam) {
-        console.log('Product comparison view detected!');
         return reportTitle ? (
           <>
             <span>Compare:</span>
@@ -137,7 +125,6 @@ export function AppHeader() {
     }
     if (pathname.startsWith('/edit')) return 'Edit Search';
     
-    console.log('Fallback to K9 Search');
     return 'K9 Search';
   };
 

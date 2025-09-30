@@ -52,7 +52,6 @@ export async function createReport<T extends Product | ProductIndex = Product | 
   } as Report;
 
   store.unshift(newReportBase as Report<Product | ProductIndex>);
-  console.log('[Mock] Created report:', newReportBase);
 
   return newReportBase as unknown as Report<T>;
 }
