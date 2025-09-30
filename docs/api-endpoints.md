@@ -322,8 +322,11 @@ Content-Disposition: attachment; filename="favorites-report-{reportId}.zip"
 
 **Current Implementation**:
 - **API Service**: `src/lib/api/reportsApi.ts` - `ReportsApiService.exportFavorites()`
-- **Next.js Route**: `src/app/api/export/favorites/route.ts` (returns 501 Not Implemented)
 - **Usage**: Export functionality in favorites
+
+**Implementation Needed**:
+- Backend implementation of export endpoint (GitHub Pages doesn't support API routes)
+- Set `NEXT_PUBLIC_USE_REAL_API=true` when backend is ready
 
 ## Environment Configuration
 

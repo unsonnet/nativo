@@ -48,8 +48,8 @@ The K9 application now has a complete REST API infrastructure ready for integrat
 - **Features**: API endpoints, feature flags, AWS Cognito settings
 
 #### `src/app/api/export/favorites/route.ts` - Export Route
-- **Purpose**: Updated with better documentation and structure
-- **Features**: Ready for real ZIP file generation
+- **Purpose**: ~~Updated with better documentation and structure~~ **Removed for GitHub Pages compatibility**
+- **Features**: ~~Ready for real ZIP file generation~~ **Now handled by external API service**
 
 ## Your 8 Required API Endpoints
 

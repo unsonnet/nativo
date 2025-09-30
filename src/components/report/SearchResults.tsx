@@ -132,47 +132,37 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
       // Get the IDs of all favorite products
       const favoriteIds = favorites.map(fav => fav.id);
       
-      // Call the export API - replace with your actual API endpoint
-      const response = await fetch('/api/export/favorites', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reportId,
-          productIds: favoriteIds,
-        }),
-      });
-
-      if (response.status === 501) {
-        // API not yet implemented
-        const data = await response.json();
-        alert(`Export feature coming soon!\n\nWould export ${data.productCount} products for report ${data.reportId}`);
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(`Export failed: ${response.statusText}`);
-      }
-
-      // Get the zip file as a blob
-      const blob = await response.blob();
+      // For GitHub Pages deployment, we'll use the external API service
+      // You can replace this with your actual API endpoint
+      const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API === 'true';
       
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `favorites-report-${reportId}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      if (USE_REAL_API) {
+        // Use the real API service
+        const { reportsApiService } = await import('@/lib/api/reportsApi');
+        const response = await reportsApiService.exportFavorites(reportId);
+        
+        if (response.status === 200) {
+          // Create download link for the blob
+          const url = window.URL.createObjectURL(response.body);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `favorites-report-${reportId}.zip`;
+          document.body.appendChild(link);
+          link.click();
+          
+          // Cleanup
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        } else {
+          throw new Error(response.error || 'Export failed');
+        }
+      } else {
+        // Mock implementation for development/demo
+        alert(`Export feature ready for integration!\n\nWould export ${favoriteIds.length} favorite products:\n${favoriteIds.join(', ')}\n\nTo enable real export:\n1. Set NEXT_PUBLIC_USE_REAL_API=true\n2. Implement the export endpoint on your backend`);
+      }
       
     } catch (error) {
       console.error('Export failed:', error);
-      // You might want to show a toast notification here
       alert('Export failed. Please try again.');
     } finally {
       setIsExporting(false);
