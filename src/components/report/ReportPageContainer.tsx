@@ -38,7 +38,8 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
     searchResults,
     isSearching,
     hasSearched,
-    handleSearch
+    handleSearch,
+    initialFavorites
   } = useReportData({ reportId: activeReportId });
 
   // If we have a product parameter, show product comparison instead
@@ -124,6 +125,7 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
           hasSearched={hasSearched}
           reportId={activeReportId}
           referenceProduct={report.reference}
+          initialFavorites={initialFavorites}
         />
       </main>
     </div>

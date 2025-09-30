@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Report, Product, ProductIndex } from "@/types/report";
 import { reportsApi } from "@/lib/api/reports";
-import { mockSearchResults, simulateApiDelay } from "@/data/mockSearchResults";
+import { simulateApiDelay } from "@/data/mockSearchResults";
 import type { SearchFilters as SearchFiltersType } from "./SearchFilters";
 
 interface UseReportDataProps {
@@ -18,6 +18,8 @@ interface UseReportDataReturn {
   isSearching: boolean;
   hasSearched: boolean;
   handleSearch: (filters: SearchFiltersType) => Promise<void>;
+  /** Initial favorites from the database (for useFavorites initialization) */
+  initialFavorites: string[];
 }
 
 export function useReportData({ reportId }: UseReportDataProps): UseReportDataReturn {
@@ -61,15 +63,26 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
     console.log("Searching with filters:", filters);
     
     try {
+      if (!report) {
+        console.warn("No report loaded, cannot search");
+        return;
+      }
+
+      // Use the new search system that generates results based on the report's reference product
+      const { getMockSearchResults } = await import("@/data/mockSearchResults");
+      
       // Mock search results - in real implementation, this would call your search API
       await simulateApiDelay(1000); // Simulate API call
       
-      // Return a random subset of mock results (0 to all results)
-      const totalResults = mockSearchResults.length;
+      // Get search results specific to this report and its reference product
+      const resultsForReport = getMockSearchResults(report.id, report.reference.id);
+      
+      // Return a random subset of results (0 to all results) to simulate filtering
+      const totalResults = resultsForReport.length;
       const randomCount = Math.floor(Math.random() * (totalResults + 1)); // 0 to totalResults inclusive
       
       // Shuffle the array and take the first randomCount items
-      const shuffled = [...mockSearchResults].sort(() => Math.random() - 0.5);
+      const shuffled = [...resultsForReport].sort(() => Math.random() - 0.5);
       const randomResults = shuffled.slice(0, randomCount);
       
       setSearchResults(randomResults);
@@ -87,6 +100,7 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
     searchResults,
     isSearching,
     hasSearched,
-    handleSearch
+    handleSearch,
+    initialFavorites: report?.favorites || []
   };
 }

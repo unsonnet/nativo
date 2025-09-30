@@ -13,16 +13,21 @@ interface SearchResultsProps {
   hasSearched: boolean;
   reportId: string;
   referenceProduct?: Product; // Keep as Product since the reference in reports is the full Product
+  initialFavorites?: string[]; // Initial favorites from the database
 }
 
 interface ViewMode {
   type: "grid" | "favorites";
 }
 
-export function SearchResults({ results, isLoading, hasSearched, reportId }: SearchResultsProps) {
+export function SearchResults({ results, isLoading, hasSearched, reportId, initialFavorites = [] }: SearchResultsProps) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode["type"]>("grid");
-  const { favorites, isFavorited, toggleFavorite } = useFavorites(reportId);
+  const { favorites, isFavorited, toggleFavorite } = useFavorites(reportId, {
+    initialFavorites,
+    searchResults: results, // Provide search results to help reconstruct favorite products
+    autoClear: true // Clear session favorites when component unmounts
+  });
 
   const getProductNameText = (product: ProductIndex) => {
     const parts = [];
@@ -272,11 +277,16 @@ export function SearchResults({ results, isLoading, hasSearched, reportId }: Sea
       {/* Results content */}
       <div className="search-results__content">
         <div className="search-results__grid">
-          {displayProducts.map((product) => (
+          {displayProducts.map((product) => {
+            console.log('🎯 Rendering product card:', { id: product.id, brand: product.brand, model: product.model });
+            return (
             <div 
               key={product.id} 
               className="search-result-card"
-              onClick={() => handleProductClick(product.id)}
+              onClick={() => {
+                console.log('🖱️ Product clicked:', product.id);
+                handleProductClick(product.id);
+              }}
             >
               <div className="search-result-card__image">
                 <Image
@@ -312,7 +322,8 @@ export function SearchResults({ results, isLoading, hasSearched, reportId }: Sea
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

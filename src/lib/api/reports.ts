@@ -1,5 +1,6 @@
 import type { Report, Product, ProductIndex } from '@/types/report';
 import { reports as mockReports } from '@/data/reports';
+import { getProductWithAnalysis } from '@/data/mockDatabase';
 
 // Simple in-memory store for development. Replace with real REST API calls later.
 const store: Report<Product | ProductIndex>[] = [...mockReports];
@@ -48,86 +49,100 @@ export async function getFullReport(id: string): Promise<Report<Product> | undef
     return foundReport as Report<Product>;
   }
 
-  // Transform ProductIndex to Product
+  // Transform ProductIndex to Product using our mock database
   const productIndex = foundReport.reference as ProductIndex;
-  const mockImages = [
-    {
-      id: productIndex.id + "_img1",
-      url: productIndex.image || "https://picsum.photos/seed/report1/800/800",
-    },
-    {
-      id: productIndex.id + "_img2", 
-      url: "https://picsum.photos/seed/report2/800/800",
-    },
-    {
-      id: productIndex.id + "_img3",
-      url: "https://picsum.photos/seed/report3/800/800",
-    },
-    {
-      id: productIndex.id + "_img4",
-      url: "https://picsum.photos/seed/report4/800/800",
-    },
-    {
-      id: productIndex.id + "_img5",
-      url: "https://picsum.photos/seed/report5/800/800",
-    }
-  ];
-
-  const fullProduct: Product = {
-    id: productIndex.id,
-    brand: productIndex.brand || "Premium Floors",
-    series: productIndex.series || "Executive Collection",
-    model: productIndex.model || "Classic Oak",
-    images: mockImages,
-    category: {
-      type: "Hardwood",
-      material: "Oak",
-      look: "Traditional",
-      texture: "Smooth",
-      finish: "Matte",
-      edge: "Beveled"
-    },
-    formats: [
+  
+  // Get the full product with analysis from our mock database
+  const fullProduct = getProductWithAnalysis(productIndex.id, foundReport.id);
+  
+  if (!fullProduct) {
+    // Fallback to the original mock behavior if product not found in database
+    console.warn(`Product ${productIndex.id} not found in mock database, using fallback`);
+    
+    const mockImages = [
       {
-        length: { val: 25, unit: "in" as const },
-        width: { val: 18, unit: "in" as const },
-        thickness: { val: 12, unit: "mm" as const },
-        vendors: [
-          {
-            sku: "OAK-2518-12",
-            store: "FloorMart",
-            name: "Premium Oak Hardwood",
-            price: { val: 4.99, unit: "usd" as const },
-            discontinued: false,
-            url: "https://example.com/product"
-          }
-        ]
+        id: productIndex.id + "_img1",
+        url: productIndex.image || "https://picsum.photos/seed/report1/800/800",
+      },
+      {
+        id: productIndex.id + "_img2", 
+        url: "https://picsum.photos/seed/report2/800/800",
+      },
+      {
+        id: productIndex.id + "_img3",
+        url: "https://picsum.photos/seed/report3/800/800",
+      },
+      {
+        id: productIndex.id + "_img4",
+        url: "https://picsum.photos/seed/report4/800/800",
+      },
+      {
+        id: productIndex.id + "_img5",
+        url: "https://picsum.photos/seed/report5/800/800",
       }
-    ],
-    analysis: productIndex.analysis ? {
-      color: {
-        primary: { 
-          vector: [0.8, 0.6, 0.4, 0.9, 0.7], // Expand mini-embedding
-          similarity: productIndex.analysis.color.primary.similarity 
-        },
-        secondary: { 
-          vector: [0.7, 0.5, 0.3, 0.8, 0.6],
-          similarity: productIndex.analysis.color.secondary.similarity 
-        }
+    ];
+
+    const fallbackProduct: Product = {
+      id: productIndex.id,
+      brand: productIndex.brand || "Premium Floors",
+      series: productIndex.series || "Executive Collection",
+      model: productIndex.model || "Classic Oak",
+      images: mockImages,
+      category: {
+        type: "Hardwood",
+        material: "Oak",
+        look: "Traditional",
+        texture: "Smooth",
+        finish: "Matte",
+        edge: "Beveled"
       },
-      pattern: {
-        primary: { 
-          vector: [0.6, 0.4, 0.8, 0.7, 0.5],
-          similarity: productIndex.analysis.pattern.primary.similarity 
-        },
-        secondary: { 
-          vector: [0.5, 0.3, 0.7, 0.6, 0.4],
-          similarity: productIndex.analysis.pattern.secondary.similarity 
+      formats: [
+        {
+          length: { val: 25, unit: "in" as const },
+          width: { val: 18, unit: "in" as const },
+          thickness: { val: 12, unit: "mm" as const },
+          vendors: [
+            {
+              sku: "OAK-2518-12",
+              store: "FloorMart",
+              name: "Premium Oak Hardwood",
+              price: { val: 4.99, unit: "usd" as const },
+              discontinued: false,
+              url: "https://example.com/product"
+            }
+          ]
         }
-      },
-      similarity: productIndex.analysis.similarity
-    } : undefined
-  };
+      ],
+      analysis: productIndex.analysis ? {
+        color: {
+          primary: { 
+            vector: [0.8, 0.6, 0.4, 0.9, 0.7], // Expand mini-embedding
+            similarity: productIndex.analysis.color.primary.similarity 
+          },
+          secondary: { 
+            vector: [0.7, 0.5, 0.3, 0.8, 0.6],
+            similarity: productIndex.analysis.color.secondary.similarity 
+          }
+        },
+        pattern: {
+          primary: { 
+            vector: [0.6, 0.4, 0.8, 0.7, 0.5],
+            similarity: productIndex.analysis.pattern.primary.similarity 
+          },
+          secondary: { 
+            vector: [0.5, 0.3, 0.7, 0.6, 0.4],
+            similarity: productIndex.analysis.pattern.secondary.similarity 
+          }
+        },
+        similarity: productIndex.analysis.similarity
+      } : undefined
+    };
+    
+    return {
+      ...foundReport,
+      reference: fallbackProduct
+    } as Report<Product>;
+  }
 
   return {
     ...foundReport,

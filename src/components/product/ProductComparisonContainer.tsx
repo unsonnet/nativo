@@ -138,131 +138,29 @@ export function ProductComparisonContainer({ reportId, productId }: ProductCompa
   });
 
   useEffect(() => {
-    // TODO: Replace with actual API calls
     const loadProductData = async () => {
       try {
         setState(prev => ({ ...prev, loading: true, error: null }));
 
-        // Mock data for development - replace with actual API calls
-        const mockSelectedProduct: Product = {
-          id: productId,
-          brand: "TimberCraft",
-          series: "Artisan Series",
-          model: "Classic Oak Heritage",
-          images: [
-            {
-              id: "img1",
-              url: "https://picsum.photos/seed/product1/800/600",
-            },
-            {
-              id: "img2", 
-              url: "https://picsum.photos/seed/product2/800/600",
-            },
-            {
-              id: "img3",
-              url: "https://picsum.photos/seed/product3/800/600",
-            }
-          ],
-          category: {
-            type: "Hardwood",
-            material: "Oak",
-            look: "Traditional",
-            texture: "Smooth",
-            finish: "Matte",
-            edge: "Beveled"
-          },
-          formats: [
-            {
-              length: { val: 48, unit: 'in' },
-              width: { val: 7, unit: 'in' },
-              thickness: { val: 12, unit: 'mm' },
-              vendors: [
-                {
-                  sku: "TC-AOH-48x7",
-                  store: "Home Depot",
-                  name: "TimberCraft Classic Oak Heritage 48\"x7\"",
-                  price: { val: 4.99, unit: 'usd' },
-                  url: "https://homedepot.com/product/tc-aoh"
-                },
-                {
-                  sku: "AOH-4807",
-                  store: "Lowe's",
-                  name: "Classic Oak Heritage Plank",
-                  price: { val: 5.25, unit: 'usd' },
-                  url: "https://lowes.com/product/aoh"
-                }
-              ]
-            },
-            {
-              length: { val: 36, unit: 'in' },
-              width: { val: 5, unit: 'in' },
-              thickness: { val: 12, unit: 'mm' },
-              vendors: [
-                {
-                  sku: "TC-AOH-36x5",
-                  store: "Home Depot", 
-                  name: "TimberCraft Classic Oak Heritage 36\"x5\"",
-                  price: { val: 3.99, unit: 'usd' },
-                  url: "https://homedepot.com/product/tc-aoh-36"
-                }
-              ]
-            }
-          ],
-          analysis: {
-            color: { 
-              primary: { vector: [0.8, 0.6, 0.4, 0.9], similarity: 95 },
-              secondary: { vector: [0.7, 0.5, 0.3, 0.8], similarity: 88 }
-            },
-            pattern: { 
-              primary: { vector: [0.9, 0.7, 0.6, 0.8], similarity: 92 },
-              secondary: { vector: [0.8, 0.6, 0.5, 0.7], similarity: 85 }
-            },
-            similarity: 0.95
-          }
-        };
+        // Use the new mock database system
+        const { getProductWithAnalysis } = await import('@/data/mockDatabase');
+        const { reportsApi } = await import('@/lib/api/reports');
+        
+        // Load the reference report first to get the reference product
+        const referenceReport = await reportsApi.getFullReport(reportId);
+        if (!referenceReport) {
+          throw new Error(`Report ${reportId} not found`);
+        }
 
-        const mockReferenceReport: Report<Product> = {
-          id: reportId,
-          title: "Office Building 2nd Floor",
-          author: "dashboard.user", 
-          date: "2025-09-15",
-          reference: {
-            id: "ref1",
-            brand: "Reference Brand",
-            series: "Premium Series",
-            model: "Executive Oak",
-            images: [
-              {
-                id: "ref-img1",
-                url: "https://picsum.photos/seed/reference1/800/600",
-              },
-              {
-                id: "ref-img2",
-                url: "https://picsum.photos/seed/reference2/800/600", 
-              }
-            ],
-            category: {
-              type: "Hardwood",
-              material: "Oak",
-              look: "Executive",
-              texture: "Smooth",
-              finish: "Gloss",
-              edge: "Square"
-            },
-            formats: [
-              {
-                length: { val: 48, unit: 'in' },
-                width: { val: 6, unit: 'in' },
-                thickness: { val: 15, unit: 'mm' },
-                vendors: []
-              }
-            ]
-          }
-        };
+        // Load the selected product using the new database system
+        const selectedProduct = getProductWithAnalysis(productId, reportId);
+        if (!selectedProduct) {
+          throw new Error(`Product ${productId} not found`);
+        }
 
         setState({
-          selectedProduct: mockSelectedProduct,
-          referenceReport: mockReferenceReport,
+          selectedProduct,
+          referenceReport,
           loading: false,
           error: null,
         });
