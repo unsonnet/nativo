@@ -96,7 +96,6 @@ export default function Home() {
             </div>
 
             <div className="landing-page__login-form">
-              <h2 className="landing-page__login-title">Welcome Back</h2>
               <form onSubmit={handleLogin} className="login-form">
                 <div className="login-form__field">
                   <label htmlFor="username" className="login-form__label">Username</label>

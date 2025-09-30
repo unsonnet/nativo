@@ -2141,10 +2141,7 @@ input[type="number"] {
   min-height: 500px;
   justify-content: flex-start;
   padding-top: 3rem;
-}
-
-.landing-page__container--login {
-  max-width: 400px;
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .landing-page__logo {
@@ -2154,12 +2151,6 @@ input[type="number"] {
   gap: 1.2rem;
   margin-bottom: 2rem;
   color: var(--text-primary);
-  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.landing-page__container--login .landing-page__logo {
-  margin-bottom: 2rem;
-  gap: 1rem;
 }
 
 .landing-page__company-name {
@@ -2170,11 +2161,6 @@ input[type="number"] {
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.landing-page__container--login .landing-page__company-name {
-  font-size: 1.8rem;
 }
 
 .landing-page__content {
@@ -2183,7 +2169,7 @@ input[type="number"] {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  height: 250px;
+  height: 350px;
 }
 
 .landing-page__loading {
@@ -2237,7 +2223,7 @@ input[type="number"] {
 
 .landing-page__login-form {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(10px);
   transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
   width: 100%;
   text-align: center;
@@ -2248,16 +2234,9 @@ input[type="number"] {
 
 .landing-page__container--login .landing-page__login-form {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(-20px);
   position: relative;
   pointer-events: auto;
-}
-
-.landing-page__login-title {
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 2rem 0;
 }
 
 .login-form {
