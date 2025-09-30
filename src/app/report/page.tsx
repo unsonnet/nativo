@@ -11,10 +11,12 @@ function ReportPageContent() {
   useEffect(() => {
     // Get report ID from URL hash or search params
     // This handles URLs like /report#123 or /report?id=123
+    // But NOT product comparison URLs like /report/product#123-productId
     const hashId = window.location.hash.slice(1);
     const paramId = searchParams.get('id');
     
-    if (hashId) {
+    // Only use hash if it doesn't contain a hyphen (to avoid conflict with product page hashes)
+    if (hashId && !hashId.includes('-')) {
       setReportId(hashId);
     } else if (paramId) {
       setReportId(paramId);

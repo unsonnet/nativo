@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Grid, Heart, Package } from "lucide-react";
 import { useState } from "react";
 import type { ProductIndex, Product } from "@/types/report";
@@ -19,6 +20,7 @@ interface ViewMode {
 }
 
 export function SearchResults({ results, isLoading, hasSearched, reportId }: SearchResultsProps) {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode["type"]>("grid");
   const { favorites, isFavorited, toggleFavorite } = useFavorites(reportId);
 
@@ -96,10 +98,19 @@ export function SearchResults({ results, isLoading, hasSearched, reportId }: Sea
     });
   };
 
-  const handleProductClick = (product: ProductIndex) => {
-    // In a real implementation, this could open a product detail modal
-    // or navigate to a detailed product view
-    console.log("Product clicked:", product.id, formatProductName(product));
+      const handleProductClick = (productId: string) => {
+    console.log('SearchResults: handleProductClick called with productId:', productId);
+    console.log('SearchResults: Current reportId:', reportId);
+    
+    if (!reportId) {
+      console.error('SearchResults: No reportId available for navigation');
+      return;
+    }
+    
+    // Navigate to product comparison using query parameters
+    const url = `/fetch?report=${reportId}&product=${productId}`;
+    console.log('SearchResults: Navigating to URL:', url);
+    router.push(url);
   };
 
   const handleFavoriteClick = (e: React.MouseEvent, product: ProductIndex) => {
@@ -265,7 +276,7 @@ export function SearchResults({ results, isLoading, hasSearched, reportId }: Sea
             <div 
               key={product.id} 
               className="search-result-card"
-              onClick={() => handleProductClick(product)}
+              onClick={() => handleProductClick(product.id)}
             >
               <div className="search-result-card__image">
                 <Image

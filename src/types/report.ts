@@ -1,5 +1,11 @@
-export type Embedding = number[];
-export type MiniEmbedding = [number, number];
+export type Embedding = {
+  vector: number[];
+  similarity?: number; // Percent similarity when used in search results
+};
+export type MiniEmbedding = {
+  vector: [number, number];
+  similarity?: number; // Percent similarity when used in search results
+};
 export type Dimensional<T> = {
   val: number;
   unit: T;

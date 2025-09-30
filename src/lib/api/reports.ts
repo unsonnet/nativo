@@ -106,12 +106,24 @@ export async function getFullReport(id: string): Promise<Report<Product> | undef
     ],
     analysis: productIndex.analysis ? {
       color: {
-        primary: [0.8, 0.6, 0.4, 0.9, 0.7], // Expand mini-embedding
-        secondary: [0.7, 0.5, 0.3, 0.8, 0.6]
+        primary: { 
+          vector: [0.8, 0.6, 0.4, 0.9, 0.7], // Expand mini-embedding
+          similarity: productIndex.analysis.color.primary.similarity 
+        },
+        secondary: { 
+          vector: [0.7, 0.5, 0.3, 0.8, 0.6],
+          similarity: productIndex.analysis.color.secondary.similarity 
+        }
       },
       pattern: {
-        primary: [0.6, 0.4, 0.8, 0.7, 0.5],
-        secondary: [0.5, 0.3, 0.7, 0.6, 0.4]
+        primary: { 
+          vector: [0.6, 0.4, 0.8, 0.7, 0.5],
+          similarity: productIndex.analysis.pattern.primary.similarity 
+        },
+        secondary: { 
+          vector: [0.5, 0.3, 0.7, 0.6, 0.4],
+          similarity: productIndex.analysis.pattern.secondary.similarity 
+        }
       },
       similarity: productIndex.analysis.similarity
     } : undefined

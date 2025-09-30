@@ -1,11 +1,13 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { 
   ReportInfoHeader, 
   ImageGallery, 
   SearchFilters, 
   SearchResults 
 } from "@/components/report";
+import { ProductComparisonContainer } from "@/components/product/ProductComparisonContainer";
 import { useReportData } from "./useReportData";
 
 interface ReportPageContainerProps {
@@ -13,6 +15,22 @@ interface ReportPageContainerProps {
 }
 
 export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
+  const searchParams = useSearchParams();
+  const queryReportId = searchParams.get('report');
+  const productId = searchParams.get('product');
+  
+  // Use the report ID from query params if available, otherwise use the prop
+  const activeReportId = queryReportId || reportId;
+  
+  console.log('🔍 ReportPageContainer state:', { 
+    propReportId: reportId,
+    queryReportId,
+    activeReportId,
+    productId,
+    currentURL: typeof window !== 'undefined' ? window.location.href : 'SSR',
+    searchParamsString: searchParams.toString()
+  });
+  
   const {
     report,
     isLoading,
@@ -21,7 +39,18 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
     isSearching,
     hasSearched,
     handleSearch
-  } = useReportData({ reportId });
+  } = useReportData({ reportId: activeReportId });
+
+  // If we have a product parameter, show product comparison instead
+  if (productId && report) {
+    console.log('🎯 Switching to product comparison view:', { reportId: activeReportId, productId });
+    return (
+      <ProductComparisonContainer 
+        reportId={activeReportId} 
+        productId={productId} 
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -93,7 +122,7 @@ export function ReportPageContainer({ reportId }: ReportPageContainerProps) {
           results={searchResults}
           isLoading={isSearching}
           hasSearched={hasSearched}
-          reportId={reportId}
+          reportId={activeReportId}
           referenceProduct={report.reference}
         />
       </main>

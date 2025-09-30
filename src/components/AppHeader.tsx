@@ -38,14 +38,23 @@ export function AppHeader() {
 
   // Fetch report title when on report page
   useEffect(() => {
-    if (pathname.startsWith('/report')) {
+    if (pathname.startsWith('/report') || pathname.startsWith('/fetch')) {
       const getReportTitle = async () => {
         try {
-          // Get report ID from URL hash or search params
-          // Only access window.location on the client side
-          const hashId = typeof window !== 'undefined' ? window.location.hash.slice(1) : '';
-          const paramId = searchParams.get('id');
-          const reportId = hashId || paramId;
+          // Get report ID from search params (new structure)
+          const reportParam = searchParams.get('report');
+          const idParam = searchParams.get('id');
+          
+          // Use report param first, then id param as fallback
+          let reportId = reportParam || idParam;
+          
+          // Fallback to hash for legacy URLs
+          if (!reportId && typeof window !== 'undefined') {
+            const hashId = window.location.hash.slice(1);
+            if (hashId && !hashId.includes('-')) {
+              reportId = hashId;
+            }
+          }
           
           if (reportId) {
             const report = await reportsApi.getFullReport(reportId);
@@ -71,8 +80,23 @@ export function AppHeader() {
   };
 
   const handleBackClick = () => {
-    if (pathname === '/create' || pathname.startsWith('/report')) {
+    console.log('🔙 Back button clicked from:', pathname, 'with product param:', searchParams.get('product'));
+    if (pathname === '/create') {
       router.push('/dashboard');
+    } else if (pathname.startsWith('/report') || pathname.startsWith('/fetch')) {
+      const productParam = searchParams.get('product');
+      const reportParam = searchParams.get('report');
+      
+      if (productParam && reportParam) {
+        // In product comparison view, go back to report by removing product parameter
+        const backUrl = `/fetch?report=${reportParam}`;
+        console.log('🔙 Going back to report:', backUrl);
+        router.push(backUrl);
+      } else {
+        // Regular report page, go back to dashboard
+        console.log('🔙 Going back to dashboard');
+        router.push('/dashboard');
+      }
     } else {
       router.back();
     }
@@ -90,8 +114,18 @@ export function AppHeader() {
       console.log('Create page detected!');
       return 'Create Report';
     }
-    if (pathname.startsWith('/report')) {
-      console.log('Report page detected!');
+    if (pathname.startsWith('/report') || pathname.startsWith('/fetch')) {
+      console.log('Report/Fetch page detected!');
+      const productParam = searchParams.get('product');
+      if (productParam) {
+        console.log('Product comparison view detected!');
+        return reportTitle ? (
+          <>
+            <span>Product Comparison:</span>
+            <span className="app-header-universal__subtitle">{reportTitle}</span>
+          </>
+        ) : 'Product Comparison';
+      }
       return reportTitle ? (
         <>
           <span>Report:</span>

@@ -12,8 +12,14 @@ export const mockSearchResults: ProductIndex[] = [
     model: "Classic Oak Heritage",
     image: "https://picsum.photos/seed/result1/400/400",
     analysis: {
-      color: { primary: [0.8, 0.6], secondary: [0.7, 0.5] },
-      pattern: { primary: [0.9, 0.7], secondary: [0.8, 0.6] },
+      color: { 
+        primary: { vector: [0.8, 0.6], similarity: 95 }, 
+        secondary: { vector: [0.7, 0.5], similarity: 88 } 
+      },
+      pattern: { 
+        primary: { vector: [0.9, 0.7], similarity: 92 }, 
+        secondary: { vector: [0.8, 0.6], similarity: 85 } 
+      },
       similarity: 0.95
     }
   },
@@ -24,8 +30,14 @@ export const mockSearchResults: ProductIndex[] = [
     model: "Rustic Oak Plank",
     image: "https://picsum.photos/seed/result2/400/400",
     analysis: {
-      color: { primary: [0.7, 0.5], secondary: [0.6, 0.4] },
-      pattern: { primary: [0.8, 0.6], secondary: [0.7, 0.5] },
+      color: { 
+        primary: { vector: [0.7, 0.5], similarity: 87 }, 
+        secondary: { vector: [0.6, 0.4], similarity: 82 } 
+      },
+      pattern: { 
+        primary: { vector: [0.8, 0.6], similarity: 89 }, 
+        secondary: { vector: [0.7, 0.5], similarity: 84 } 
+      },
       similarity: 0.85
     }
   },
@@ -36,8 +48,14 @@ export const mockSearchResults: ProductIndex[] = [
     model: "Golden Oak Select",
     image: "https://picsum.photos/seed/result3/400/400",
     analysis: {
-      color: { primary: [0.9, 0.7], secondary: [0.8, 0.6] },
-      pattern: { primary: [0.85, 0.65], secondary: [0.75, 0.55] },
+      color: { 
+        primary: { vector: [0.9, 0.7], similarity: 96 }, 
+        secondary: { vector: [0.8, 0.6], similarity: 91 } 
+      },
+      pattern: { 
+        primary: { vector: [0.85, 0.65], similarity: 93 }, 
+        secondary: { vector: [0.75, 0.55], similarity: 88 } 
+      },
       similarity: 0.95
     }
   },
@@ -48,8 +66,14 @@ export const mockSearchResults: ProductIndex[] = [
     model: "Antique Oak Wide Plank",
     image: "https://picsum.photos/seed/result4/400/400",
     analysis: {
-      color: { primary: [0.75, 0.55], secondary: [0.65, 0.45] },
-      pattern: { primary: [0.9, 0.7], secondary: [0.8, 0.6] },
+      color: { 
+        primary: { vector: [0.75, 0.55], similarity: 86 }, 
+        secondary: { vector: [0.65, 0.45], similarity: 81 } 
+      },
+      pattern: { 
+        primary: { vector: [0.9, 0.7], similarity: 90 }, 
+        secondary: { vector: [0.8, 0.6], similarity: 85 } 
+      },
       similarity: 0.84
     }
   },
@@ -60,8 +84,14 @@ export const mockSearchResults: ProductIndex[] = [
     model: "European Oak Classic",
     image: "https://picsum.photos/seed/result5/400/400",
     analysis: {
-      color: { primary: [0.85, 0.65], secondary: [0.75, 0.55] },
-      pattern: { primary: [0.88, 0.68], secondary: [0.78, 0.58] },
+      color: { 
+        primary: { vector: [0.85, 0.65], similarity: 92 }, 
+        secondary: { vector: [0.75, 0.55], similarity: 87 } 
+      },
+      pattern: { 
+        primary: { vector: [0.88, 0.68], similarity: 94 }, 
+        secondary: { vector: [0.78, 0.58], similarity: 89 } 
+      },
       similarity: 0.91
     }
   },
@@ -72,8 +102,14 @@ export const mockSearchResults: ProductIndex[] = [
     model: "Royal Oak Engineered",
     image: "https://picsum.photos/seed/result6/400/400",
     analysis: {
-      color: { primary: [0.82, 0.62], secondary: [0.72, 0.52] },
-      pattern: { primary: [0.86, 0.66], secondary: [0.76, 0.56] },
+      color: { 
+        primary: { vector: [0.82, 0.62], similarity: 78 }, 
+        secondary: { vector: [0.72, 0.52], similarity: 73 } 
+      },
+      pattern: { 
+        primary: { vector: [0.86, 0.66], similarity: 80 }, 
+        secondary: { vector: [0.76, 0.56], similarity: 75 } 
+      },
       similarity: 0.75
     }
   },
@@ -84,8 +120,14 @@ export const mockSearchResults: ProductIndex[] = [
     model: "Reclaimed Oak Vintage",
     image: "https://picsum.photos/seed/result7/400/400",
     analysis: {
-      color: { primary: [0.77, 0.57], secondary: [0.67, 0.47] },
-      pattern: { primary: [0.83, 0.63], secondary: [0.73, 0.53] },
+      color: { 
+        primary: { vector: [0.77, 0.57], similarity: 71 }, 
+        secondary: { vector: [0.67, 0.47], similarity: 66 } 
+      },
+      pattern: { 
+        primary: { vector: [0.83, 0.63], similarity: 74 }, 
+        secondary: { vector: [0.73, 0.53], similarity: 69 } 
+      },
       similarity: 0.68
     }
   },
@@ -96,8 +138,14 @@ export const mockSearchResults: ProductIndex[] = [
     model: "Urban Oak Laminate",
     image: "https://picsum.photos/seed/result8/400/400",
     analysis: {
-      color: { primary: [0.88, 0.68], secondary: [0.78, 0.58] },
-      pattern: { primary: [0.92, 0.72], secondary: [0.82, 0.62] },
+      color: { 
+        primary: { vector: [0.88, 0.68], similarity: 94 }, 
+        secondary: { vector: [0.78, 0.58], similarity: 89 } 
+      },
+      pattern: { 
+        primary: { vector: [0.92, 0.72], similarity: 96 }, 
+        secondary: { vector: [0.82, 0.62], similarity: 91 } 
+      },
       similarity: 0.93
     }
   }
