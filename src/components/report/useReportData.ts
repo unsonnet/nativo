@@ -132,13 +132,32 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
         return;
       }
 
-      // Use the new search system that generates results based on the report's reference product
-      const { getMockSearchResults } = await import("@/data/mockSearchResults");
+      // Check if real API should be used
+      const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API === 'true';
       
+      if (USE_REAL_API) {
+        // TODO: Use real API
+        // const { reportsApiService } = await import("@/lib/api/reportsApi");
+        // const response = await reportsApiService.searchProducts(report.id, {
+        //   filters,
+        //   page: 1,
+        //   limit: 50,
+        // });
+        // 
+        // if (response.status === 200) {
+        //   setSearchResults(response.body.products);
+        // } else {
+        //   console.error("Search failed:", response.error);
+        // }
+        
+        console.log('[API] Real API enabled but not implemented yet, using mock');
+      }
+
       // Mock search results - in real implementation, this would call your search API
       await simulateApiDelay(1000); // Simulate API call
       
       // Get search results specific to this report and its reference product
+      const { getMockSearchResults } = await import("@/data/mockSearchResults");
       const resultsForReport = getMockSearchResults(report.id, report.reference.id);
       
       // Return a random subset of results (0 to all results) to simulate filtering

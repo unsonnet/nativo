@@ -1,15 +1,49 @@
+/**
+ * Reports API Service - Updated to use REST API infrastructure
+ * This file bridges between the existing mock system and the new REST API
+ * 
+ * TODO: Replace mock implementations with actual API calls using reportsApiService
+ */
+
 import type { Report, Product, ProductIndex } from '@/types/report';
 import { reports as mockReports } from '@/data/reports';
 import { getProductWithAnalysis } from '@/data/mockDatabase';
+import { reportsApiService } from './reportsApi';
+import type { K9Response } from '@/lib/auth/types';
 
 // Simple in-memory store for development. Replace with real REST API calls later.
 const store: Report<Product | ProductIndex>[] = [...mockReports];
 
-export async function createReport<T extends Product | ProductIndex = Product | ProductIndex>(reportPartial: Omit<Report<T>, 'id' | 'date'>): Promise<Report<T>> {
-  // Simulate network latency
+// Flag to switch between mock and real API
+const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API === 'true';
+
+export async function createReport<T extends Product | ProductIndex = Product | ProductIndex>(
+  reportPartial: Omit<Report<T>, 'id' | 'date'>
+): Promise<Report<T>> {
+  if (USE_REAL_API) {
+    // TODO: Use real API
+    // const response = await reportsApiService.createReport({
+    //   title: reportPartial.title,
+    //   reference: reportPartial.reference as Product,
+    // });
+    // 
+    // if (response.status === 201) {
+    //   // Get the full report details
+    //   const fullReportResponse = await reportsApiService.getReport(response.body.id);
+    //   if (fullReportResponse.status === 200) {
+    //     return fullReportResponse.body as Report<T>;
+    //   }
+    // }
+    // 
+    // throw new Error(response.error || 'Failed to create report');
+    
+    // For now, fall back to mock
+    console.log('[API] Real API enabled but not implemented yet, using mock');
+  }
+
+  // Mock implementation
   await new Promise((r) => setTimeout(r, 200));
 
-  // Generate a simple ID for demo purposes
   const newId = (store.length + 1).toString();
   const newReportBase: Report<Product | ProductIndex> = {
     id: newId,
@@ -17,20 +51,47 @@ export async function createReport<T extends Product | ProductIndex = Product | 
     ...reportPartial,
   } as Report;
 
-  // store as base union type and cast on return
   store.unshift(newReportBase as Report<Product | ProductIndex>);
-  console.log('Created report:', newReportBase);
+  console.log('[Mock] Created report:', newReportBase);
 
-  // In a real implementation you would POST to your REST API and return server response
   return newReportBase as unknown as Report<T>;
 }
 
 export async function listReports<T extends Product | ProductIndex = Product | ProductIndex>(): Promise<Report<T>[]> {
+  if (USE_REAL_API) {
+    // TODO: Use real API
+    // const response = await reportsApiService.listReports();
+    // if (response.status === 200) {
+    //   return response.body.reports as Report<T>[];
+    // }
+    // throw new Error(response.error || 'Failed to list reports');
+    
+    console.log('[API] Real API enabled but not implemented yet, using mock');
+  }
+
+  // Mock implementation
   await new Promise((r) => setTimeout(r, 60));
   return store.slice() as Report<T>[];
 }
 
-export async function getReport<T extends Product | ProductIndex = Product | ProductIndex>(id: string): Promise<Report<T> | undefined> {
+export async function getReport<T extends Product | ProductIndex = Product | ProductIndex>(
+  id: string
+): Promise<Report<T> | undefined> {
+  if (USE_REAL_API) {
+    // TODO: Use real API
+    // const response = await reportsApiService.getReport(id);
+    // if (response.status === 200) {
+    //   return response.body as Report<T>;
+    // }
+    // if (response.status === 404) {
+    //   return undefined;
+    // }
+    // throw new Error(response.error || 'Failed to get report');
+    
+    console.log('[API] Real API enabled but not implemented yet, using mock');
+  }
+
+  // Mock implementation
   await new Promise((r) => setTimeout(r, 60));
   return store.find((r) => r.id === id) as Report<T> | undefined;
 }

@@ -19,36 +19,81 @@ export interface FavoriteProduct extends ProductIndex {
 /**
  * API service for syncing favorites with the database
  */
+
+import { reportsApiService } from '@/lib/api/reportsApi';
+
+// Flag to switch between mock and real API
+const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API === 'true';
+
 export class FavoritesApiService {
   /**
-   * Sync favorites to the database (mock implementation)
+   * Sync favorites to the database
    */
   static async syncFavoritesToDatabase(reportId: string, favoriteIds: string[]): Promise<void> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // In real implementation, this would be:
-    // await fetch(`/api/reports/${reportId}/favorites`, {
-    //   method: 'PUT',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ favorites: favoriteIds })
-    // });
-    
-    console.log(`[Mock API] Synced favorites for report ${reportId}:`, favoriteIds);
+    if (USE_REAL_API) {
+      try {
+        const response = await reportsApiService.syncFavorites(reportId, favoriteIds);
+        if (response.status !== 200) {
+          throw new Error(response.error || 'Failed to sync favorites');
+        }
+        console.log(`[API] Synced favorites for report ${reportId}:`, favoriteIds);
+      } catch (error) {
+        console.error('[API] Failed to sync favorites:', error);
+        throw error;
+      }
+    } else {
+      // Mock implementation
+      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log(`[Mock API] Synced favorites for report ${reportId}:`, favoriteIds);
+    }
+  }
+
+  /**
+   * Update individual favorite status
+   */
+  static async updateFavoriteStatus(reportId: string, productId: string, isFavorite: boolean): Promise<void> {
+    if (USE_REAL_API) {
+      try {
+        const response = await reportsApiService.updateFavoriteStatus(reportId, productId, isFavorite);
+        if (response.status !== 200) {
+          throw new Error(response.error || 'Failed to update favorite status');
+        }
+        console.log(`[API] Updated favorite status for ${productId} in report ${reportId}: ${isFavorite}`);
+      } catch (error) {
+        console.error('[API] Failed to update favorite status:', error);
+        throw error;
+      }
+    } else {
+      // Mock implementation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log(`[Mock API] Updated favorite status for ${productId} in report ${reportId}: ${isFavorite}`);
+    }
   }
 
   /**
    * Load favorites from the database (included in report data)
    */
   static async loadFavoritesFromDatabase(reportId: string): Promise<string[]> {
-    // In real implementation, favorites would be loaded as part of the report
-    // This is just a fallback - normally favorites come with the report data
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    console.log(`[Mock API] Loading favorites for report ${reportId} (fallback - normally comes with report)`);
-    
-    // Mock: Return empty array as favorites should come with report
-    return [];
+    if (USE_REAL_API) {
+      try {
+        // In real implementation, favorites would be loaded as part of the report
+        // This is just a fallback - normally favorites come with the report data
+        const response = await reportsApiService.getReport(reportId);
+        if (response.status === 200) {
+          return response.body.favorites || [];
+        }
+        console.warn(`[API] Failed to load report ${reportId}, using empty favorites`);
+        return [];
+      } catch (error) {
+        console.error('[API] Failed to load favorites from database:', error);
+        return [];
+      }
+    } else {
+      // Mock implementation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log(`[Mock API] Loading favorites for report ${reportId} (fallback - normally comes with report)`);
+      return [];
+    }
   }
 }
 
