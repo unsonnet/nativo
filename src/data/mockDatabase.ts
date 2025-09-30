@@ -1,4 +1,4 @@
-import type { Product, ProductIndex, Embedding, MiniEmbedding } from '@/types/report';
+import type { Product, ProductIndex, MiniEmbedding } from '@/types/report';
 
 /**
  * Mock database of base products (without analysis)
@@ -314,27 +314,6 @@ export const mockProductsDatabase: Product[] = [
   }
 ];
 
-/**
- * Generate random embeddings for analysis
- */
-function generateEmbedding(seed: string, similarity?: number): Embedding {
-  // Simple seed-based random for consistent results
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    const char = seed.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  
-  const vector: number[] = [];
-  for (let i = 0; i < 512; i++) {
-    hash = ((hash * 1103515245) + 12345) & 0x7fffffff;
-    vector.push((hash / 0x7fffffff - 0.5) * 2);
-  }
-  
-  return { vector, similarity };
-}
-
 function generateMiniEmbedding(seed: string, similarity?: number): MiniEmbedding {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -351,40 +330,6 @@ function generateMiniEmbedding(seed: string, similarity?: number): MiniEmbedding
   return { 
     vector: [x, y] as [number, number],
     similarity 
-  };
-}
-
-/**
- * Generate analysis for a product given a report context
- * This function generates full embeddings for comprehensive analysis
- * Currently unused but available for more detailed analysis needs
- */
-function generateAnalysisForProduct(productId: string, reportId: string): {
-  color: { primary: Embedding; secondary: Embedding };
-  pattern: { primary: Embedding; secondary: Embedding };
-  similarity: number;
-} {
-  const seed = `${productId}_${reportId}`;
-  
-  // Generate similarity score based on hash
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    const char = seed.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  const similarity = 0.7 + (Math.abs(hash) % 30) / 100; // 0.7 to 0.99
-  
-  return {
-    color: {
-      primary: generateEmbedding(`${seed}_color_primary`),
-      secondary: generateEmbedding(`${seed}_color_secondary`)
-    },
-    pattern: {
-      primary: generateEmbedding(`${seed}_pattern_primary`),
-      secondary: generateEmbedding(`${seed}_pattern_secondary`)
-    },
-    similarity
   };
 }
 

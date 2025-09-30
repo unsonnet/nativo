@@ -8,8 +8,6 @@
 import type { Report, Product, ProductIndex } from '@/types/report';
 import { reports as mockReports } from '@/data/reports';
 import { getProductWithAnalysis } from '@/data/mockDatabase';
-import { reportsApiService } from './reportsApi';
-import type { K9Response } from '@/lib/auth/types';
 
 // Simple in-memory store for development. Replace with real REST API calls later.
 const store: Report<Product | ProductIndex>[] = [...mockReports];

@@ -41,7 +41,7 @@ export class ApiClient {
           },
         });
 
-        let body: any;
+        let body: unknown;
         try {
           body = await response.json();
         } catch {
@@ -52,13 +52,13 @@ export class ApiClient {
           return {
             status: response.status,
             body: null as unknown as T,
-            error: body?.message || `HTTP ${response.status}: ${response.statusText}`,
+            error: (body as { message?: string })?.message || `HTTP ${response.status}: ${response.statusText}`,
           };
         }
 
         return {
           status: response.status,
-          body,
+          body: body as T,
           error: undefined,
         };
       } catch (error) {
@@ -88,7 +88,7 @@ export class ApiClient {
   /**
    * POST request
    */
-  async post<T>(endpoint: string, data?: any): Promise<K9Response<T>> {
+  async post<T>(endpoint: string, data?: unknown): Promise<K9Response<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
@@ -98,7 +98,7 @@ export class ApiClient {
   /**
    * PUT request
    */
-  async put<T>(endpoint: string, data?: any): Promise<K9Response<T>> {
+  async put<T>(endpoint: string, data?: unknown): Promise<K9Response<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
@@ -108,7 +108,7 @@ export class ApiClient {
   /**
    * PATCH request
    */
-  async patch<T>(endpoint: string, data?: any): Promise<K9Response<T>> {
+  async patch<T>(endpoint: string, data?: unknown): Promise<K9Response<T>> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
@@ -142,7 +142,7 @@ export class ApiClient {
           body: formData,
         });
 
-        let body: any;
+        let body: unknown;
         try {
           body = await response.json();
         } catch {
@@ -153,13 +153,13 @@ export class ApiClient {
           return {
             status: response.status,
             body: null as unknown as T,
-            error: body?.message || `HTTP ${response.status}: ${response.statusText}`,
+            error: (body as { message?: string })?.message || `HTTP ${response.status}: ${response.statusText}`,
           };
         }
 
         return {
           status: response.status,
-          body,
+          body: body as T,
           error: undefined,
         };
       } catch (error) {
@@ -190,7 +190,7 @@ export class ApiClient {
         });
 
         if (!response.ok) {
-          let errorBody: any;
+          let errorBody: unknown;
           try {
             errorBody = await response.json();
           } catch {
@@ -200,7 +200,7 @@ export class ApiClient {
           return {
             status: response.status,
             body: null as unknown as Blob,
-            error: errorBody?.message || `HTTP ${response.status}: ${response.statusText}`,
+            error: (errorBody as { message?: string })?.message || `HTTP ${response.status}: ${response.statusText}`,
           };
         }
 
