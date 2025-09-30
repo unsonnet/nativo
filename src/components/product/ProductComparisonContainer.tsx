@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Home } from 'lucide-react';
+import { Home, ExternalLink, ChevronDown, Info, Images } from 'lucide-react';
 import { Product, Report, ProductImage } from '@/types/report';
+import { ReportInfoHeader } from '@/components/report';
+
 import './ProductComparison.css';
 
 // Import components directly to avoid module resolution issues
@@ -11,64 +13,279 @@ interface ProductInfoPanelProps {
   product: Product;
 }
 
+// Temporary placeholder components until we resolve the import issues
+function ProductInfoPanel({ product }: ProductInfoPanelProps) {
+  const [activeTab, setActiveTab] = useState<'specs' | 'buy' | 'analysis'>('specs');
+  const [expandedFormats, setExpandedFormats] = useState<{ [key: number]: boolean }>({});
+
+  const toggleFormat = (formatIndex: number) => {
+    setExpandedFormats(prev => {
+      const isCurrentlyExpanded = prev[formatIndex];
+      // Close all formats first
+      const newState: { [key: number]: boolean } = {};
+      // If the clicked format wasn't expanded, open it
+      if (!isCurrentlyExpanded) {
+        newState[formatIndex] = true;
+      }
+      return newState;
+    });
+  };
+
+  return (
+    <div className="search-filters">
+      <div className="search-filters__header search-filters__header--strip-top">
+        <h3 className="search-filters__title">
+          <Info className="w-4 h-4" />
+          Product Info
+        </h3>
+      </div>
+      
+      <div className="search-filters__header">
+        <div className="product-info__header">
+          <h3 className="product-info__brand-series">
+            {product.brand} • {product.series}
+          </h3>
+          <h2 className="product-info__model">
+            {product.model}
+          </h2>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="product-info__tabs">
+        <button
+          className={`product-info__tab ${activeTab === 'specs' ? 'product-info__tab--active' : ''}`}
+          onClick={() => setActiveTab('specs')}
+        >
+          Specs
+        </button>
+        <button
+          className={`product-info__tab ${activeTab === 'buy' ? 'product-info__tab--active' : ''}`}
+          onClick={() => setActiveTab('buy')}
+        >
+          Buy
+        </button>
+        <button
+          className={`product-info__tab ${activeTab === 'analysis' ? 'product-info__tab--active' : ''}`}
+          onClick={() => setActiveTab('analysis')}
+        >
+          Analysis
+        </button>
+      </div>
+
+      <div className="search-filters__content">
+        {/* Specs Tab */}
+        {activeTab === 'specs' && (
+          <div className="product-info__specs">
+            <div className="product-info__formats-header">
+              <div className="product-info__section-title">Product Specifications</div>
+            </div>
+            {Object.entries(product.category).map(([key, value]) => (
+              value && (
+                <div key={key} className="product-info__spec-row">
+                  <span className="product-info__spec-label">{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                  <span className="product-info__spec-value">{value}</span>
+                </div>
+              )
+            ))}
+          </div>
+        )}
+
+        {/* Buy Tab */}
+        {activeTab === 'buy' && (
+          <div className="product-info__buy">
+            <div className="product-info__formats-header">
+              <div className="product-info__section-title">Available Formats</div>
+              <div className="product-info__size-info">{product.formats.length} size option{product.formats.length !== 1 ? 's' : ''} available</div>
+            </div>
+            
+            {product.formats.map((format, formatIndex) => {
+              const formatDimensions = () => {
+                const { length, width, thickness } = format;
+                const lengthStr = length?.val ? `${length.val}"` : 'unset';
+                const widthStr = width?.val ? `${width.val}"` : 'unset';
+                const thicknessStr = thickness?.val ? `${thickness.val}mm` : null;
+                
+                if (thicknessStr) {
+                  return `${lengthStr} × ${widthStr} × ${thicknessStr}`;
+                } else {
+                  return `${lengthStr} × ${widthStr}`;
+                }
+              };
+
+              const isExpanded = expandedFormats[formatIndex] || false;
+
+              return (
+                <div key={formatIndex} className="product-info__size-option">
+                  <div 
+                    className="product-info__size-header"
+                    onClick={() => toggleFormat(formatIndex)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="product-info__size-label">
+                      <span className="product-info__size-text">{formatDimensions()}</span>
+                      <span className="product-info__vendor-count">{format.vendors.length} vendor{format.vendors.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <span className="product-info__size-toggle">{isExpanded ? '▲' : '▼'}</span>
+                  </div>
+                  
+                  {isExpanded && (
+                    <div className="product-info__size-details">
+                      <div className="product-info__vendor-list">
+                        {format.vendors.map((vendor, vendorIndex) => (
+                          <div key={vendorIndex} className="product-info__vendor">
+                            <ExternalLink className="product-info__vendor-icon" />
+                            <div className="product-info__vendor-content">
+                              <div className="product-info__vendor-main-row">
+                                <div className="product-info__vendor-left-info">
+                                  <div className="product-info__vendor-name">{vendor.store}</div>
+                                  <div className="product-info__vendor-sku">SKU: {vendor.sku}</div>
+                                </div>
+                                <div className="product-info__vendor-right-info">
+                                  <div className="product-info__vendor-pricing">
+                                    {vendor.price ? (
+                                      <>
+                                        <span className="product-info__price">${vendor.price.val.toFixed(2)}</span>
+                                        <span className="product-info__price-unit">/sqft</span>
+                                      </>
+                                    ) : (
+                                      <span className="product-info__price">Contact Store</span>
+                                    )}
+                                  </div>
+                                  <div className="product-info__vendor-status-row">
+                                    <span className={`product-info__vendor-status ${
+                                      vendor.discontinued === true 
+                                        ? 'product-info__vendor-status--out' 
+                                        : vendor.discontinued === false 
+                                        ? 'product-info__vendor-status--in-stock'
+                                        : 'product-info__vendor-status--unknown'
+                                    }`}>
+                                      {vendor.discontinued === true 
+                                        ? 'Discontinued' 
+                                        : vendor.discontinued === false 
+                                        ? 'Available'
+                                        : 'Contact Store'
+                                      }
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Analysis Tab */}
+        {activeTab === 'analysis' && product.analysis && (
+          <div className="product-info__analysis">
+            <div className="product-info__formats-header">
+              <div className="product-info__section-title">Performance Analysis</div>
+            </div>
+            <div className="product-info__overall-match">
+              <div className="product-info__match-header">
+                <span className="product-info__match-label">Overall Match</span>
+                <span className="product-info__match-percentage">{Math.round(product.analysis.similarity * 100)}%</span>
+              </div>
+              <div className="product-info__match-bar">
+                <div 
+                  className="product-info__match-progress" 
+                  style={{ width: `${product.analysis.similarity * 100}%` }}
+                />
+              </div>
+              <div className="product-info__match-description">
+                {product.analysis.similarity >= 0.8 ? 'Excellent match - highly similar visual characteristics' :
+                 product.analysis.similarity >= 0.6 ? 'Good match - similar visual characteristics' :
+                 product.analysis.similarity >= 0.4 ? 'Fair match - some similar characteristics' :
+                 'Poor match - limited visual similarity'}
+              </div>
+            </div>
+
+            <div className="product-info__color-section">
+              <div className="product-info__section-title">Color</div>
+              
+              <div className="product-info__color-item">
+                <div className="product-info__color-header">
+                  <span className="product-info__color-label">Primary</span>
+                  <span className="product-info__color-percentage">
+                    {Math.round((product.analysis.color.primary.similarity || 0) * 100)}%
+                  </span>
+                </div>
+                <div className="product-info__color-bar">
+                  <div 
+                    className="product-info__color-progress" 
+                    style={{ width: `${(product.analysis.color.primary.similarity || 0) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="product-info__color-item">
+                <div className="product-info__color-header">
+                  <span className="product-info__color-label">Secondary</span>
+                  <span className="product-info__color-percentage">
+                    {Math.round((product.analysis.color.secondary?.similarity || 0) * 100)}%
+                  </span>
+                </div>
+                <div className="product-info__color-bar">
+                  <div 
+                    className="product-info__color-progress" 
+                    style={{ width: `${(product.analysis.color.secondary?.similarity || 0) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="product-info__pattern-section">
+              <div className="product-info__section-title">Pattern</div>
+              
+              <div className="product-info__pattern-item">
+                <div className="product-info__pattern-header">
+                  <span className="product-info__pattern-label">Primary</span>
+                  <span className="product-info__pattern-percentage">
+                    {Math.round((product.analysis.pattern.primary.similarity || 0) * 100)}%
+                  </span>
+                </div>
+                <div className="product-info__pattern-bar">
+                  <div 
+                    className="product-info__pattern-progress" 
+                    style={{ width: `${(product.analysis.pattern.primary.similarity || 0) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="product-info__pattern-item">
+                <div className="product-info__pattern-header">
+                  <span className="product-info__pattern-label">Secondary</span>
+                  <span className="product-info__pattern-percentage">
+                    {Math.round((product.analysis.pattern.secondary?.similarity || 0) * 100)}%
+                  </span>
+                </div>
+                <div className="product-info__pattern-bar">
+                  <div 
+                    className="product-info__pattern-progress" 
+                    style={{ width: `${(product.analysis.pattern.secondary?.similarity || 0) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface ImageComparisonPanelProps {
   selectedProductImages: ProductImage[];
   referenceProductImages: ProductImage[];
   selectedProductName: string;
   referenceProductName: string;
-}
-
-// Temporary placeholder components until we resolve the import issues
-function ProductInfoPanel({ product }: ProductInfoPanelProps) {
-  return (
-    <div className="p-6">
-      <h2 className="text-lg font-semibold mb-4">Product Information</h2>
-      <div className="space-y-4">
-        <div>
-          <h3 className="font-medium text-gray-900">{product.brand} {product.model}</h3>
-          <p className="text-sm text-gray-600">{product.series}</p>
-        </div>
-        
-        {product.analysis && (
-          <div>
-            <h4 className="font-medium mb-2">Similarity Analysis</h4>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Overall Match:</span>
-                <span>{Math.round(product.analysis.similarity * 100)}%</span>
-              </div>
-              {product.analysis.color.primary.similarity && (
-                <div className="flex justify-between">
-                  <span>Primary Color:</span>
-                  <span>{product.analysis.color.primary.similarity}%</span>
-                </div>
-              )}
-              {product.analysis.pattern.primary.similarity && (
-                <div className="flex justify-between">
-                  <span>Primary Pattern:</span>
-                  <span>{product.analysis.pattern.primary.similarity}%</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div>
-          <h4 className="font-medium mb-2">Category</h4>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            {Object.entries(product.category).map(([key, value]) => (
-              value && (
-                <div key={key}>
-                  <span className="text-gray-500 capitalize">{key}:</span>
-                  <span className="ml-1">{value}</span>
-                </div>
-              )
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function ImageComparisonPanel({ selectedProductImages, referenceProductImages, selectedProductName, referenceProductName }: ImageComparisonPanelProps) {
@@ -246,147 +463,155 @@ function ImageComparisonPanel({ selectedProductImages, referenceProductImages, s
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 grid grid-cols-2 p-6 gap-4">
-        {/* Reference Product Column */}
-        <div className="product-comparison__column">
-          <div className="mb-2">
-            <h3 className="product-comparison__column-title">{referenceProductName}</h3>
-            <span className="product-comparison__reference-label">Reference</span>
-          </div>
-          <div 
-            className="product-comparison__image-container aspect-square flex items-center justify-center"
-            onMouseDown={(e) => handleMouseDown(e, referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onWheel={(e) => handleWheel(e, referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
-            onContextMenu={handleContextMenu}
-            style={{ cursor: isInteracting?.type === 'pan' ? 'grabbing' : isInteracting?.type === 'rotate' ? 'crosshair' : 'grab' }}
-          >
-            <div className="product-comparison__controls-hint">
-              Drag: Pan • Right+Drag: Rotate • Scroll: Zoom
-            </div>
-            <button
-              className="product-comparison__reset-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                resetImageTransform(referenceProductImages[referenceImageIndex]?.id || 'ref-default');
-              }}
-              aria-label="Reset image transformations"
-              style={{ 
-                display: hasTransformations(referenceProductImages[referenceImageIndex]?.id || 'ref-default') ? 'flex' : 'none' 
-              }}
-            >
-              <Home className="w-4 h-4" />
-            </button>
-            {referenceProductImages.length > 0 ? (
-              <Image 
-                src={referenceProductImages[referenceImageIndex]?.url || referenceProductImages[0].url} 
-                alt={referenceProductName}
-                width={400}
-                height={400}
-                className="max-w-full max-h-full object-contain pointer-events-none"
-                style={getTransformStyle(referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
-                unoptimized
-              />
-            ) : (
-              <span className="text-gray-500">No image available</span>
-            )}
-          </div>
-          
-          {/* Reference Product Thumbnails */}
-          {referenceProductImages.length > 0 && (
-            <div className="product-comparison__thumbnails">
-              {referenceProductImages.map((image, index) => (
-                <button
-                  key={image.id}
-                  onClick={() => setReferenceImageIndex(index)}
-                  className={`product-comparison__thumbnail ${
-                    index === referenceImageIndex ? 'product-comparison__thumbnail--active' : ''
-                  }`}
-                >
-                  <Image
-                    src={image.url}
-                    alt={`${referenceProductName} ${index + 1}`}
-                    width={64}
-                    height={64}
-                    className="product-comparison__thumbnail-image"
-                    unoptimized
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
+      <div className="flex-1 grid grid-cols-2 min-h-0">
         {/* Selected Product Column */}
         <div className="product-comparison__column">
-          <div className="mb-2">
-            <h3 className="product-comparison__column-title">{selectedProductName}</h3>
-            <span className="product-comparison__product-label">Product</span>
+          <div className="search-filters__header product-comparison__image-header flex-shrink-0">
+            <h3 className="search-filters__title">
+              <Images className="w-4 h-4" />
+              Product Images
+            </h3>
           </div>
-          <div 
-            className="product-comparison__image-container aspect-square flex items-center justify-center"
-            onMouseDown={(e) => handleMouseDown(e, selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onWheel={(e) => handleWheel(e, selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
-            onContextMenu={handleContextMenu}
-            style={{ cursor: isInteracting?.type === 'pan' ? 'grabbing' : isInteracting?.type === 'rotate' ? 'crosshair' : 'grab' }}
-          >
-            <div className="product-comparison__controls-hint">
-              Drag: Pan • Right+Drag: Rotate • Scroll: Zoom
-            </div>
-            <button
-              className="product-comparison__reset-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                resetImageTransform(selectedProductImages[selectedImageIndex]?.id || 'sel-default');
-              }}
-              aria-label="Reset image transformations"
-              style={{ 
-                display: hasTransformations(selectedProductImages[selectedImageIndex]?.id || 'sel-default') ? 'flex' : 'none' 
-              }}
+          <div className="flex-1 flex flex-col min-h-0">
+            <div 
+              className="product-comparison__image-container flex-1 flex items-center justify-center min-h-0"
+              onMouseDown={(e) => handleMouseDown(e, selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onWheel={(e) => handleWheel(e, selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
+              onContextMenu={handleContextMenu}
+              style={{ cursor: isInteracting?.type === 'pan' ? 'grabbing' : isInteracting?.type === 'rotate' ? 'crosshair' : 'grab' }}
             >
-              <Home className="w-4 h-4" />
-            </button>
-            {selectedProductImages.length > 0 ? (
-              <Image 
-                src={selectedProductImages[selectedImageIndex]?.url || selectedProductImages[0].url} 
-                alt={selectedProductName}
-                width={400}
-                height={400}
-                className="max-w-full max-h-full object-contain pointer-events-none"
-                style={getTransformStyle(selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
-                unoptimized
-              />
-            ) : (
-              <span className="text-gray-500">No image available</span>
+              <div className="product-comparison__controls-hint">
+                Drag: Pan • Right+Drag: Rotate • Scroll: Zoom
+              </div>
+              <button
+                className="product-comparison__reset-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  resetImageTransform(selectedProductImages[selectedImageIndex]?.id || 'sel-default');
+                }}
+                aria-label="Reset image transformations"
+                style={{ 
+                  display: hasTransformations(selectedProductImages[selectedImageIndex]?.id || 'sel-default') ? 'flex' : 'none' 
+                }}
+              >
+                <Home className="w-4 h-4" />
+              </button>
+              {selectedProductImages.length > 0 ? (
+                <Image 
+                  src={selectedProductImages[selectedImageIndex]?.url || selectedProductImages[0].url} 
+                  alt={selectedProductName}
+                  width={400}
+                  height={400}
+                  className="max-w-full max-h-full object-contain pointer-events-none"
+                  style={getTransformStyle(selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
+                  unoptimized
+                />
+              ) : (
+                <span className="text-gray-500">No image available</span>
+              )}
+            </div>
+            
+            {/* Selected Product Thumbnails */}
+            {selectedProductImages.length > 0 && (
+              <div className="product-comparison__thumbnails flex-shrink-0">
+                {selectedProductImages.map((image, index) => (
+                  <button
+                    key={image.id}
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`product-comparison__thumbnail ${
+                      index === selectedImageIndex ? 'product-comparison__thumbnail--active' : ''
+                    }`}
+                  >
+                    <Image
+                      src={image.url}
+                      alt={`${selectedProductName} ${index + 1}`}
+                      width={64}
+                      height={64}
+                      className="product-comparison__thumbnail-image"
+                      unoptimized
+                    />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
-          
-          {/* Selected Product Thumbnails */}
-          {selectedProductImages.length > 0 && (
-            <div className="product-comparison__thumbnails">
-              {selectedProductImages.map((image, index) => (
-                <button
-                  key={image.id}
-                  onClick={() => setSelectedImageIndex(index)}
-                  className={`product-comparison__thumbnail ${
-                    index === selectedImageIndex ? 'product-comparison__thumbnail--active' : ''
-                  }`}
-                >
-                  <Image
-                    src={image.url}
-                    alt={`${selectedProductName} ${index + 1}`}
-                    width={64}
-                    height={64}
-                    className="product-comparison__thumbnail-image"
-                    unoptimized
-                  />
-                </button>
-              ))}
+        </div>
+
+        {/* Reference Product Column */}
+        <div className="product-comparison__column">
+          <div className="search-filters__header product-comparison__image-header flex-shrink-0">
+            <h3 className="search-filters__title">
+              <Images className="w-4 h-4" />
+              Reference Images
+            </h3>
+          </div>
+          <div className="flex-1 flex flex-col min-h-0">
+            <div 
+              className="product-comparison__image-container flex-1 flex items-center justify-center min-h-0"
+              onMouseDown={(e) => handleMouseDown(e, referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onWheel={(e) => handleWheel(e, referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
+              onContextMenu={handleContextMenu}
+              style={{ cursor: isInteracting?.type === 'pan' ? 'grabbing' : isInteracting?.type === 'rotate' ? 'crosshair' : 'grab' }}
+            >
+              <div className="product-comparison__controls-hint">
+                Drag: Pan • Right+Drag: Rotate • Scroll: Zoom
+              </div>
+              <button
+                className="product-comparison__reset-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  resetImageTransform(referenceProductImages[referenceImageIndex]?.id || 'ref-default');
+                }}
+                aria-label="Reset image transformations"
+                style={{ 
+                  display: hasTransformations(referenceProductImages[referenceImageIndex]?.id || 'ref-default') ? 'flex' : 'none' 
+                }}
+              >
+                <Home className="w-4 h-4" />
+              </button>
+              {referenceProductImages.length > 0 ? (
+                <Image 
+                  src={referenceProductImages[referenceImageIndex]?.url || referenceProductImages[0].url} 
+                  alt={referenceProductName}
+                  width={400}
+                  height={400}
+                  className="max-w-full max-h-full object-contain pointer-events-none"
+                  style={getTransformStyle(referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
+                  unoptimized
+                />
+              ) : (
+                <span className="text-gray-500">No image available</span>
+              )}
             </div>
-          )}
+            
+            {/* Reference Product Thumbnails */}
+            {referenceProductImages.length > 0 && (
+              <div className="product-comparison__thumbnails flex-shrink-0">
+                {referenceProductImages.map((image, index) => (
+                  <button
+                    key={image.id}
+                    onClick={() => setReferenceImageIndex(index)}
+                    className={`product-comparison__thumbnail ${
+                      index === referenceImageIndex ? 'product-comparison__thumbnail--active' : ''
+                    }`}
+                  >
+                    <Image
+                      src={image.url}
+                      alt={`${referenceProductName} ${index + 1}`}
+                      width={64}
+                      height={64}
+                      className="product-comparison__thumbnail-image"
+                      unoptimized
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -495,17 +720,7 @@ export function ProductComparisonContainer({ reportId, productId }: ProductCompa
 
   return (
     <div className="report-create">
-      {/* Left Panel - Image Comparison */}
-      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <ImageComparisonPanel
-          selectedProductImages={state.selectedProduct.images}
-          referenceProductImages={state.referenceReport.reference.images}
-          selectedProductName={`${state.selectedProduct.brand} ${state.selectedProduct.model}`}
-          referenceProductName={`${state.referenceReport.reference.brand} ${state.referenceReport.reference.model}`}
-        />
-      </main>
-      
-      {/* Right Panel - Product Information */}
+      {/* Left sidebar - Product Information */}
       <aside className="report-create__sidebar">
         <div className="report-create__form">
           <div className="report-form">
@@ -517,6 +732,20 @@ export function ProductComparisonContainer({ reportId, productId }: ProductCompa
           </div>
         </div>
       </aside>
+      
+      {/* Right content area with reference info header and image comparison */}
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {/* Reference information strip spans the full width */}
+        <ReportInfoHeader report={state.referenceReport} />
+        
+        {/* Image Comparison */}
+        <ImageComparisonPanel
+          selectedProductImages={state.selectedProduct.images}
+          referenceProductImages={state.referenceReport.reference.images}
+          selectedProductName={`${state.selectedProduct.brand} ${state.selectedProduct.model}`}
+          referenceProductName={`${state.referenceReport.reference.brand} ${state.referenceReport.reference.model}`}
+        />
+      </main>
     </div>
   );
 }

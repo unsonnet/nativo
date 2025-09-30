@@ -1,5 +1,6 @@
 "use client";
 
+import { Info } from "lucide-react";
 import type { Report, Product } from "@/types/report";
 
 interface ReportInfoHeaderProps {
@@ -60,6 +61,14 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
   return (
     <div className="report-info-header">
       <div className="report-info-header__content">
+        {/* Header Title */}
+        <div className="report-info-header__section report-info-header__section--title">
+          <div className="report-info-header__title-custom">
+            <Info className="w-4 h-4" />
+            Reference Info
+          </div>
+        </div>
+
         {/* Dimensions - first position */}
         <div className="report-info-header__section">
           <label className="report-info-header__label">Dimensions</label>

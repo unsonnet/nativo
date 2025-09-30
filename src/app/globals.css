@@ -515,11 +515,12 @@ body {
 
 .report-create__sidebar {
   position: relative;
-  width: min(300px, 100%);
+  width: min(360px, 100%);
   padding: 1.5rem;
   /* rely on flex layout to keep the submit button at the bottom */
   background: rgba(9, 12, 20, 0.25);
   border-right: 1px solid rgba(148, 163, 184, 0.08);
+  border-left: 1px solid rgba(148, 163, 184, 0.08);
   box-shadow: 8px 0 36px rgba(8, 12, 20, 0.35);
   display: flex;
   flex-direction: column;
@@ -1090,6 +1091,25 @@ input[type="number"] {
   color: var(--text-muted);
   opacity: 0.6;
   font-style: italic;
+}
+
+.report-info-header__title-custom {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--text-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  align-self: flex-start;
+}
+
+.report-info-header__section--title {
+  align-self: flex-start !important;
+}
+
+.product-comparison__image-header {
+  padding-left: 1.5rem !important;
 }
 
 /* Image Gallery */
