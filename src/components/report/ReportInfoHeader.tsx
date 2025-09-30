@@ -35,13 +35,13 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
     }
   };
 
-  // Helper to get all available categories
+  // Helper to get all available categories in preferred order
   const getAvailableCategories = () => {
     const categories = [];
     
     // Always include type and material first if available
     if (reference.category.type) {
-      categories.push({ label: "Flooring Type", value: reference.category.type });
+      categories.push({ label: "Type", value: reference.category.type });
     }
     if (reference.category.material) {
       categories.push({ label: "Material", value: reference.category.material });
@@ -69,10 +69,12 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
   return (
     <div className="report-info-header">
       <div className="report-info-header__content">
-        {/* Report Name */}
+        {/* Dimensions - first position */}
         <div className="report-info-header__section">
-          <label className="report-info-header__label">Report Name</label>
-          <h2 className="report-info-header__value">{report.title}</h2>
+          <label className="report-info-header__label">Dimensions</label>
+          <div className="report-info-header__value">
+            {formatDimensions()}
+          </div>
         </div>
 
         {/* All Available Categories */}
@@ -82,14 +84,6 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
             <div className="report-info-header__value">{category.value}</div>
           </div>
         ))}
-
-        {/* Dimensions */}
-        <div className="report-info-header__section">
-          <label className="report-info-header__label">Dimensions</label>
-          <div className="report-info-header__value">
-            {formatDimensions()}
-          </div>
-        </div>
       </div>
     </div>
   );

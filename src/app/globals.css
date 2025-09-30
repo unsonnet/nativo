@@ -77,7 +77,7 @@ body::before {
 .dashboard {
   position: relative;
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - 3.5rem); /* Subtract header height */
   flex-direction: column;
   background: radial-gradient(circle at 12% 18%, rgba(45, 55, 72, 0.2), transparent 58%),
     radial-gradient(circle at 60% 80%, rgba(30, 41, 59, 0.28), transparent 72%),
@@ -90,37 +90,254 @@ body::before {
   flex-direction: column;
 }
 
-.app-header {
+/* Universal App Header */
+.app-header-universal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1100; /* Higher z-index to ensure it's always on top */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2rem clamp(1.5rem, 4vw, 3.5rem) 1.75rem;
+  height: 3.5rem;
+  padding: 0.75rem; /* Equal 12px padding on all sides */
+  background: rgba(15, 17, 21, 0.85);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.app-header__title {
-  font-size: var(--text-size-lg);
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.app-header__user {
-  display: inline-flex;
+.app-header-universal__left {
+  display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.app-header__name {
+.app-header-universal__back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.app-header-universal__back-btn:hover {
+  color: var(--text-primary);
+  background: var(--button-secondary);
+}
+
+.app-header-universal__back-btn-spacer {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0; /* Ensure it maintains its size */
+}
+
+.app-header-universal__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-header-universal__logo-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-primary);
+}
+
+.app-header-universal__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-header-universal__subtitle {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.app-header-universal__right {
+  display: flex;
+  align-items: center;
+}
+
+.app-header-universal__user {
+  display: flex;
+  align-items: center;
+}
+
+.app-header-universal__user-menu {
+  position: relative;
+}
+
+.app-header-universal__user-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  transition: background-color 150ms ease;
+}
+
+.app-header-universal__user-button:hover {
+  background: var(--button-secondary);
+}
+
+.app-header-universal__user-button .app-header-universal__username {
+  color: var(--text-muted);
   font-size: var(--text-size-sm);
+  font-weight: 500;
+}
+
+.app-header-universal__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(145deg, rgba(100, 116, 139, 0.85), rgba(71, 85, 105, 0.7));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.app-header-universal__avatar:hover {
+  transform: scale(1.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.app-header-universal__avatar--guest {
+  background: rgba(148, 163, 184, 0.2);
   color: var(--text-muted);
 }
 
-.app-header__avatar {
+.app-header-universal__avatar.skeleton {
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.1), rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.1));
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.app-header-universal__user-menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1099; /* Just below header but above everything else */
+}
+
+.app-header-universal__user-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  min-width: 12rem;
+  background: var(--surface-panel-strong);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-elevated);
+  backdrop-filter: blur(12px);
+  z-index: 1001;
+  overflow: hidden;
+}
+
+.app-header-universal__user-info {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.app-header-universal__user-info strong {
+  font-size: var(--text-size-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.app-header-universal__user-info span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.app-header-universal__user-menu-divider {
+  border: none;
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0;
+}
+
+.app-header-universal__user-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-size-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.app-header-universal__user-menu-item:hover {
+  background: var(--button-secondary);
+}
+
+.app-header-universal__user-menu-item--danger {
+  color: var(--accent-primary);
+}
+
+.app-header-universal__user-menu-item--danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.app-header-universal__right-spacer {
   width: 2rem;
   height: 2rem;
-  border-radius: 9999px;
-  background: linear-gradient(145deg, rgba(100, 116, 139, 0.85), rgba(71, 85, 105, 0.7));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  flex-shrink: 0; /* Ensure it maintains its size */
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .app-header-universal {
+    padding: 0 1rem;
+  }
+  
+  .app-header-universal__username {
+    display: none; /* Hide username on small screens */
+  }
+  
+  .app-header-universal__title {
+    font-size: 0.9rem;
+  }
+}
+
+/* Add top padding to body to account for fixed header */
+body {
+  padding-top: 3.5rem;
 }
 
 .reports-grid {
@@ -229,7 +446,7 @@ body::before {
 }
 
 .report-create {
-  height: 100vh;
+  height: calc(100vh - 3.5rem); /* Subtract header height */
   display: flex;
   overflow: hidden;
   background: radial-gradient(circle at 15% 20%, rgba(45, 55, 72, 0.22), transparent 55%),
@@ -250,7 +467,7 @@ body::before {
   gap: 1.35rem;
   backdrop-filter: blur(20px);
   z-index: 1;
-  height: 100vh;
+  height: calc(100vh - 3.5rem); /* Subtract header height */
   box-sizing: border-box; /* ensure padding doesn't increase computed width */
   flex-shrink: 0; /* prevent the sidebar from shrinking/growing unexpectedly */
 }
@@ -327,10 +544,10 @@ body::before {
   height: 52px;
   padding: 0 0.9rem;
   border-radius: 0.5rem;
-  /* Inverted (enabled) appearance: light background, dark text to pop */
-  background: var(--button-primary);
-  color: #0f172a;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  /* Bordered appearance: transparent background, white border and text */
+  background: transparent;
+  color: var(--button-primary);
+  border: 1px solid var(--button-primary);
   cursor: pointer;
   font-size: var(--text-size-md);
   font-weight: 600;
@@ -338,8 +555,9 @@ body::before {
 }
 
 .report-create__submit:hover {
-  background: var(--button-primary-hover);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--button-primary-hover);
+  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.12);
 }
 
 /* keep the existing muted/disabled look so it doesn't compete visually */
@@ -640,12 +858,15 @@ body::before {
 }
 
 .button--primary {
-  background: var(--button-primary);
-  color: #0f172a;
+  background: transparent;
+  color: var(--button-primary);
+  border: 1px solid var(--button-primary);
 }
 
 .button--primary:hover {
-  background: var(--button-primary-hover);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--button-primary);
+  border-color: var(--button-primary-hover);
 }
 
 .button--primary:active {
@@ -697,42 +918,12 @@ body::before {
 
 /* Report Page Layout */
 .report-page {
-  min-height: 100vh;
+  min-height: calc(100vh - 3.5rem); /* Subtract header height */
   background: var(--background);
   color: var(--foreground);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.report-page__header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
-}
-
-.report-page__back-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: var(--text-size-sm);
-  transition: color 0.2s ease;
-}
-
-.report-page__back-button:hover {
-  color: var(--text-primary);
-}
-
-.report-page__title {
-  font-size: var(--text-size-lg);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
 }
 
 .report-page__content {
@@ -788,7 +979,9 @@ body::before {
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem;
-  background: var(--surface-panel-strong);
+  background: rgba(9, 12, 20, 0.25);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 36px rgba(8, 12, 20, 0.35);
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -1427,7 +1620,9 @@ body::before {
   justify-content: space-between;
   padding: 1.5rem;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  background: rgba(9, 12, 20, 0.25);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 36px rgba(8, 12, 20, 0.35);
 }
 
 .search-results__title-section {
