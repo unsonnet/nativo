@@ -24,11 +24,20 @@ const DUMMY_USER: User = {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ user: null, loading: true });
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    // Mark as hydrated to indicate client-side has taken over
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
 
     async function init() {
+      // Only run initialization on the client side after hydration
+      if (!isHydrated) return;
+
       // If tokens are present and valid, parse idToken and set user
       const tokens = tokenService.all;
       if (tokens && !tokenService.expired) {
@@ -66,7 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Fallback: in development, provide a dummy user for convenience
-      if (process.env.NODE_ENV === "development") {
+      // Only set dummy user on client side in development
+      if (typeof window !== 'undefined' && process.env.NODE_ENV === "development") {
         setState({ user: DUMMY_USER, loading: false });
       } else {
         setState({ user: null, loading: false });
@@ -78,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isHydrated]); // Depend on isHydrated to re-run when client takes over
 
   async function signIn(username: string, password: string) {
     setState((s) => ({ ...s, loading: true }));

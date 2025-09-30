@@ -20,26 +20,33 @@ export function parseJwtPayload<T = Record<string, unknown>>(token: string): T |
 }
 
 export class TokenService {
+  private isClient = typeof window !== 'undefined';
+
   set(tokens: AuthTokens) {
+    if (!this.isClient) return;
     localStorage.setItem(TOKENS_KEY, JSON.stringify(tokens));
     localStorage.removeItem(RESET_KEY);
   }
 
   setResetSession(username: string, session: string) {
+    if (!this.isClient) return;
     localStorage.setItem(RESET_KEY, JSON.stringify({ username, session }));
     localStorage.removeItem(TOKENS_KEY);
   }
 
   clear() {
+    if (!this.isClient) return;
     localStorage.removeItem(TOKENS_KEY);
     localStorage.removeItem(RESET_KEY);
   }
 
   clearResetSession() {
+    if (!this.isClient) return;
     localStorage.removeItem(RESET_KEY);
   }
 
   get all(): AuthTokens | null {
+    if (!this.isClient) return null;
     const v = localStorage.getItem(TOKENS_KEY);
     return v ? JSON.parse(v) : null;
   }
@@ -57,6 +64,7 @@ export class TokenService {
   }
 
   get resetSession(): string | null {
+    if (!this.isClient) return null;
     const v = localStorage.getItem(RESET_KEY);
     if (!v) return null;
     try {
@@ -67,6 +75,7 @@ export class TokenService {
   }
 
   get resetUsername(): string | null {
+    if (!this.isClient) return null;
     const v = localStorage.getItem(RESET_KEY);
     if (!v) return null;
     try {

@@ -12,7 +12,13 @@ export function AppHeader() {
   const searchParams = useSearchParams();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [reportTitle, setReportTitle] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Track hydration to ensure consistent rendering
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // Handle clicking outside to close menu
   useEffect(() => {
@@ -36,7 +42,8 @@ export function AppHeader() {
       const getReportTitle = async () => {
         try {
           // Get report ID from URL hash or search params
-          const hashId = window.location.hash.slice(1);
+          // Only access window.location on the client side
+          const hashId = typeof window !== 'undefined' ? window.location.hash.slice(1) : '';
           const paramId = searchParams.get('id');
           const reportId = hashId || paramId;
           
@@ -128,7 +135,7 @@ export function AppHeader() {
       </div>
 
       <div className="app-header-universal__right">
-        {loading ? (
+        {!isHydrated || loading ? (
           <div className="app-header-universal__user">
             <span className="app-header-universal__username">Loading...</span>
             <div className="app-header-universal__avatar skeleton" />
