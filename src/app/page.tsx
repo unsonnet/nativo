@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  const { user, loading, signInWithDummy } = useAuth();
+  const { user, loading, signInWithDummy, signIn } = useAuth();
   const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
   const [credentials, setCredentials] = useState({ username: "", password: "" });
@@ -31,9 +31,20 @@ export default function Home() {
     setLoginError("");
 
     try {
-      // For now, use dummy login - later you can replace with real auth
-      signInWithDummy();
-      router.push("/dashboard");
+      // Check for demo credentials
+      if (credentials.username === "Demo" && credentials.password === "Password") {
+        // Use dummy login for demo
+        signInWithDummy();
+        router.push("/dashboard");
+      } else {
+        // Try real authentication
+        const result = await signIn(credentials.username, credentials.password);
+        if (result.ok) {
+          router.push("/dashboard");
+        } else {
+          setLoginError("Invalid username or password. Try Demo/Password for demo access.");
+        }
+      }
     } catch {
       setLoginError("Login failed. Please try again.");
     } finally {

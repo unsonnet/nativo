@@ -16,9 +16,9 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const DUMMY_USER: User = {
-  id: "dev-user-1",
-  name: "Jane Developer",
-  email: "jane.developer@example.com",
+  id: "demo-user-1",
+  name: "Demo User",
+  email: "demo@k9search.com",
   avatarUrl: undefined,
 };
 

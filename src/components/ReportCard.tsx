@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import type { Report, Product, ProductIndex, ProductImage, ReportPreview } from "@/types/report";
+import { ImageWithPlaceholder } from "@/components/ImageWithPlaceholder";
 
 export function ReportCard({ report }: { report: Report<Product | ProductIndex> | ReportPreview }) {
   const { title: subject, date, reference } = report as ReportPreview | Report<Product | ProductIndex>;
@@ -36,7 +36,7 @@ export function ReportCard({ report }: { report: Report<Product | ProductIndex> 
 
         <figure className="report-card__media">
           {previewImage ? (
-            <Image
+            <ImageWithPlaceholder
               src={previewImage}
               alt={subject}
               fill

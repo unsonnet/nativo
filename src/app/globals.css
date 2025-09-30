@@ -55,13 +55,13 @@ body {
   position: relative;
   isolation: isolate;
   margin: 0 !important;
-  padding: 0 !important;
+  padding: 0;
 }
 
 /* Override any potential Tailwind/Next.js body styles */
 body.antialiased {
   margin: 0 !important;
-  padding: 0 !important;
+  padding: 0;
 }
 
 body::before {
@@ -357,7 +357,46 @@ body::before {
 
 /* Add top padding to body to account for fixed header */
 body {
-  padding-top: 3.5rem;
+  padding-top: 3.5rem !important;
+}
+
+/* Landing page should not have header padding since header is hidden */
+.landing-page {
+  margin-top: -3.5rem;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 20% 30%, rgba(45, 55, 72, 0.15), transparent 60%),
+    radial-gradient(circle at 70% 80%, rgba(30, 41, 59, 0.2), transparent 65%),
+    var(--background);
+  padding: 2rem;
+}
+
+/* Image loading animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.image-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--control-background, #1e293b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-subtle, #334155);
+  border-top: 2px solid var(--text-primary, #f1f5f9);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .reports-grid {
@@ -2070,16 +2109,6 @@ input[type="number"] {
 }
 
 /* Landing Page Styles */
-.landing-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 20% 30%, rgba(45, 55, 72, 0.15), transparent 60%),
-    radial-gradient(circle at 70% 80%, rgba(30, 41, 59, 0.2), transparent 65%),
-    var(--background);
-  padding: 2rem;
-}
 
 .landing-page__container {
   display: flex;

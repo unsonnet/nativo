@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight, Images } from "lucide-react";
 import type { ProductImage } from "@/types/report";
+import { ImageWithPlaceholder } from "@/components/ImageWithPlaceholder";
 
 interface ImageGalleryProps {
   images: ProductImage[];
@@ -60,8 +60,8 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 
         {/* Main image container */}
         <div className="image-gallery__main">
-          <Image
-            src={images[selectedIndex]?.url || "/placeholder.svg"}
+          <ImageWithPlaceholder
+            src={images[selectedIndex]?.url}
             alt={`Product image ${selectedIndex + 1}`}
             fill
             className="image-gallery__main-image"

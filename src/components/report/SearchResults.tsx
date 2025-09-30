@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Grid, Heart, Package } from "lucide-react";
 import { useState } from "react";
 import type { ProductIndex, Product } from "@/types/report";
 import { useFavorites } from "@/hooks/useFavorites";
+import { ImageWithPlaceholder } from "@/components/ImageWithPlaceholder";
 
 interface SearchResultsProps {
   results: ProductIndex[];
@@ -289,8 +289,8 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
               }}
             >
               <div className="search-result-card__image">
-                <Image
-                  src={product.image || "/placeholder.svg"}
+                <ImageWithPlaceholder
+                  src={product.image}
                   alt={getProductNameText(product)}
                   fill
                   className="search-result-card__img"
