@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Grid, Heart, Package, Search } from "lucide-react";
+import { Grid, Heart, Package, Search, Download } from "lucide-react";
 import { useState } from "react";
 import type { ProductIndex, Product } from "@/types/report";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -23,6 +23,7 @@ interface ViewMode {
 export function SearchResults({ results, isLoading, hasSearched, reportId, initialFavorites = [] }: SearchResultsProps) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode["type"]>("grid");
+  const [isExporting, setIsExporting] = useState(false);
   const { favorites, isFavorited, toggleFavorite } = useFavorites(reportId, {
     initialFavorites,
     searchResults: results, // Provide search results to help reconstruct favorite products
@@ -123,6 +124,71 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
     toggleFavorite(product);
   };
 
+  const handleExportFavorites = async () => {
+    if (favorites.length === 0) {
+      console.warn('No favorites to export');
+      alert('Please add some products to favorites before exporting.');
+      return;
+    }
+
+    if (isLoading) {
+      console.warn('Cannot export while searching');
+      alert('Please wait for the current search to complete before exporting.');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // Get the IDs of all favorite products
+      const favoriteIds = favorites.map(fav => fav.id);
+      
+      // Call the export API - replace with your actual API endpoint
+      const response = await fetch('/api/export/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportId,
+          productIds: favoriteIds,
+        }),
+      });
+
+      if (response.status === 501) {
+        // API not yet implemented
+        const data = await response.json();
+        alert(`Export feature coming soon!\n\nWould export ${data.productCount} products for report ${data.reportId}`);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`);
+      }
+
+      // Get the zip file as a blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `favorites-report-${reportId}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Export failed:', error);
+      // You might want to show a toast notification here
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Get the current products to display based on view mode
   const displayProducts = sortProducts(
     viewMode === "favorites" 
@@ -146,30 +212,49 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
   if (isLoading) {
     return (
       <div className="search-results">
+        {/* Header with view controls - same structure as main component */}
         <div className="search-filters__header">
-          <h3 className="search-filters__title">
-            <Search className="w-4 h-4" />
-            Results
-          </h3>
-          <div className="search-results__view-controls">
+          <div className="search-results__title-section">
+            <h3 className="search-filters__title">
+              <Search className="w-4 h-4" />
+              Results
+            </h3>
+            <span className="search-results__count">Searching...</span>
+          </div>
+          
+          <div className="search-results__header-actions">
+            {/* Export button - always visible, disabled when searching or no favorites */}
             <button
-              disabled
-              className={`search-results__view-btn ${
-                viewMode === "grid" ? "search-results__view-btn--active" : ""
-              }`}
-              aria-label="Grid view"
+              onClick={handleExportFavorites}
+              disabled={true} // Always disabled during loading
+              className="search-results__export-btn"
+              aria-label="Export favorites"
+              title="Cannot export while searching"
             >
-              <Grid className="w-4 h-4" />
+              <Download className="w-4 h-4" />
+              Export
             </button>
-            <button
-              disabled
-              className={`search-results__view-btn ${
-                viewMode === "favorites" ? "search-results__view-btn--active" : ""
-              }`}
-              aria-label="Favorites view"
-            >
-              <Heart className="w-4 h-4" />
-            </button>
+            
+            <div className="search-results__view-controls">
+              <button
+                disabled
+                className={`search-results__view-btn ${
+                  viewMode === "grid" ? "search-results__view-btn--active" : ""
+                }`}
+                aria-label="Grid view"
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+              <button
+                disabled
+                className={`search-results__view-btn ${
+                  viewMode === "favorites" ? "search-results__view-btn--active" : ""
+                }`}
+                aria-label="Favorites view"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
         <div className="search-results__loading">
@@ -184,27 +269,45 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
     return (
       <div className="search-results">
         <div className="search-filters__header">
-          <h3 className="search-filters__title">
-            <Heart className="w-4 h-4" />
-            Favorites
-          </h3>
-          <div className="search-results__view-controls">
-            <button
-              onClick={() => setViewMode("grid")}
-              disabled={isLoading}
-              className="search-results__view-btn"
-              aria-label="Grid view"
-            >
-              <Grid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("favorites")}
-              disabled={isLoading}
-              className="search-results__view-btn search-results__view-btn--active"
-              aria-label="Favorites view"
-            >
+          <div className="search-results__title-section">
+            <h3 className="search-filters__title">
               <Heart className="w-4 h-4" />
+              Favorites
+            </h3>
+            <span className="search-results__count">0 favorites</span>
+          </div>
+          
+          <div className="search-results__header-actions">
+            {/* Export button - always visible, disabled when no favorites */}
+            <button
+              onClick={handleExportFavorites}
+              disabled={true} // Always disabled when no favorites
+              className="search-results__export-btn"
+              aria-label="Export favorites"
+              title="No favorites to export"
+            >
+              <Download className="w-4 h-4" />
+              Export
             </button>
+            
+            <div className="search-results__view-controls">
+              <button
+                onClick={() => setViewMode("grid")}
+                disabled={isLoading}
+                className="search-results__view-btn"
+                aria-label="Grid view"
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("favorites")}
+                disabled={isLoading}
+                className="search-results__view-btn search-results__view-btn--active"
+                aria-label="Favorites view"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
         <div className="search-results__empty">
@@ -220,27 +323,53 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
     return (
       <div className="search-results">
         <div className="search-filters__header">
-          <h3 className="search-filters__title">
-            <Search className="w-4 h-4" />
-            Results
-          </h3>
-          <div className="search-results__view-controls">
+          <div className="search-results__title-section">
+            <h3 className="search-filters__title">
+              <Search className="w-4 h-4" />
+              Results
+            </h3>
+            <span className="search-results__count">
+              {!hasSearched ? "No search performed" : "0 products found"}
+            </span>
+          </div>
+          
+          <div className="search-results__header-actions">
+            {/* Export button - always visible, disabled when no favorites */}
             <button
-              onClick={() => setViewMode("grid")}
-              disabled={isLoading}
-              className="search-results__view-btn search-results__view-btn--active"
-              aria-label="Grid view"
+              onClick={handleExportFavorites}
+              disabled={isExporting || isLoading || favorites.length === 0}
+              className="search-results__export-btn"
+              aria-label="Export favorites"
+              title={
+                favorites.length === 0 
+                  ? "No favorites to export" 
+                  : isLoading 
+                  ? "Cannot export while searching" 
+                  : "Export favorites as ZIP"
+              }
             >
-              <Grid className="w-4 h-4" />
+              <Download className="w-4 h-4" />
+              {isExporting ? "Exporting..." : "Export"}
             </button>
-            <button
-              onClick={() => setViewMode("favorites")}
-              disabled={isLoading}
-              className="search-results__view-btn"
-              aria-label="Favorites view"
-            >
-              <Heart className="w-4 h-4" />
-            </button>
+            
+            <div className="search-results__view-controls">
+              <button
+                onClick={() => setViewMode("grid")}
+                disabled={isLoading}
+                className="search-results__view-btn search-results__view-btn--active"
+                aria-label="Grid view"
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("favorites")}
+                disabled={isLoading}
+                className="search-results__view-btn"
+                aria-label="Favorites view"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
         <div className="search-results__empty">
@@ -287,27 +416,47 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
           </span>
         </div>
         
-        <div className="search-results__view-controls">
+        <div className="search-results__header-actions">
+          {/* Export button - always visible, disabled when searching or no favorites */}
           <button
-            onClick={() => setViewMode("grid")}
-            disabled={isLoading}
-            className={`search-results__view-btn ${
-              viewMode === "grid" ? "search-results__view-btn--active" : ""
-            }`}
-            aria-label="Grid view"
+            onClick={handleExportFavorites}
+            disabled={isExporting || isLoading || favorites.length === 0}
+            className="search-results__export-btn"
+            aria-label="Export favorites"
+            title={
+              favorites.length === 0 
+                ? "No favorites to export" 
+                : isLoading 
+                ? "Cannot export while searching" 
+                : "Export favorites as ZIP"
+            }
           >
-            <Grid className="w-4 h-4" />
+            <Download className="w-4 h-4" />
+            {isExporting ? "Exporting..." : "Export"}
           </button>
-          <button
-            onClick={() => setViewMode("favorites")}
-            disabled={isLoading}
-            className={`search-results__view-btn ${
-              viewMode === "favorites" ? "search-results__view-btn--active" : ""
-            }`}
-            aria-label="Favorites view"
-          >
-            <Heart className="w-4 h-4" />
-          </button>
+          
+          <div className="search-results__view-controls">
+            <button
+              onClick={() => setViewMode("grid")}
+              disabled={isLoading}
+              className={`search-results__view-btn ${
+                viewMode === "grid" ? "search-results__view-btn--active" : ""
+              }`}
+              aria-label="Grid view"
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("favorites")}
+              disabled={isLoading}
+              className={`search-results__view-btn ${
+                viewMode === "favorites" ? "search-results__view-btn--active" : ""
+              }`}
+              aria-label="Favorites view"
+            >
+              <Heart className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
