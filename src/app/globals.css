@@ -718,6 +718,20 @@ body {
   color: var(--text-muted);
 }
 
+/* Remove spinner arrows from number inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  /* Ensure full width usage without spinner space reservation */
+  padding-right: 0.75rem;
+}
+
 .select-control {
   appearance: none;
   padding-right: 1.5rem;
@@ -1411,6 +1425,25 @@ body {
   flex-shrink: 0;
 }
 
+.search-filters__reference {
+  color: var(--text-muted);
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.search-filters__reference-note {
+  font-size: var(--text-size-xs);
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  opacity: 0.8;
+}
+
+.search-filters__label-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .search-filters__number-input {
   width: 100%;
   padding: 0.5rem;
@@ -1597,8 +1630,9 @@ body {
 }
 
 .search-filters__footer {
-  padding: 1rem 0;
+  padding: 1.5rem 0 1rem 0;
   border-top: 1px solid var(--border-subtle);
+  margin-top: 0.5rem;
 }
 
 .search-filters__search-btn {

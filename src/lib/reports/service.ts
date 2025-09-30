@@ -66,8 +66,17 @@ export async function packageAndCreateReport(
       widthVal = Math.min(parsedLength, parsedWidth);
     }
   } else {
-    lengthVal = parsedLength ?? parsedWidth ?? undefined;
-    widthVal = parsedLength !== undefined && parsedWidth === undefined ? undefined : parsedWidth ?? undefined;
+    // When only one dimension is provided, map it to length and leave width undefined
+    if (parsedLength !== undefined) {
+      lengthVal = parsedLength;
+      widthVal = undefined;
+    } else if (parsedWidth !== undefined) {
+      lengthVal = parsedWidth;  // Map width input to length field
+      widthVal = undefined;     // Leave width undefined
+    } else {
+      lengthVal = undefined;
+      widthVal = undefined;
+    }
   }
 
   const images: ProductImage[] = workspaceImages.map((w) => workspaceToProductImage(w));

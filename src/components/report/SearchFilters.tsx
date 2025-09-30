@@ -8,6 +8,7 @@ export interface SearchFilters {
   maxLengthDiff?: number;
   maxWidthDiff?: number;
   maxThicknessDiff?: number;
+  aspectRatioTolerance?: number;
   colorPrimarySimilarity?: number;
   colorSecondarySimilarity?: number;
   patternPrimarySimilarity?: number;
@@ -32,10 +33,46 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
   const format = referenceProduct.formats?.[0];
   const hasAbsoluteDimensions = format?.length?.unit !== 'none' && format?.width?.unit !== 'none';
   
+  // Determine which filters to show
+  const hasLength = format?.length?.val;
+  const hasWidth = format?.width?.val;
+  const hasThickness = format?.thickness?.val;
+  const isRelative = format?.length?.unit === 'none' || format?.width?.unit === 'none';
+  
+  // Aspect ratio filter only makes sense for relative dimensions (where we have an actual ratio)
+  const showAspectRatioFilter = isRelative && hasLength && hasWidth;
+  
+  // Calculate reference aspect ratio for display
+  const referenceAspectRatio = (() => {
+    if (hasLength && hasWidth && format?.length?.val && format?.width?.val) {
+      const ratio = format.length.val / format.width.val;
+      return ratio;
+    }
+    return null;
+  })();
+  
+  // Calculate tolerance range for display
+  const getToleranceRange = () => {
+    if (referenceAspectRatio) {
+      // Use 0 as default tolerance when input is empty/undefined
+      const tolerance = (filters.aspectRatioTolerance ?? 0) / 100;
+      const minRatio = referenceAspectRatio * (1 - tolerance);
+      const maxRatio = referenceAspectRatio * (1 + tolerance);
+      return {
+        min: minRatio.toFixed(2),
+        max: maxRatio.toFixed(2),
+        reference: referenceAspectRatio.toFixed(2),
+        tolerancePercent: filters.aspectRatioTolerance ?? 0
+      };
+    }
+    return null;
+  };
+  
   const [filters, setFilters] = useState<SearchFilters>({
     maxLengthDiff: 1,
     maxWidthDiff: 1,
     maxThicknessDiff: 1,
+    aspectRatioTolerance: 2,
     colorPrimarySimilarity: 50,
     colorSecondarySimilarity: 50,
     patternPrimarySimilarity: 50,
@@ -85,6 +122,7 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
       maxLengthDiff: 1,
       maxWidthDiff: 1,
       maxThicknessDiff: 1,
+      aspectRatioTolerance: 2,
       colorPrimarySimilarity: 50,
       colorSecondarySimilarity: 50,
       patternPrimarySimilarity: 50,
@@ -113,11 +151,74 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
       </div>
 
             <div className="search-filters__content">
-        {/* Dimension Filters - only show if reference has absolute dimensions */}
-        {hasAbsoluteDimensions && (
-          <div className="search-filters__section">
-            <h4 className="search-filters__section-title">Dimension Similarity</h4>
-            
+        {/* Dimension Filters - conditional based on available dimensions */}
+        <div className="search-filters__section">
+          <h4 className="search-filters__section-title">Dimension Similarity</h4>
+          
+          {/* Show aspect ratio filter only for relative dimensions with both length and width */}
+          {showAspectRatioFilter && (
+            <div className="search-filters__field">
+              <div className="search-filters__label-container">
+                <label className="search-filters__label">
+                  Aspect Ratio Tolerance (%)
+                </label>
+                {(() => {
+                  const range = getToleranceRange();
+                  return range ? (
+                    <div className="search-filters__reference-note">
+                      {range.reference} ± {range.tolerancePercent}% ({range.min} - {range.max})
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={filters.aspectRatioTolerance ?? ''}
+                onKeyDown={(e) => {
+                  // Allow: backspace, delete, tab, escape, enter, period
+                  if ([8, 9, 27, 13, 46, 110, 190].indexOf(e.keyCode) !== -1 ||
+                      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                      (e.keyCode === 65 && e.ctrlKey === true) ||
+                      (e.keyCode === 67 && e.ctrlKey === true) ||
+                      (e.keyCode === 86 && e.ctrlKey === true) ||
+                      (e.keyCode === 88 && e.ctrlKey === true) ||
+                      // Allow: home, end, left, right
+                      (e.keyCode >= 35 && e.keyCode <= 39)) {
+                    return;
+                  }
+                  // Ensure that it is a number and stop the keypress
+                  if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    // Allow empty value during typing
+                    handleFilterChange('aspectRatioTolerance', undefined);
+                  } else {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                      handleFilterChange('aspectRatioTolerance', numValue);
+                    }
+                  }
+                }}
+                onBlur={(e) => {
+                  // Set default value on blur if empty
+                  if (e.target.value === '' || filters.aspectRatioTolerance === undefined) {
+                    handleFilterChange('aspectRatioTolerance', 2);
+                  }
+                }}
+                className="form-control"
+              />
+            </div>
+          )}
+          
+          {/* Show length filter for absolute dimensions when length is set */}
+          {hasAbsoluteDimensions && hasLength && (
             <div className="search-filters__field">
               <label className="search-filters__label">
                 Δ Length ({format?.length?.unit || 'in'})
@@ -138,7 +239,10 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                 placeholder="1.0"
               />
             </div>
+          )}
 
+          {/* Show width filter for absolute dimensions when width is set */}
+          {hasAbsoluteDimensions && hasWidth && (
             <div className="search-filters__field">
               <label className="search-filters__label">
                 Δ Width ({format?.width?.unit || 'in'})
@@ -159,7 +263,10 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                 placeholder="1.0"
               />
             </div>
+          )}
 
+          {/* Show thickness filter only if thickness is set */}
+          {hasThickness && (
             <div className="search-filters__field">
               <label className="search-filters__label">
                 Δ Depth (mm)
@@ -180,8 +287,8 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching }: Searc
                 placeholder="1.0"
               />
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Color Similarity */}
         <div className="search-filters__section">
