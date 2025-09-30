@@ -47,8 +47,8 @@ interface SimilarityBarProps {
 }
 
 function SimilarityBar({ label, percentage, color = 'blue' }: SimilarityBarProps) {
-  const getColorClasses = (color: string) => {
-    switch (color) {
+  const getColorClasses = (colorName: string) => {
+    switch (colorName) {
       case 'green': return 'bg-green-500';
       case 'yellow': return 'bg-yellow-500';
       case 'red': return 'bg-red-500';
@@ -63,7 +63,8 @@ function SimilarityBar({ label, percentage, color = 'blue' }: SimilarityBarProps
     return 'red';
   };
 
-  const barColor = getColorFromPercentage(percentage);
+  // Use provided color or calculate from percentage
+  const barColor = color || getColorFromPercentage(percentage);
 
   return (
     <div className="mb-3">

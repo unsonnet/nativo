@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ReportPageContainer } from "@/components/report/ReportPageContainer";
 
-export default function FetchPage() {
+function FetchPageContent() {
   const searchParams = useSearchParams();
   const reportId = searchParams.get('report');
 
@@ -24,4 +25,12 @@ export default function FetchPage() {
   }
 
   return <ReportPageContainer reportId={reportId} />;
+}
+
+export default function FetchPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <FetchPageContent />
+    </Suspense>
+  );
 }

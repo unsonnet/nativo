@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { ProductImage } from '@/types/report';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 
@@ -78,11 +79,14 @@ function ImageViewer({ images, title, onImageSelect, selectedIndex }: ImageViewe
             className="relative max-w-full max-h-full"
             style={{ transform: `scale(${zoom})` }}
           >
-            <img
+            <Image
               src={images[selectedIndex].url}
               alt={`${title} - Image ${selectedIndex + 1}`}
+              width={800}
+              height={600}
               className="max-w-full max-h-full object-contain"
               style={{ maxHeight: '70vh' }}
+              unoptimized
             />
           </div>
         </div>
@@ -125,10 +129,13 @@ function ImageViewer({ images, title, onImageSelect, selectedIndex }: ImageViewe
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <img
+                <Image
                   src={image.url}
                   alt={`Thumbnail ${index + 1}`}
+                  width={64}
+                  height={64}
                   className="w-full h-full object-cover"
+                  unoptimized
                 />
               </button>
             ))}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { Product, Report, ProductImage } from '@/types/report';
 
 // Import components directly to avoid module resolution issues
@@ -79,10 +80,13 @@ function ImageComparisonPanel({ selectedProductImages, referenceProductImages, s
           <h3 className="font-medium mb-2">{selectedProductName}</h3>
           <div className="bg-gray-100 rounded-lg aspect-square flex items-center justify-center">
             {selectedProductImages.length > 0 ? (
-              <img 
+              <Image 
                 src={selectedProductImages[0].url} 
                 alt={selectedProductName}
+                width={400}
+                height={400}
                 className="max-w-full max-h-full object-contain"
+                unoptimized
               />
             ) : (
               <span className="text-gray-500">No image available</span>
@@ -93,10 +97,13 @@ function ImageComparisonPanel({ selectedProductImages, referenceProductImages, s
           <h3 className="font-medium mb-2">{referenceProductName}</h3>
           <div className="bg-gray-100 rounded-lg aspect-square flex items-center justify-center">
             {referenceProductImages.length > 0 ? (
-              <img 
+              <Image 
                 src={referenceProductImages[0].url} 
                 alt={referenceProductName}
+                width={400}
+                height={400}
                 className="max-w-full max-h-full object-contain"
+                unoptimized
               />
             ) : (
               <span className="text-gray-500">No image available</span>

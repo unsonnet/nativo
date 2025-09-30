@@ -36,25 +36,17 @@ export function AppHeader() {
     }
   }, [showUserMenu]);
 
-  // Fetch report title when on report page
+  // Fetch report title when on fetch page
   useEffect(() => {
-    if (pathname.startsWith('/report') || pathname.startsWith('/fetch')) {
+    if (pathname.startsWith('/fetch')) {
       const getReportTitle = async () => {
         try {
-          // Get report ID from search params (new structure)
+          // Get report ID from search params
           const reportParam = searchParams.get('report');
           const idParam = searchParams.get('id');
           
           // Use report param first, then id param as fallback
-          let reportId = reportParam || idParam;
-          
-          // Fallback to hash for legacy URLs
-          if (!reportId && typeof window !== 'undefined') {
-            const hashId = window.location.hash.slice(1);
-            if (hashId && !hashId.includes('-')) {
-              reportId = hashId;
-            }
-          }
+          const reportId = reportParam || idParam;
           
           if (reportId) {
             const report = await reportsApi.getFullReport(reportId);
@@ -83,7 +75,7 @@ export function AppHeader() {
     console.log('🔙 Back button clicked from:', pathname, 'with product param:', searchParams.get('product'));
     if (pathname === '/create') {
       router.push('/dashboard');
-    } else if (pathname.startsWith('/report') || pathname.startsWith('/fetch')) {
+    } else if (pathname.startsWith('/fetch')) {
       const productParam = searchParams.get('product');
       const reportParam = searchParams.get('report');
       
@@ -114,8 +106,8 @@ export function AppHeader() {
       console.log('Create page detected!');
       return 'Create Report';
     }
-    if (pathname.startsWith('/report') || pathname.startsWith('/fetch')) {
-      console.log('Report/Fetch page detected!');
+    if (pathname.startsWith('/fetch')) {
+      console.log('Fetch page detected!');
       const productParam = searchParams.get('product');
       if (productParam) {
         console.log('Product comparison view detected!');
