@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Product, Report, ProductImage } from '@/types/report';
+import './ProductComparison.css';
 
 // Import components directly to avoid module resolution issues
 interface ProductInfoPanelProps {
@@ -70,35 +71,22 @@ function ProductInfoPanel({ product }: ProductInfoPanelProps) {
 }
 
 function ImageComparisonPanel({ selectedProductImages, referenceProductImages, selectedProductName, referenceProductName }: ImageComparisonPanelProps) {
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [referenceImageIndex, setReferenceImageIndex] = useState(0);
+
   return (
     <div className="h-full flex flex-col">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold">Image Comparison</h2>
-      </div>
-      <div className="flex-1 grid grid-cols-2 gap-4 p-4">
-        <div>
-          <h3 className="font-medium mb-2">{selectedProductName}</h3>
-          <div className="bg-gray-100 rounded-lg aspect-square flex items-center justify-center">
-            {selectedProductImages.length > 0 ? (
-              <Image 
-                src={selectedProductImages[0].url} 
-                alt={selectedProductName}
-                width={400}
-                height={400}
-                className="max-w-full max-h-full object-contain"
-                unoptimized
-              />
-            ) : (
-              <span className="text-gray-500">No image available</span>
-            )}
+      <div className="flex-1 grid grid-cols-2 p-6 gap-4">
+        {/* Reference Product Column */}
+        <div className="product-comparison__column">
+          <div className="mb-2">
+            <h3 className="product-comparison__column-title">{referenceProductName}</h3>
+            <span className="product-comparison__reference-label">Reference</span>
           </div>
-        </div>
-        <div>
-          <h3 className="font-medium mb-2">{referenceProductName}</h3>
-          <div className="bg-gray-100 rounded-lg aspect-square flex items-center justify-center">
+          <div className="product-comparison__image-container aspect-square flex items-center justify-center">
             {referenceProductImages.length > 0 ? (
               <Image 
-                src={referenceProductImages[0].url} 
+                src={referenceProductImages[referenceImageIndex]?.url || referenceProductImages[0].url} 
                 alt={referenceProductName}
                 width={400}
                 height={400}
@@ -109,6 +97,76 @@ function ImageComparisonPanel({ selectedProductImages, referenceProductImages, s
               <span className="text-gray-500">No image available</span>
             )}
           </div>
+          
+          {/* Reference Product Thumbnails */}
+          {referenceProductImages.length > 0 && (
+            <div className="product-comparison__thumbnails">
+              {referenceProductImages.map((image, index) => (
+                <button
+                  key={image.id}
+                  onClick={() => setReferenceImageIndex(index)}
+                  className={`product-comparison__thumbnail ${
+                    index === referenceImageIndex ? 'product-comparison__thumbnail--active' : ''
+                  }`}
+                >
+                  <Image
+                    src={image.url}
+                    alt={`${referenceProductName} ${index + 1}`}
+                    width={64}
+                    height={64}
+                    className="product-comparison__thumbnail-image"
+                    unoptimized
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Selected Product Column */}
+        <div className="product-comparison__column">
+          <div className="mb-2">
+            <h3 className="product-comparison__column-title">{selectedProductName}</h3>
+            <span className="product-comparison__product-label">Product</span>
+          </div>
+          <div className="product-comparison__image-container aspect-square flex items-center justify-center">
+            {selectedProductImages.length > 0 ? (
+              <Image 
+                src={selectedProductImages[selectedImageIndex]?.url || selectedProductImages[0].url} 
+                alt={selectedProductName}
+                width={400}
+                height={400}
+                className="max-w-full max-h-full object-contain"
+                unoptimized
+              />
+            ) : (
+              <span className="text-gray-500">No image available</span>
+            )}
+          </div>
+          
+          {/* Selected Product Thumbnails */}
+          {selectedProductImages.length > 0 && (
+            <div className="product-comparison__thumbnails">
+              {selectedProductImages.map((image, index) => (
+                <button
+                  key={image.id}
+                  onClick={() => setSelectedImageIndex(index)}
+                  className={`product-comparison__thumbnail ${
+                    index === selectedImageIndex ? 'product-comparison__thumbnail--active' : ''
+                  }`}
+                >
+                  <Image
+                    src={image.url}
+                    alt={`${selectedProductName} ${index + 1}`}
+                    width={64}
+                    height={64}
+                    className="product-comparison__thumbnail-image"
+                    unoptimized
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -217,7 +275,17 @@ export function ProductComparisonContainer({ reportId, productId }: ProductCompa
 
   return (
     <div className="report-create">
-      {/* Left Panel - Product Information */}
+      {/* Left Panel - Image Comparison */}
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <ImageComparisonPanel
+          selectedProductImages={state.selectedProduct.images}
+          referenceProductImages={state.referenceReport.reference.images}
+          selectedProductName={`${state.selectedProduct.brand} ${state.selectedProduct.model}`}
+          referenceProductName={`${state.referenceReport.reference.brand} ${state.referenceReport.reference.model}`}
+        />
+      </main>
+      
+      {/* Right Panel - Product Information */}
       <aside className="report-create__sidebar">
         <div className="report-create__form">
           <div className="report-form">
@@ -229,16 +297,6 @@ export function ProductComparisonContainer({ reportId, productId }: ProductCompa
           </div>
         </div>
       </aside>
-      
-      {/* Right Panel - Image Comparison */}
-      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <ImageComparisonPanel
-          selectedProductImages={state.selectedProduct.images}
-          referenceProductImages={state.referenceReport.reference.images}
-          selectedProductName={`${state.selectedProduct.brand} ${state.selectedProduct.model}`}
-          referenceProductName={`${state.referenceReport.reference.brand} ${state.referenceReport.reference.model}`}
-        />
-      </main>
     </div>
   );
 }
