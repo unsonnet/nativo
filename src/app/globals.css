@@ -544,20 +544,20 @@ body {
   height: 52px;
   padding: 0 0.9rem;
   border-radius: 0.5rem;
-  /* Bordered appearance: transparent background, white border and text */
-  background: transparent;
-  color: var(--button-primary);
-  border: 1px solid var(--button-primary);
+  /* Match upload image button styling */
+  background: rgba(226, 232, 240, 0.1);
+  color: var(--text-primary);
+  border: 1px solid rgba(148, 163, 184, 0.18);
   cursor: pointer;
   font-size: var(--text-size-md);
   font-weight: 600;
-  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 .report-create__submit:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--button-primary-hover);
-  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.12);
+  background: rgba(226, 232, 240, 0.16);
+  border-color: rgba(226, 232, 240, 0.3);
+  transform: translateY(-1px);
 }
 
 /* keep the existing muted/disabled look so it doesn't compete visually */
@@ -872,15 +872,16 @@ input[type="number"] {
 }
 
 .button--primary {
-  background: transparent;
-  color: var(--button-primary);
-  border: 1px solid var(--button-primary);
+  background: rgba(226, 232, 240, 0.1);
+  color: var(--text-primary);
+  border: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .button--primary:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--button-primary);
-  border-color: var(--button-primary-hover);
+  background: rgba(226, 232, 240, 0.16);
+  color: var(--text-primary);
+  border-color: rgba(226, 232, 240, 0.3);
+  transform: translateY(-1px);
 }
 
 .button--primary:active {
