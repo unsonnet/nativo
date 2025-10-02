@@ -25,9 +25,7 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
   const [viewMode, setViewMode] = useState<ViewMode["type"]>("grid");
   const [isExporting, setIsExporting] = useState(false);
   const { favorites, isFavorited, toggleFavorite } = useFavorites(reportId, {
-    initialFavorites,
-    searchResults: results, // Provide search results to help reconstruct favorite products
-    autoClear: true // Clear session favorites when component unmounts
+    autoClear: true
   });
 
   const getProductNameText = (product: ProductIndex) => {

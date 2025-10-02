@@ -96,7 +96,25 @@ interface OriginalApiJob {
 
 interface OriginalApiFavoriteProduct {
   id: string;
+  match: number;
   images: string[];
+  scores: {
+    shape: {
+      length: number | null;
+      width: number | null;
+      thickness: number | null;
+    };
+    color: {
+      primary: number | null;
+      secondary: number | null;
+      tertiary: number | null;
+    };
+    pattern: {
+      primary: number | null;
+      secondary: number | null;
+      tertiary: number | null;
+    };
+  };
   description: {
     store: string;
     name: string;
@@ -391,7 +409,43 @@ function transformFavoriteToProduct(favorite: OriginalApiFavoriteProduct): Produ
         url: favorite.description.url,
         discontinued: false
       }]
-    }]
+    }],
+    analysis: {
+      color: {
+        primary: {
+          vector: [
+            favorite.scores.color.primary || 0,
+            favorite.scores.color.secondary || 0
+          ],
+          similarity: 1 - (favorite.scores.color.primary || 0) // Convert similarity to distance
+        },
+        secondary: {
+          vector: [
+            favorite.scores.color.secondary || 0,
+            favorite.scores.color.tertiary || 0
+          ],
+          similarity: 1 - (favorite.scores.color.secondary || 0) // Convert similarity to distance
+        }
+      },
+      pattern: {
+        primary: {
+          vector: [
+            favorite.scores.pattern.primary || 0,
+            favorite.scores.pattern.secondary || 0
+          ],
+          similarity: 1 - (favorite.scores.pattern.primary || 0) // Convert similarity to distance
+        },
+        secondary: {
+          vector: [
+            favorite.scores.pattern.secondary || 0,
+            favorite.scores.pattern.tertiary || 0
+          ],
+          similarity: 1 - (favorite.scores.pattern.secondary || 0) // Convert similarity to distance
+        }
+      },
+      // Use the match score from the favorites API response
+      similarity: 1 - favorite.match // Convert similarity to distance metric
+    }
   };
 }
 function createFullProductFromOriginal(
@@ -726,6 +780,29 @@ export class OriginalApiAdapter {
    */
   static async getFavorites(reportId: string): Promise<K9Response<OriginalApiFavoriteProduct[]>> {
     return apiClient.get<OriginalApiFavoriteProduct[]>(`/report/${reportId}/favorites`);
+  }
+
+  /**
+   * Get favorites for a specific job as Product[] format (for frontend consumption)
+   * This corresponds to GET /report/{job}/favorites in the original API
+   */
+  static async getFavoritesAsProducts(reportId: string): Promise<K9Response<Product[]>> {
+    const response = await this.getFavorites(reportId);
+    
+    if (response.status === 200) {
+      const products = response.body.map(favorite => transformFavoriteToProduct(favorite));
+      return {
+        status: 200,
+        body: products,
+        error: undefined
+      };
+    }
+    
+    return {
+      status: response.status,
+      body: [],
+      error: response.error
+    };
   }
 
   /**

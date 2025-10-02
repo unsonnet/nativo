@@ -41,6 +41,9 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
   const [searchFilters, setSearchFilters] = useState<SearchFiltersType | null>(null);
   const isLoadingReportRef = useRef(false); // Use ref to prevent infinite loop
 
+  // Debug: Log hook instantiation with stack trace
+  console.log(`[useReportData] Hook instantiated for reportId: ${reportId}`, new Error().stack?.split('\n')[2]);
+
   // Load persisted data from sessionStorage
   useEffect(() => {
     if (typeof window !== 'undefined' && reportId) {

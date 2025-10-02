@@ -328,6 +328,68 @@ Fetches matching materials based on thresholds and filters.
 
 ---
 
+### GET /fetch/{job}/product/{id}
+Retrieves full product details with similarity scores for a specific product within a job.
+
+**Handler:** `product-get.py`
+
+**Authentication:** Required (JWT token)
+
+**Path Parameters:**
+- `job` - Job identifier
+- `id` - Product identifier
+
+**Success Response (200):**
+```json
+{
+  "id": "material-123",
+  "match": 0,
+  "images": [
+    "https://s3-presigned-url-1.com"
+  ],
+  "scores": {
+    "shape": {
+      "length": 24.5,
+      "width": 12.2,
+      "thickness": null
+    },
+    "color": {
+      "primary": 0.85,
+      "secondary": 0.72,
+      "tertiary": 0.68
+    },
+    "pattern": {
+      "primary": 0.91,
+      "secondary": 0.76,
+      "tertiary": 0.69
+    }
+  },
+  "description": {
+    "store": "TileStore",
+    "name": "Premium Ceramic",
+    "url": "https://store.com/product",
+    "material": "ceramic",
+    "length": 24.5,
+    "width": 12.2,
+    "thickness": 8.0
+  }
+}
+```
+
+**Error Responses:**
+- `404` - Product not found in job
+- `500` - Internal server error
+
+**Features:**
+- Returns the same detailed product format as POST /fetch/{job} search results
+- Includes similarity scores computed from the job's reference material
+- No search thresholds required - directly accesses precomputed similarity data
+- More efficient than running a search for a single known product
+- Useful for bookmarking or direct access to previously found products
+- Scoped to authenticated user's jobs
+
+---
+
 ### GET /report
 Retrieves all jobs for the authenticated user with their reference data and creation dates.
 
@@ -366,7 +428,7 @@ Retrieves all jobs for the authenticated user with their reference data and crea
 ---
 
 ### GET /report/{job}/favorites
-Retrieves the list of favorite products with full details for a specific job.
+Retrieves the list of favorite products with full details and similarity scores for a specific job.
 
 **Handler:** `report-favorites-get.py`
 
@@ -380,9 +442,27 @@ Retrieves the list of favorite products with full details for a specific job.
 [
   {
     "id": "material-123",
+    "match": 0.75,
     "images": [
       "https://s3-presigned-url-1.com"
     ],
+    "scores": {
+      "shape": {
+        "length": 24.5,
+        "width": 12.2,
+        "thickness": 8.0
+      },
+      "color": {
+        "primary": 0.85,
+        "secondary": 0.72,
+        "tertiary": 0.68
+      },
+      "pattern": {
+        "primary": 0.91,
+        "secondary": 0.76,
+        "tertiary": 0.69
+      }
+    },
     "description": {
       "store": "TileStore",
       "name": "Premium Ceramic",
@@ -395,9 +475,27 @@ Retrieves the list of favorite products with full details for a specific job.
   },
   {
     "id": "material-456",
+    "match": 0.62,
     "images": [
       "https://s3-presigned-url-2.com"
     ],
+    "scores": {
+      "shape": {
+        "length": 12.0,
+        "width": 12.0,
+        "thickness": 10.0
+      },
+      "color": {
+        "primary": 0.55,
+        "secondary": 0.68,
+        "tertiary": 0.45
+      },
+      "pattern": {
+        "primary": 0.72,
+        "secondary": 0.53,
+        "tertiary": 0.61
+      }
+    },
     "description": {
       "store": "MaterialWorld",
       "name": "Luxury Porcelain",
@@ -415,10 +513,12 @@ Retrieves the list of favorite products with full details for a specific job.
 - `500` - Internal server error
 
 **Features:**
-- Returns full product details for all favorite products
+- Returns the exact same product format as GET /fetch/{job}/product/{id}
+- Includes complete similarity scores computed from the job's reference material
+- Match score calculated as average of color and pattern primary/secondary scores
 - Includes presigned image URLs (1 hour expiration)
 - Returns empty array if no favorites exist
-- Same product format as search results (without similarity scores)
+- Gracefully handles missing products or score calculation errors
 
 ---
 

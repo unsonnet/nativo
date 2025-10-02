@@ -42,8 +42,8 @@ export class FavoritesApiService {
         throw error;
       }
     } else {
-      // Mock implementation
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Mock implementation with faster response for better UX
+      await new Promise(resolve => setTimeout(resolve, 50)); // Reduced from 200ms to 50ms
       console.log(`[Mock API] Synced favorites for report ${reportId}:`, favoriteIds);
     }
   }
@@ -64,8 +64,8 @@ export class FavoritesApiService {
         throw error;
       }
     } else {
-      // Mock implementation
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Mock implementation with faster response for better UX
+      await new Promise(resolve => setTimeout(resolve, 50)); // Reduced from 100ms to 50ms
       console.log(`[Mock API] Updated favorite status for ${productId} in report ${reportId}: ${isFavorite}`);
     }
   }
@@ -130,6 +130,7 @@ export function getSessionFavorites(reportId: string): FavoriteProduct[] {
 
 /**
  * Add a product to session favorites and sync to database
+ * Uses optimistic updates with rollback on failure
  */
 export async function addToFavorites(reportId: string, product: ProductIndex): Promise<void> {
   try {
@@ -145,37 +146,57 @@ export async function addToFavorites(reportId: string, product: ProductIndex): P
       };
       
       const updatedFavorites = [...favorites, newFavorite];
+      const favoriteIds = updatedFavorites.map(f => f.id);
       
-      // Update session storage immediately for UI responsiveness
+      // OPTIMISTIC UPDATE: Update session storage immediately for UI responsiveness
       sessionStorage.setItem(getSessionFavoritesKey(reportId), JSON.stringify(updatedFavorites));
       
-      // Sync to database
-      const favoriteIds = updatedFavorites.map(f => f.id);
-      await FavoritesApiService.syncFavoritesToDatabase(reportId, favoriteIds);
+      // Sync to database in the background
+      try {
+        await FavoritesApiService.syncFavoritesToDatabase(reportId, favoriteIds);
+        console.log(`[Favorites] Successfully added ${product.id} to favorites`);
+      } catch (syncError) {
+        // ROLLBACK: If API fails, undo the optimistic update
+        console.warn(`[Favorites] API sync failed for adding ${product.id}, rolling back...`, syncError);
+        sessionStorage.setItem(getSessionFavoritesKey(reportId), JSON.stringify(favorites));
+        throw syncError; // Re-throw to let caller know it failed
+      }
     }
   } catch (error) {
     console.warn('Failed to add product to favorites:', error);
+    throw error; // Re-throw for caller to handle
   }
 }
 
 /**
  * Remove a product from session favorites and sync to database
+ * Uses optimistic updates with rollback on failure
  */
 export async function removeFromFavorites(reportId: string, productId: string): Promise<void> {
   try {
     if (typeof window === 'undefined') return;
     
     const favorites = getSessionFavorites(reportId);
+    const originalProduct = favorites.find(f => f.id === productId);
     const updatedFavorites = favorites.filter(f => f.id !== productId);
+    const favoriteIds = updatedFavorites.map(f => f.id);
     
-    // Update session storage immediately for UI responsiveness
+    // OPTIMISTIC UPDATE: Update session storage immediately for UI responsiveness
     sessionStorage.setItem(getSessionFavoritesKey(reportId), JSON.stringify(updatedFavorites));
     
-    // Sync to database
-    const favoriteIds = updatedFavorites.map(f => f.id);
-    await FavoritesApiService.syncFavoritesToDatabase(reportId, favoriteIds);
+    // Sync to database in the background
+    try {
+      await FavoritesApiService.syncFavoritesToDatabase(reportId, favoriteIds);
+      console.log(`[Favorites] Successfully removed ${productId} from favorites`);
+    } catch (syncError) {
+      // ROLLBACK: If API fails, undo the optimistic update
+      console.warn(`[Favorites] API sync failed for removing ${productId}, rolling back...`, syncError);
+      sessionStorage.setItem(getSessionFavoritesKey(reportId), JSON.stringify(favorites));
+      throw syncError; // Re-throw to let caller know it failed
+    }
   } catch (error) {
     console.warn('Failed to remove product from favorites:', error);
+    throw error; // Re-throw for caller to handle
   }
 }
 
@@ -205,6 +226,43 @@ export async function toggleFavorite(reportId: string, product: ProductIndex): P
 /**
  * Initialize favorites for a report from database data
  * This should be called when a report is loaded
+ */
+/**
+ * Initialize favorites from already-loaded product IDs (from report data)
+ * This avoids making additional API calls when favorites IDs are already known
+ */
+export function initializeFavoritesFromIds(reportId: string, favoriteIds: string[]): void {
+  try {
+    if (typeof window === 'undefined') return;
+    
+    // Check if we already have favorites in session storage
+    const existingFavorites = getSessionFavorites(reportId);
+    if (existingFavorites.length > 0) {
+      console.log(`[Favorites] Session already has ${existingFavorites.length} favorites for report ${reportId}`);
+      return;
+    }
+    
+    // Create minimal FavoriteProduct objects with just IDs (will be populated when needed)
+    const favoriteProducts: FavoriteProduct[] = favoriteIds.map(id => ({
+      id,
+      brand: 'Loading...', // Will be populated when product is loaded
+      model: 'Loading...', // Will be populated when product is loaded
+      image: '', // Will be populated when product is loaded
+      favoritedAt: new Date().toISOString()
+    }));
+    
+    // Set session storage with favorite IDs
+    sessionStorage.setItem(getSessionFavoritesKey(reportId), JSON.stringify(favoriteProducts));
+    
+    console.log(`[Favorites] Initialized ${favoriteProducts.length} favorite IDs for report ${reportId} (details will load as needed)`);
+  } catch (error) {
+    console.warn('Failed to initialize favorites from IDs:', error);
+  }
+}
+
+/**
+ * Initialize favorites from report data when search results are available (legacy approach)
+ * This is kept for backward compatibility but should be replaced by initializeFavoritesFromDatabase
  */
 export function initializeFavoritesFromReport(reportId: string, favorites: string[], searchResults: ProductIndex[]): void {
   try {

@@ -145,15 +145,24 @@ export class ReportsApiService {
 
   /**
    * 3. Get a specific report by ID
-   * Now uses original API: GET /fetch/{job} directly
+   * Now uses original API: GET /fetch/{job} directly and fetches favorites
    */
   static async getReport(reportId: string): Promise<K9Response<Report<Product>>> {
     console.log('[API] ReportsApiService.getReport called for reportId:', reportId);
     
-    // Directly get the full job data using GET /fetch/{job}
-    const fullJobResponse = await OriginalApiAdapter.getReport(reportId);
-    
-    if (fullJobResponse.status === 200) {
+    try {
+      // Only fetch the report data, NOT favorites (let the hook handle favorites)
+      const fullJobResponse = await OriginalApiAdapter.getReport(reportId);
+      
+      if (fullJobResponse.status !== 200) {
+        console.error('[API] Failed to fetch report:', reportId, fullJobResponse.error);
+        return {
+          status: fullJobResponse.status,
+          body: null as any,
+          error: fullJobResponse.error || 'Report not found'
+        };
+      }
+      
       // Transform the full material data to a Report<Product>
       const product = createFullProductFromOriginal(
         fullJobResponse.body, 
@@ -170,7 +179,7 @@ export class ReportsApiService {
         author: 'current-user',
         date: currentDate,
         reference: product,
-        favorites: [] // Will need to get from favorites endpoint if needed
+        favorites: [] // Empty - let the hook load favorites separately
       };
       
       console.log('[API] Successfully retrieved report:', reportId);
@@ -179,12 +188,12 @@ export class ReportsApiService {
         body: report,
         error: undefined
       };
-    } else {
-      console.error('[API] Failed to fetch report:', reportId, fullJobResponse.error);
+    } catch (error) {
+      console.error('[API] Error fetching report data:', error);
       return {
-        status: fullJobResponse.status,
+        status: 500,
         body: null as any,
-        error: fullJobResponse.error || 'Report not found'
+        error: error instanceof Error ? error.message : 'Failed to load report'
       };
     }
   }
@@ -334,7 +343,29 @@ export class ReportsApiService {
   }
 
   /**
-   * 8. Export favorited products as ZIP file
+   * 8. Get favorites as full Product objects with match scores
+   * Now uses original API: GET /report/{job}/favorites
+   */
+  static async getFavorites(reportId: string): Promise<K9Response<Product[]>> {
+    const response = await OriginalApiAdapter.getFavoritesAsProducts(reportId);
+    
+    if (response.status === 200) {
+      return {
+        status: 200,
+        body: response.body,
+        error: undefined
+      };
+    }
+    
+    return {
+      status: response.status,
+      body: [],
+      error: response.error
+    };
+  }
+
+  /**
+   * 9. Export favorited products as ZIP file
    * NOTE: Original API doesn't have export functionality
    * TODO: Implement export functionality in backend
    */

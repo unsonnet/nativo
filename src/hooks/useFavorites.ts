@@ -4,34 +4,109 @@ import {
   getSessionFavorites,
   getSessionFavoriteIds,
   toggleFavorite as toggleFavoriteUtil,
-  initializeFavoritesFromReport,
   clearSessionFavorites,
   type FavoriteProduct
 } from '@/lib/utils/favorites';
+import { reportsApiService } from '@/lib/api/reportsApi';
 
 interface UseFavoritesOptions {
-  /** Initial favorites from the database (loaded with the report) */
-  initialFavorites?: string[];
-  /** Search results to help reconstruct favorite products */
-  searchResults?: ProductIndex[];
   /** Whether to auto-clear favorites when component unmounts */
   autoClear?: boolean;
 }
 
 export function useFavorites(reportId: string, options: UseFavoritesOptions = {}) {
-  const { initialFavorites = [], searchResults = [], autoClear = true } = options;
+  const { autoClear = true } = options;
   
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<FavoriteProduct[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize favorites from database when report loads
+  // Load favorites from API when hook initializes
   useEffect(() => {
-    if (initialFavorites.length > 0 && searchResults.length > 0 && !isInitialized) {
-      initializeFavoritesFromReport(reportId, initialFavorites, searchResults);
-      setIsInitialized(true);
+    const loadFavorites = async () => {
+      if (isInitialized) return;
+      
+      // Check if we already have favorites in session storage to avoid duplicate API calls
+      const existingFavorites = getSessionFavorites(reportId);
+      if (existingFavorites.length > 0) {
+        console.log('[Favorites] Using existing session favorites for report:', reportId);
+        setFavorites(existingFavorites);
+        setFavoriteIds(existingFavorites.map(f => f.id));
+        setIsInitialized(true);
+        return;
+      }
+      
+      try {
+        console.log('[Favorites] Loading favorites for report:', reportId);
+        const response = await reportsApiService.getFavorites(reportId);
+        
+        if (response.status === 200) {
+          // Convert Product[] to FavoriteProduct[] and store in session
+          const favoriteProducts: FavoriteProduct[] = response.body.map(product => ({
+            id: product.id,
+            brand: product.brand || 'Unknown',
+            series: product.series,
+            model: product.model,
+            image: product.images[0]?.url || '',
+            analysis: product.analysis ? {
+              color: {
+                primary: {
+                  vector: [
+                    product.analysis.color.primary.vector[0] || 0,
+                    product.analysis.color.primary.vector[1] || 0
+                  ] as [number, number],
+                  similarity: product.analysis.color.primary.similarity
+                },
+                secondary: {
+                  vector: [
+                    product.analysis.color.secondary.vector[0] || 0,
+                    product.analysis.color.secondary.vector[1] || 0
+                  ] as [number, number],
+                  similarity: product.analysis.color.secondary.similarity
+                }
+              },
+              pattern: {
+                primary: {
+                  vector: [
+                    product.analysis.pattern.primary.vector[0] || 0,
+                    product.analysis.pattern.primary.vector[1] || 0
+                  ] as [number, number],
+                  similarity: product.analysis.pattern.primary.similarity
+                },
+                secondary: {
+                  vector: [
+                    product.analysis.pattern.secondary.vector[0] || 0,
+                    product.analysis.pattern.secondary.vector[1] || 0
+                  ] as [number, number],
+                  similarity: product.analysis.pattern.secondary.similarity
+                }
+              },
+              similarity: product.analysis.similarity
+            } : undefined,
+            favoritedAt: new Date().toISOString()
+          }));
+          
+          // Store in session storage
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`k9.session.favorites.${reportId}`, JSON.stringify(favoriteProducts));
+          }
+          
+          setFavorites(favoriteProducts);
+          setFavoriteIds(favoriteProducts.map(f => f.id));
+          console.log('[Favorites] Loaded', favoriteProducts.length, 'favorites');
+        }
+        
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Failed to load favorites:', error);
+        setIsInitialized(true);
+      }
+    };
+
+    if (reportId && !isInitialized) {
+      loadFavorites();
     }
-  }, [reportId, initialFavorites, searchResults, isInitialized]);
+  }, [reportId, isInitialized]);
 
   // Load session favorites and keep them in sync
   useEffect(() => {
@@ -64,18 +139,30 @@ export function useFavorites(reportId: string, options: UseFavoritesOptions = {}
 
   const toggleFavorite = useCallback(async (product: ProductIndex) => {
     try {
+      const wasInitiallyFavorited = favoriteIds.includes(product.id);
+      
+      // Optimistic update happens inside toggleFavoriteUtil
       const newIsFavorited = await toggleFavoriteUtil(reportId, product);
 
-      // Update state immediately for responsive UI
+      // Update state immediately for responsive UI (this reflects the optimistic update)
       setFavoriteIds(getSessionFavoriteIds(reportId));
       setFavorites(getSessionFavorites(reportId));
 
       return newIsFavorited;
     } catch (error) {
       console.error('Failed to toggle favorite:', error);
+      
+      // Update state to reflect the rollback that happened in toggleFavoriteUtil
+      setFavoriteIds(getSessionFavoriteIds(reportId));
+      setFavorites(getSessionFavorites(reportId));
+      
+      // Show user feedback that the action failed
+      // You could dispatch a toast notification here
+      console.warn('Favorite action failed and was rolled back. Please try again.');
+      
       return false;
     }
-  }, [reportId]);
+  }, [reportId, favoriteIds]);
 
   const isFavorited = useCallback((productId: string) => {
     return favoriteIds.includes(productId);
