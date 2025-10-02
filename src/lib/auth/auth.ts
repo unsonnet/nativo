@@ -30,6 +30,7 @@ export async function login(
         idToken: body.idToken,
         accessToken: body.accessToken,
         refreshToken: body.refreshToken,
+        username: username, // Store username for refresh operations
       };
       tokenService.set(tokens);
       return makeResponse(200, LoginStatus.SUCCESS);
@@ -75,7 +76,7 @@ export async function reset(newPassword: string): Promise<K9Response<boolean>> {
 
 export async function refresh(): Promise<K9Response<boolean>> {
   const refreshToken = tokenService.refreshToken;
-  const username = tokenService.resetUsername; // if needed
+  const username = tokenService.username; // Use stored username from login
   if (!refreshToken || !username) {
     return makeResponse(401, false, "Missing refresh token or username");
   }
@@ -88,10 +89,23 @@ export async function refresh(): Promise<K9Response<boolean>> {
       body: JSON.stringify({ refreshToken, username }),
     });
     const body = (await res.json()) ?? {};
-    if (body.accessToken && body.idToken) {
-      tokenService.set({ idToken: body.idToken, accessToken: body.accessToken, refreshToken });
+    
+    if (res.status === 200 && body.accessToken && body.idToken) {
+      tokenService.set({ 
+        idToken: body.idToken, 
+        accessToken: body.accessToken, 
+        refreshToken: refreshToken, // Your API doesn't return new refresh token
+        username: username // Preserve username
+      });
+      return makeResponse(200, true);
     }
-    return makeResponse(res.status, !!body?.accessToken);
+    
+    // If refresh failed, clear tokens
+    if (res.status === 401 || res.status === 403) {
+      tokenService.clear();
+    }
+    
+    return makeResponse(res.status, false, body?.message || "Token refresh failed");
   } catch (err: unknown) {
     const maybe = err as Record<string, unknown> | undefined;
     const msg = maybe && typeof maybe === "object" && "message" in maybe && typeof maybe.message === "string" ? maybe.message : String(err);
@@ -106,16 +120,42 @@ export async function withAuthHeaders<T>(
 
   if (token && !tokenService.expired) {
     const headers: Partial<Record<string, string>> = { Authorization: `Bearer ${token}` };
-    return fn(headers);
+    const result = await fn(headers);
+    
+    // If we get a 401, the token might be invalid on the server side
+    if (result.status === 401) {
+      // Try to refresh the token
+      const refreshResult = await refresh();
+      if (refreshResult.body) {
+        // Retry with new token
+        const newToken = tokenService.idToken;
+        if (newToken) {
+          const newHeaders: Partial<Record<string, string>> = { Authorization: `Bearer ${newToken}` };
+          return fn(newHeaders);
+        }
+      }
+      // If refresh failed, clear tokens and return the 401
+      tokenService.clear();
+    }
+    
+    return result;
   }
 
-  const r = await refresh();
-  if (!r.body) {
-    // refresh failed
-    return { status: r.status, body: (null as unknown) as T, error: r.error };
+  // Token is expired or missing, try to refresh
+  const refreshResult = await refresh();
+  if (!refreshResult.body) {
+    // Refresh failed, clear tokens and return auth error
+    tokenService.clear();
+    return { 
+      status: refreshResult.status, 
+      body: (null as unknown) as T, 
+      error: refreshResult.error || "Authentication failed" 
+    };
   }
 
-  const refreshed = tokenService.idToken;
-  const headers: Partial<Record<string, string>> = refreshed ? { Authorization: `Bearer ${refreshed}` } : {};
+  // Use refreshed token
+  const refreshedToken = tokenService.idToken;
+  const headers: Partial<Record<string, string>> = refreshedToken ? 
+    { Authorization: `Bearer ${refreshedToken}` } : {};
   return fn(headers);
 }

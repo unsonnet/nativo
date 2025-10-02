@@ -5,6 +5,8 @@
 
 // Authentication hooks
 export { useAuth } from './useAuth';
+export { useSession } from './useSession';
+export type { SessionStatus } from './useSession';
 
 // Favorites management
 export { useFavorites } from './useFavorites';

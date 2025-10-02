@@ -15,6 +15,7 @@ export type AuthTokens = {
   idToken: string;
   accessToken: string;
   refreshToken?: string;
+  username?: string; // Store username for refresh operations
 };
 
 export type K9Response<T> = {

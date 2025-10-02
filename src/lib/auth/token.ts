@@ -63,6 +63,10 @@ export class TokenService {
     return this.all?.refreshToken ?? null;
   }
 
+  get username(): string | null {
+    return this.all?.username ?? null;
+  }
+
   get resetSession(): string | null {
     if (!this.isClient) return null;
     const v = localStorage.getItem(RESET_KEY);

@@ -1,9 +1,11 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { User, AuthState } from "./types";
 import { tokenService, parseJwtPayload } from "./token";
 import { login as authLogin, refresh as authRefresh } from "./auth";
+import { sessionManager } from "./sessionManager";
 
 type AuthContextValue = {
   user: User | null;
@@ -25,11 +27,26 @@ const DUMMY_USER: User = {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ user: null, loading: true });
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     // Mark as hydrated to indicate client-side has taken over
     setIsMounted(true);
   }, []);
+
+  // Session expired handler
+  const handleSessionExpired = () => {
+    console.log('Session expired, redirecting to login');
+    setState({ user: null, loading: false });
+    router.push('/');
+  };
+
+  // Refresh error handler
+  const handleRefreshError = () => {
+    console.log('Token refresh failed, redirecting to login');
+    setState({ user: null, loading: false });
+    router.push('/');
+  };
 
   useEffect(() => {
     let isCancelled = false;
@@ -105,6 +122,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isMounted]);
 
+  // Initialize session manager when user is authenticated
+  useEffect(() => {
+    if (!isMounted) return;
+
+    if (state.user && !state.loading) {
+      // User is logged in, initialize session manager
+      sessionManager.initialize(handleSessionExpired, handleRefreshError);
+    } else {
+      // User is logged out, cleanup session manager
+      sessionManager.cleanup();
+    }
+
+    return () => {
+      sessionManager.cleanup();
+    };
+  }, [state.user, state.loading, isMounted]);
+
   async function signIn(username: string, password: string) {
     const res = await authLogin(username, password);
     if (res.status === 200) {
@@ -136,7 +170,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   function signOut() {
     tokenService.clear();
+    sessionManager.cleanup();
     setState({ user: null, loading: false });
+    router.push('/');
   }
 
   return (

@@ -49,10 +49,22 @@ export class ApiClient {
         }
 
         if (!response.ok) {
+          const errorMessage = (body as { message?: string })?.message || 
+                             `HTTP ${response.status}: ${response.statusText}`;
+          
+          // For authentication errors, provide specific error message
+          if (response.status === 401) {
+            return {
+              status: response.status,
+              body: null as unknown as T,
+              error: 'Authentication required. Please log in again.',
+            };
+          }
+
           return {
             status: response.status,
             body: null as unknown as T,
-            error: (body as { message?: string })?.message || `HTTP ${response.status}: ${response.statusText}`,
+            error: errorMessage,
           };
         }
 

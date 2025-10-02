@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { ConditionalHeader } from "@/components/ConditionalHeader";
 import { AuthGuard } from "@/components/AuthGuard";
+import { SessionWarning } from "@/components/SessionWarning";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
         <AuthProvider>
           <AuthGuard>
             <ConditionalHeader />
+            <SessionWarning />
             {children}
           </AuthGuard>
         </AuthProvider>
