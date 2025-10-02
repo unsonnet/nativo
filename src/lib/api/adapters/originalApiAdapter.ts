@@ -233,14 +233,14 @@ function transformSearchResultToProduct(result: OriginalApiSearchResult): Produc
             result.scores.color.primary || 0,
             result.scores.color.secondary || 0
           ],
-          similarity: result.scores.color.primary || 0
+          similarity: 1 - (result.scores.color.primary || 0) // Convert similarity to distance
         },
         secondary: {
           vector: [
             result.scores.color.secondary || 0,
             result.scores.color.tertiary || 0
           ],
-          similarity: result.scores.color.secondary || 0
+          similarity: 1 - (result.scores.color.secondary || 0) // Convert similarity to distance
         }
       },
       pattern: {
@@ -249,17 +249,26 @@ function transformSearchResultToProduct(result: OriginalApiSearchResult): Produc
             result.scores.pattern.primary || 0,
             result.scores.pattern.secondary || 0
           ],
-          similarity: result.scores.pattern.primary || 0
+          similarity: 1 - (result.scores.pattern.primary || 0) // Convert similarity to distance
         },
         secondary: {
           vector: [
             result.scores.pattern.secondary || 0,
             result.scores.pattern.tertiary || 0
           ],
-          similarity: result.scores.pattern.secondary || 0
+          similarity: 1 - (result.scores.pattern.secondary || 0) // Convert similarity to distance
         }
       },
-      similarity: result.match
+      // Calculate similarity as average of color and pattern primary/secondary scores
+      // Note: API returns similarity scale (1=perfect, 0=imperfect), convert to distance scale (0=perfect, 1=imperfect)
+      similarity: (() => {
+        const colorPrimary = result.scores.color.primary || 0;
+        const colorSecondary = result.scores.color.secondary || 0;
+        const patternPrimary = result.scores.pattern.primary || 0;
+        const patternSecondary = result.scores.pattern.secondary || 0;
+        const avgSimilarity = (colorPrimary + colorSecondary + patternPrimary + patternSecondary) / 4;
+        return 1 - avgSimilarity; // Convert similarity to distance metric
+      })()
     }
   };
 }
@@ -307,14 +316,14 @@ function transformSearchResultToFullProduct(result: OriginalApiSearchResult): Pr
             result.scores.color.primary || 0,
             result.scores.color.secondary || 0
           ],
-          similarity: result.scores.color.primary || 0
+          similarity: 1 - (result.scores.color.primary || 0) // Convert similarity to distance
         },
         secondary: {
           vector: [
             result.scores.color.secondary || 0,
             result.scores.color.tertiary || 0
           ],
-          similarity: result.scores.color.secondary || 0
+          similarity: 1 - (result.scores.color.secondary || 0) // Convert similarity to distance
         }
       },
       pattern: {
@@ -323,17 +332,26 @@ function transformSearchResultToFullProduct(result: OriginalApiSearchResult): Pr
             result.scores.pattern.primary || 0,
             result.scores.pattern.secondary || 0
           ],
-          similarity: result.scores.pattern.primary || 0
+          similarity: 1 - (result.scores.pattern.primary || 0) // Convert similarity to distance
         },
         secondary: {
           vector: [
             result.scores.pattern.secondary || 0,
             result.scores.pattern.tertiary || 0
           ],
-          similarity: result.scores.pattern.secondary || 0
+          similarity: 1 - (result.scores.pattern.secondary || 0) // Convert similarity to distance
         }
       },
-      similarity: result.match
+      // Calculate similarity as average of color and pattern primary/secondary scores
+      // Note: API returns similarity scale (1=perfect, 0=imperfect), convert to distance scale (0=perfect, 1=imperfect)
+      similarity: (() => {
+        const colorPrimary = result.scores.color.primary || 0;
+        const colorSecondary = result.scores.color.secondary || 0;
+        const patternPrimary = result.scores.pattern.primary || 0;
+        const patternSecondary = result.scores.pattern.secondary || 0;
+        const avgSimilarity = (colorPrimary + colorSecondary + patternPrimary + patternSecondary) / 4;
+        return 1 - avgSimilarity; // Convert similarity to distance metric
+      })()
     }
   };
 }

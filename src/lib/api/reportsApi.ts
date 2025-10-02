@@ -203,9 +203,24 @@ export class ReportsApiService {
     );
     
     if (searchResponse.status === 200) {
-      const products = searchResponse.body.map(result => 
+      const allProducts = searchResponse.body.map(result => 
         transformSearchResultToProduct(result)
       );
+      
+      // Deduplicate by ID - keep only the first occurrence of each ID
+      const seenIds = new Set<string>();
+      const products = allProducts.filter(product => {
+        if (seenIds.has(product.id)) {
+          console.log(`[API] Removing duplicate product ID: ${product.id}`);
+          return false;
+        }
+        seenIds.add(product.id);
+        return true;
+      });
+      
+      if (products.length !== allProducts.length) {
+        console.log(`[API] Deduplication: ${allProducts.length} → ${products.length} products (removed ${allProducts.length - products.length} duplicates)`);
+      }
       
       return {
         status: 200,
