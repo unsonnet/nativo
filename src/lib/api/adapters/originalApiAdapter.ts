@@ -71,6 +71,12 @@ interface OriginalApiSearchResult {
 }
 
 // New types for /report endpoints
+interface OriginalApiJobListing {
+  job: string;
+  created: string;
+  reference: string; // Single presigned URL instead of full material data
+}
+
 interface OriginalApiJob {
   job: string;
   created: string;
@@ -174,25 +180,6 @@ function transformSearchResultToProduct(result: OriginalApiSearchResult): Produc
       },
       similarity: result.match
     }
-  };
-}
-
-/**
- * Transform original API job to React app Report format
- */
-function transformJobToReport(job: OriginalApiJob): Report<Product> {
-  const product = createFullProductFromOriginal(job.reference, job.job, job.job);
-  
-  // Convert favorites to just IDs for the report
-  const favoriteIds = job.favorites.map(fav => fav.id);
-  
-  return {
-    id: job.job,
-    title: decodeReportId(job.job),
-    author: 'current-user', // TODO: Get from auth context
-    date: new Date(job.created + 'T00:00:00Z').toISOString(), // Convert YYYY-MM-DD to ISO string
-    reference: product,
-    favorites: favoriteIds
   };
 }
 
@@ -411,8 +398,29 @@ export class OriginalApiAdapter {
    * Get all reports/jobs for the authenticated user
    * This corresponds to GET /report in the original API
    */
-  static async listAllReports(): Promise<K9Response<OriginalApiJob[]>> {
-    return apiClient.get<OriginalApiJob[]>('/report');
+  static async listAllReports(): Promise<K9Response<OriginalApiJobListing[]>> {
+    return apiClient.get<OriginalApiJobListing[]>('/report');
+  }
+
+  /**
+   * Transform an OriginalApiJobListing (from GET /report) to Report<ProductIndex>
+   */
+  static transformJobListingToReport(jobListing: OriginalApiJobListing): Report<ProductIndex> {
+    const referenceMaterial: ProductIndex = {
+      id: `${jobListing.job}-reference`,
+      brand: 'Unknown',
+      model: jobListing.job,
+      image: jobListing.reference
+    };
+
+    return {
+      id: jobListing.job,
+      title: jobListing.job,
+      author: 'current-user', // We don't have author in the listing
+      date: new Date(jobListing.created).toISOString(),
+      reference: referenceMaterial,
+      favorites: [] // No favorites in the listing data
+    };
   }
 
   /**
@@ -448,6 +456,5 @@ export {
   transformProductToOriginalFormat, 
   transformSearchResultToProduct, 
   createFullProductFromOriginal,
-  transformJobToReport,
   transformFavoriteToProduct
 };

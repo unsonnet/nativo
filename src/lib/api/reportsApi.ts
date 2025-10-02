@@ -6,7 +6,7 @@
  */
 
 import { apiClient } from './client';
-import { OriginalApiAdapter, transformSearchResultToProduct, createFullProductFromOriginal, transformJobToReport, transformFavoriteToProduct } from './adapters/originalApiAdapter';
+import { OriginalApiAdapter, transformSearchResultToProduct, createFullProductFromOriginal, transformFavoriteToProduct } from './adapters/originalApiAdapter';
 import { decodeReportId, encodeReportTitle } from '@/lib/utils/jobIdentifiers';
 import type { Report, Product, ProductIndex } from '@/types/report';
 import type { K9Response } from '@/lib/auth/types';
@@ -72,67 +72,19 @@ export class ReportsApiService {
     const response = await OriginalApiAdapter.listAllReports();
     
     if (response.status === 200) {
-      // Transform original API jobs to ProductIndex reports for list view
-      const reports: Report<ProductIndex>[] = response.body.map(job => {
-        const product = createFullProductFromOriginal(job.reference, job.job, job.job);
-        
-        // Convert to ProductIndex for list view
-        const productIndex: ProductIndex = {
-          id: product.id,
-          brand: product.brand || 'Unknown',
-          series: product.series,
-          model: product.model,
-          image: product.images[0]?.url || '',
-          analysis: product.analysis ? {
-            color: {
-              primary: {
-                vector: [product.analysis.color.primary.vector[0] || 0, product.analysis.color.primary.vector[1] || 0],
-                similarity: product.analysis.color.primary.similarity
-              },
-              secondary: {
-                vector: [product.analysis.color.secondary.vector[0] || 0, product.analysis.color.secondary.vector[1] || 0],
-                similarity: product.analysis.color.secondary.similarity
-              }
-            },
-            pattern: {
-              primary: {
-                vector: [product.analysis.pattern.primary.vector[0] || 0, product.analysis.pattern.primary.vector[1] || 0],
-                similarity: product.analysis.pattern.primary.similarity
-              },
-              secondary: {
-                vector: [product.analysis.pattern.secondary.vector[0] || 0, product.analysis.pattern.secondary.vector[1] || 0],
-                similarity: product.analysis.pattern.secondary.similarity
-              }
-            },
-            similarity: product.analysis.similarity
-          } : undefined
-        };
-        
-        return {
-          id: job.job,
-          title: decodeReportId(job.job),
-          author: 'current-user', // TODO: Get from auth context
-          date: new Date(job.created + 'T00:00:00Z').toISOString(),
-          reference: productIndex,
-          favorites: job.favorites.map(fav => fav.id)
-        };
-      });
-      
-      // Apply pagination (since original API returns all results)
-      const startIndex = cursor ? parseInt(cursor) || 0 : 0;
-      const endIndex = startIndex + limit;
-      const paginatedReports = reports.slice(startIndex, endIndex);
-      const hasMore = endIndex < reports.length;
-      const nextCursor = hasMore ? endIndex.toString() : null;
+      // Transform original API job listings to Report<ProductIndex> for list view
+      const reports: Report<ProductIndex>[] = response.body.map(jobListing => 
+        OriginalApiAdapter.transformJobListingToReport(jobListing)
+      );
       
       return {
         status: 200,
         body: {
-          reports: paginatedReports,
+          reports,
           total: reports.length,
           limit,
-          next_cursor: nextCursor,
-          has_more: hasMore
+          next_cursor: null, // No pagination in simplified response
+          has_more: false   // No pagination in simplified response
         },
         error: undefined
       };
@@ -184,67 +136,49 @@ export class ReportsApiService {
   }
 
   /**
-   * 3. Get full report details given report ID
-   * Now uses original API: GET /report (and filters for specific job)
+   * 3. Get a specific report by ID
+   * Now uses original API: GET /fetch/{job} directly
    */
   static async getReport(reportId: string): Promise<K9Response<Report<Product>>> {
-    const response = await OriginalApiAdapter.listAllReports();
+    console.log('[API] ReportsApiService.getReport called for reportId:', reportId);
     
-    if (response.status === 200) {
-      // Debug: log what we're looking for vs what we have
-      console.log('[API] Looking for reportId:', reportId);
-      console.log('[API] Available jobs:', response.body.map(j => j.job));
+    // Directly get the full job data using GET /fetch/{job}
+    const fullJobResponse = await OriginalApiAdapter.getReport(reportId);
+    
+    if (fullJobResponse.status === 200) {
+      // Transform the full material data to a Report<Product>
+      const product = createFullProductFromOriginal(
+        fullJobResponse.body, 
+        reportId, 
+        reportId
+      );
       
-      // Try to find the job with exact match first
-      let job = response.body.find(j => j.job === reportId);
+      // Get creation date - we'll need to call a different endpoint or use current date
+      const currentDate = new Date().toISOString();
       
-      // If not found, try with URL encoding/decoding
-      if (!job) {
-        job = response.body.find(j => j.job === encodeReportTitle(reportId));
-      }
+      const report: Report<Product> = {
+        id: reportId,
+        title: reportId,
+        author: 'current-user',
+        date: currentDate,
+        reference: product,
+        favorites: [] // Will need to get from favorites endpoint if needed
+      };
       
-      // If still not found, try with decoding the reportId
-      if (!job) {
-        try {
-          const decodedReportId = decodeURIComponent(reportId);
-          job = response.body.find(j => j.job === decodedReportId);
-        } catch (e) {
-          // Ignore decode errors
-        }
-      }
-      
-      // If still not found, try partial matching (case-insensitive)
-      if (!job) {
-        job = response.body.find(j => 
-          j.job.toLowerCase() === reportId.toLowerCase() ||
-          j.job.toLowerCase().includes(reportId.toLowerCase()) ||
-          reportId.toLowerCase().includes(j.job.toLowerCase())
-        );
-      }
-      
-      if (job) {
-        console.log('[API] Found job:', job.job);
-        const report = transformJobToReport(job);
-        return {
-          status: 200,
-          body: report,
-          error: undefined
-        };
-      } else {
-        console.error('[API] Job not found for reportId:', reportId);
-        return {
-          status: 404,
-          body: null as any,
-          error: 'Report not found'
-        };
-      }
+      console.log('[API] Successfully retrieved report:', reportId);
+      return {
+        status: 200,
+        body: report,
+        error: undefined
+      };
+    } else {
+      console.error('[API] Failed to fetch report:', reportId, fullJobResponse.error);
+      return {
+        status: fullJobResponse.status,
+        body: null as any,
+        error: fullJobResponse.error || 'Report not found'
+      };
     }
-    
-    return {
-      status: response.status,
-      body: null as any,
-      error: response.error
-    };
   }
 
   /**

@@ -332,49 +332,12 @@ Retrieves all jobs for the authenticated user with their reference data and crea
   {
     "job": "kitchen-tiles-2024",
     "created": "2024-10-01",
-    "reference": {
-      "type": "tile",
-      "material": "ceramic",
-      "length": 24,
-      "width": 12,
-      "thickness": null,
-      "images": [
-        "https://s3-presigned-url-1.com",
-        "https://s3-presigned-url-2.com"
-      ]
-    },
-    "favorites": [
-      {
-        "id": "material-456",
-        "images": [
-          "https://s3-presigned-url-5.com"
-        ],
-        "description": {
-          "store": "TileStore",
-          "name": "Premium Ceramic",
-          "url": "https://store.com/product",
-          "material": "ceramic",
-          "length": 24.5,
-          "width": 12.2,
-          "thickness": 8.0
-        }
-      }
-    ]
+    "reference": "https://s3-presigned-url-1.com"
   },
   {
     "job": "bathroom-renovation",
     "created": "2024-09-28",
-    "reference": {
-      "type": "tile",
-      "material": "porcelain",
-      "length": 12,
-      "width": 12,
-      "thickness": 8,
-      "images": [
-        "https://s3-presigned-url-3.com"
-      ]
-    },
-    "favorites": []
+    "reference": "https://s3-presigned-url-3.com"
   }
 ]
 ```
@@ -384,12 +347,12 @@ Retrieves all jobs for the authenticated user with their reference data and crea
 
 **Features:**
 - Lists all jobs for the authenticated user
-- Returns reference data with presigned image URLs (1 hour expiration)
+- Returns only the first reference image as a presigned URL (1 hour expiration) for optimal data transfer
 - Includes creation date (YYYY-MM-DD format) based on reference.json file modification time
-- Includes favorite products with full details for each job
 - Results sorted by creation date (newest first), then by job name
-- Only includes jobs that have valid reference data
+- Only includes jobs that have valid reference data with images
 - Scoped to authenticated user's jobs only
+- Lightweight response optimized for dashboard listing
 
 ---
 
@@ -600,29 +563,7 @@ Toggles a single product ID in the favorites list (adds if not present, removes 
 {
   "job": "string",          // Job identifier/name
   "created": "string",      // Creation date in YYYY-MM-DD format
-  "reference": {            // Reference material data (same as Reference Material Schema)
-    "type": "string",
-    "material": "string",
-    "length": "number",
-    "width": "number",
-    "thickness": "number|null",
-    "images": ["string"]    // Array of presigned image URLs
-  },
-  "favorites": [            // Array of favorite products with full details
-    {
-      "id": "string",       // Product identifier
-      "images": ["string"], // Array of presigned image URLs
-      "description": {
-        "store": "string",
-        "name": "string",
-        "url": "string",
-        "material": "string",
-        "length": "number|null",
-        "width": "number|null",
-        "thickness": "number|null"
-      }
-    }
-  ]
+  "reference": "string"     // Presigned URL of first reference image
 }
 ```
 

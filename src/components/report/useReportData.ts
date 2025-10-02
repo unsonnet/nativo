@@ -95,7 +95,7 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
         setError(null);
         
         // Use the new getFullReport function
-        const foundReport = await reportsApi.getFullReport(reportId);
+        const foundReport = await reportsApi.getFullReport(reportId, 'useReportData');
         
         if (!foundReport) {
           setError("Report not found");

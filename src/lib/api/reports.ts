@@ -114,9 +114,10 @@ export async function getReport<T extends Product | ProductIndex = Product | Pro
 }
 
 // Helper function to transform ProductIndex to full Product for detail view
-export async function getFullReport(id: string): Promise<Report<Product> | undefined> {
+export async function getFullReport(id: string, caller?: string): Promise<Report<Product> | undefined> {
   if (USE_REAL_API) {
     try {
+      console.log(`[API] getFullReport called by: ${caller || 'unknown'} for id: ${id}`);
       const response = await reportsApiService.getReport(id);
       if (response.status === 200) {
         return response.body;

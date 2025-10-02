@@ -658,7 +658,7 @@ export function ProductComparisonContainer({ reportId, productId }: ProductCompa
         const { reportsApi } = await import('@/lib/api/reports');
         
         // Load the reference report first to get the reference product
-        const referenceReport = await reportsApi.getFullReport(reportId);
+        const referenceReport = await reportsApi.getFullReport(reportId, 'ProductComparisonContainer');
         if (!referenceReport) {
           throw new Error(`Report ${reportId} not found`);
         }

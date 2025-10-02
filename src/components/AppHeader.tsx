@@ -49,7 +49,7 @@ export function AppHeader() {
           const reportId = reportParam || idParam;
           
           if (reportId) {
-            const report = await reportsApi.getFullReport(reportId);
+            const report = await reportsApi.getFullReport(reportId, 'AppHeader');
             setReportTitle(report?.title || null);
           }
         } catch (error) {
