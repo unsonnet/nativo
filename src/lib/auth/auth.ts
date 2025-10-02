@@ -2,8 +2,10 @@ import { tokenService } from "./token";
 import type { AuthTokens, K9Response } from "./types";
 import { LoginStatus } from "./types";
 
-const BASE =
-  "https://824xuvy567.execute-api.us-east-2.amazonaws.com/securek9/auth";
+// Use the original API base URL for authentication
+const BASE = process.env.NEXT_PUBLIC_API_BASE_URL 
+  ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth`
+  : "https://824xuvy567.execute-api.us-east-2.amazonaws.com/securek9/auth";
 
 function makeResponse<T>(status: number, body: T, error?: string): K9Response<T> {
   return { status, body, error };

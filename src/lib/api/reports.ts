@@ -1,42 +1,42 @@
 /**
- * Reports API Service - Updated to use REST API infrastructure
- * This file bridges between the existing mock system and the new REST API
- * 
- * TODO: Replace mock implementations with actual API calls using reportsApiService
+ * Reports API Service - Updated to use Original API Adapter
+ * This file now bridges between the existing React app interface and the original API
  */
 
 import type { Report, Product, ProductIndex } from '@/types/report';
 import { reports as mockReports } from '@/data/reports';
 import { getProductWithAnalysis } from '@/data/mockDatabase';
+import { reportsApiService } from './reportsApi';
 
-// Simple in-memory store for development. Replace with real REST API calls later.
+// Simple in-memory store for development. Will be replaced by real API calls.
 const store: Report<Product | ProductIndex>[] = [...mockReports];
 
-// Flag to switch between mock and real API
-const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API === 'true';
+// Enable real API by default now that adapters are in place
+const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API !== 'false';
 
 export async function createReport<T extends Product | ProductIndex = Product | ProductIndex>(
   reportPartial: Omit<Report<T>, 'id' | 'date'>
 ): Promise<Report<T>> {
   if (USE_REAL_API) {
-    // TODO: Use real API
-    // const response = await reportsApiService.createReport({
-    //   title: reportPartial.title,
-    //   reference: reportPartial.reference as Product,
-    // });
-    // 
-    // if (response.status === 201) {
-    //   // Get the full report details
-    //   const fullReportResponse = await reportsApiService.getReport(response.body.id);
-    //   if (fullReportResponse.status === 200) {
-    //     return fullReportResponse.body as Report<T>;
-    //   }
-    // }
-    // 
-    // throw new Error(response.error || 'Failed to create report');
-    
-    // For now, fall back to mock
-    console.log('[API] Real API enabled but not implemented yet, using mock');
+    try {
+      const response = await reportsApiService.createReport({
+        title: reportPartial.title,
+        reference: reportPartial.reference as Product,
+      });
+      
+      if (response.status === 201) {
+        // Get the full report details
+        const fullReportResponse = await reportsApiService.getReport(response.body.id);
+        if (fullReportResponse.status === 200) {
+          return fullReportResponse.body as Report<T>;
+        }
+      }
+      
+      throw new Error(response.error || 'Failed to create report');
+    } catch (error) {
+      console.error('[API] Error creating report:', error);
+      console.log('[API] Falling back to mock implementation');
+    }
   }
 
   // Mock implementation
@@ -59,18 +59,20 @@ export async function listReports<T extends Product | ProductIndex = Product | P
   cursor?: string
 ): Promise<{ reports: Report<T>[]; nextCursor?: string; hasMore: boolean }> {
   if (USE_REAL_API) {
-    // TODO: Use real API with cursor pagination
-    // const response = await reportsApiService.listReports(limit, cursor);
-    // if (response.status === 200) {
-    //   return {
-    //     reports: response.body.reports as Report<T>[],
-    //     nextCursor: response.body.next_cursor || undefined,
-    //     hasMore: response.body.has_more
-    //   };
-    // }
-    // throw new Error(response.error || 'Failed to list reports');
-    
-    console.log('[API] Real API enabled but not implemented yet, using mock');
+    try {
+      const response = await reportsApiService.listReports(limit, cursor);
+      if (response.status === 200) {
+        return {
+          reports: response.body.reports as Report<T>[],
+          nextCursor: response.body.next_cursor || undefined,
+          hasMore: response.body.has_more
+        };
+      }
+      throw new Error(response.error || 'Failed to list reports');
+    } catch (error) {
+      console.error('[API] Error listing reports:', error);
+      console.log('[API] Falling back to mock implementation');
+    }
   }
 
   // Mock implementation - simulate cursor pagination
@@ -91,17 +93,19 @@ export async function getReport<T extends Product | ProductIndex = Product | Pro
   id: string
 ): Promise<Report<T> | undefined> {
   if (USE_REAL_API) {
-    // TODO: Use real API
-    // const response = await reportsApiService.getReport(id);
-    // if (response.status === 200) {
-    //   return response.body as Report<T>;
-    // }
-    // if (response.status === 404) {
-    //   return undefined;
-    // }
-    // throw new Error(response.error || 'Failed to get report');
-    
-    console.log('[API] Real API enabled but not implemented yet, using mock');
+    try {
+      const response = await reportsApiService.getReport(id);
+      if (response.status === 200) {
+        return response.body as Report<T>;
+      }
+      if (response.status === 404) {
+        return undefined;
+      }
+      throw new Error(response.error || 'Failed to get report');
+    } catch (error) {
+      console.error('[API] Error getting report:', error);
+      console.log('[API] Falling back to mock implementation');
+    }
   }
 
   // Mock implementation

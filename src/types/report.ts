@@ -25,7 +25,7 @@ export type ProductImage = {
 
 export type Product = {
   id: string;
-  brand: string;
+  brand?: string;
   series?: string;
   model: string;
   images: ProductImage[];

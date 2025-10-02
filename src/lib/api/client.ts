@@ -6,8 +6,8 @@
 import { withAuthHeaders } from '@/lib/auth/auth';
 import type { K9Response } from '@/lib/auth/types';
 
-// Base API URL - Update this to match your actual API endpoint
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.yourapp.com/v1';
+// Base API URL - Updated to use original API endpoints
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://your-original-api-gateway-url.com';
 
 export interface ApiError {
   status: number;
