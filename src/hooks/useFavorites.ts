@@ -139,8 +139,6 @@ export function useFavorites(reportId: string, options: UseFavoritesOptions = {}
 
   const toggleFavorite = useCallback(async (product: ProductIndex) => {
     try {
-      const wasInitiallyFavorited = favoriteIds.includes(product.id);
-      
       // Optimistic update happens inside toggleFavoriteUtil
       const newIsFavorited = await toggleFavoriteUtil(reportId, product);
 
@@ -162,7 +160,7 @@ export function useFavorites(reportId: string, options: UseFavoritesOptions = {}
       
       return false;
     }
-  }, [reportId, favoriteIds]);
+  }, [reportId]);
 
   const isFavorited = useCallback((productId: string) => {
     return favoriteIds.includes(productId);

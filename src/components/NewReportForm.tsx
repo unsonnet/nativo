@@ -565,7 +565,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
               </div>
               <h3 className="report-creation-title">Creating Your Report</h3>
               <p className="report-creation-message">
-                We're analyzing your images and preparing your material matches. This may take up to 30 seconds.
+                We&apos;re analyzing your images and preparing your material matches. This may take up to 30 seconds.
               </p>
               
               {/* Progress Bar */}
@@ -582,7 +582,7 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
               </div>
               
               <p className="report-creation-subtitle">
-                Please don't close this window or navigate away.
+                Please don&apos;t close this window or navigate away.
               </p>
             </div>
           </div>

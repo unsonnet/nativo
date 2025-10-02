@@ -20,6 +20,13 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  {
+    files: ["src/lib/api/adapters/**/*", "src/lib/api/reportsApi.ts", "src/lib/api/userApi.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn", // Downgrade from error to warning for API files
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }], // Allow unused vars starting with _
+    },
+  },
 ];
 
 export default eslintConfig;

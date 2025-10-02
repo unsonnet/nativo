@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { User, AuthState } from "./types";
 import { tokenService, parseJwtPayload } from "./token";
@@ -35,18 +35,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Session expired handler
-  const handleSessionExpired = () => {
+  const handleSessionExpired = useCallback(() => {
     console.log('Session expired, redirecting to login');
     setState({ user: null, loading: false });
     router.push('/');
-  };
+  }, [router]);
 
   // Refresh error handler
-  const handleRefreshError = () => {
+  const handleRefreshError = useCallback(() => {
     console.log('Token refresh failed, redirecting to login');
     setState({ user: null, loading: false });
     router.push('/');
-  };
+  }, [router]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       sessionManager.cleanup();
     };
-  }, [state.user, state.loading, isMounted]);
+  }, [state.user, state.loading, isMounted, handleSessionExpired, handleRefreshError]);
 
   async function signIn(username: string, password: string) {
     const res = await authLogin(username, password);

@@ -5,9 +5,8 @@
  * that translate between the React app's expected interface and the original API format.
  */
 
-import { apiClient } from './client';
-import { OriginalApiAdapter, transformSearchResultToProduct, transformSearchResultToFullProduct, createFullProductFromOriginal, transformFavoriteToProduct } from './adapters/originalApiAdapter';
-import { decodeReportId, encodeReportTitle } from '@/lib/utils/jobIdentifiers';
+import { OriginalApiAdapter, transformSearchResultToProduct, createFullProductFromOriginal, transformFavoriteToProduct } from './adapters/originalApiAdapter';
+import { decodeReportId } from '@/lib/utils/jobIdentifiers';
 import type { Report, Product, ProductIndex } from '@/types/report';
 import type { K9Response } from '@/lib/auth/types';
 
@@ -76,7 +75,7 @@ export class ReportsApiService {
    * 1. Get list of reports associated with the current user
    * Now uses original API: GET /report
    */
-  static async listReports(limit: number = 20, cursor?: string): Promise<K9Response<ListReportsResponse>> {
+  static async listReports(limit: number = 20, _cursor?: string): Promise<K9Response<ListReportsResponse>> {
     const response = await OriginalApiAdapter.listAllReports();
     
     if (response.status === 200) {
@@ -302,7 +301,7 @@ export class ReportsApiService {
    * 6. Update favorite status of a product in a report
    * Now uses original API: POST /report/{job}/favorites
    */
-  static async updateFavoriteStatus(reportId: string, productId: string, isFavorite: boolean): Promise<K9Response<{ success: boolean }>> {
+  static async updateFavoriteStatus(reportId: string, productId: string, _isFavorite: boolean): Promise<K9Response<{ success: boolean }>> {
     const response = await OriginalApiAdapter.toggleFavorite(reportId, productId);
     
     if (response.status === 200) {
@@ -424,7 +423,7 @@ export class ReportsApiService {
    * NOTE: Original API still doesn't have delete functionality
    * TODO: Implement report deletion in backend (DELETE /report/{job})
    */
-  static async deleteReport(reportId: string): Promise<K9Response<{ success: boolean }>> {
+  static async deleteReport(_reportId: string): Promise<K9Response<{ success: boolean }>> {
     // TODO: Implement report deletion in backend
     console.warn('[API] deleteReport not implemented - need backend delete functionality');
     
@@ -440,7 +439,7 @@ export class ReportsApiService {
    * NOTE: Original API still doesn't have update functionality
    * TODO: Implement report metadata updates in backend (PATCH /report/{job})
    */
-  static async updateReport(reportId: string, updates: Partial<Pick<Report<Product>, 'title'>>): Promise<K9Response<Report<Product>>> {
+  static async updateReport(_reportId: string, _updates: Partial<Pick<Report<Product>, 'title'>>): Promise<K9Response<Report<Product>>> {
     // TODO: Implement report metadata updates in backend
     console.warn('[API] updateReport not implemented - need backend update functionality');
     

@@ -87,13 +87,6 @@ interface OriginalApiJobListing {
   reference: string; // Single presigned URL instead of full material data
 }
 
-interface OriginalApiJob {
-  job: string;
-  created: string;
-  reference: OriginalApiMaterial;
-  favorites: OriginalApiFavoriteProduct[];
-}
-
 interface OriginalApiFavoriteProduct {
   id: string;
   match: number;
@@ -139,13 +132,6 @@ function capitalize(str: string): string {
  */
 function cmToInches(cm: number): number {
   return Math.round((cm / 2.54) * 10) / 10;
-}
-
-/**
- * Convert inches to centimeters
- */
-function inchesToCm(inches: number): number {
-  return Math.round((inches * 2.54) * 10) / 10;
 }
 
 /**
@@ -722,7 +708,7 @@ export class OriginalApiAdapter {
           if (responseText) {
             errorMessage += ` - ${responseText}`;
           }
-        } catch (e) {
+        } catch {
           // Ignore errors reading response body
         }
 

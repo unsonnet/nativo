@@ -5,7 +5,6 @@
  * functionality needs to be implemented in the backend.
  */
 
-import { apiClient } from './client';
 import type { User, K9Response } from '@/lib/auth/types';
 
 export interface UserProfile extends User {
@@ -88,7 +87,7 @@ export class UserApiService {
    * NOTE: Original API doesn't have user profile endpoints
    * TODO: Implement backend user avatar storage
    */
-  static async uploadAvatar(file: File): Promise<K9Response<{ avatarUrl: string }>> {
+  static async uploadAvatar(_file: File): Promise<K9Response<{ avatarUrl: string }>> {
     // TODO: Implement backend avatar upload (could use S3 like the album images)
     console.warn('[API] uploadAvatar not implemented - need backend avatar storage');
     

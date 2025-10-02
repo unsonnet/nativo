@@ -391,8 +391,8 @@ export function getProductIndexWithAnalysis(productId: string, reportId: string)
   
   return {
     id: baseProduct.id,
-    brand: baseProduct.brand,
-    series: baseProduct.series,
+    brand: baseProduct.brand || '',
+    series: baseProduct.series || '',
     model: baseProduct.model,
     image: baseProduct.images[0].url, // Use first image
     analysis: generateMiniAnalysisForProduct(productId, reportId)
@@ -411,8 +411,8 @@ export function generateSearchResultsForReport(reportId: string, referenceProduc
     const analysis = generateMiniAnalysisForProduct(product.id, reportId);
     return {
       id: product.id,
-      brand: product.brand,
-      series: product.series,
+      brand: product.brand || '',
+      series: product.series || '',
       model: product.model,
       image: product.images[0].url,
       analysis

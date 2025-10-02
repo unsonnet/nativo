@@ -20,7 +20,7 @@ interface ViewMode {
   type: "grid" | "favorites";
 }
 
-export function SearchResults({ results, isLoading, hasSearched, reportId, initialFavorites = [] }: SearchResultsProps) {
+export function SearchResults({ results, isLoading, hasSearched, reportId }: SearchResultsProps) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode["type"]>("grid");
   const [isExporting, setIsExporting] = useState(false);

@@ -250,6 +250,6 @@ export async function testExport() {
 
 // Make test function available globally for easy testing
 if (typeof window !== 'undefined') {
-  (window as any).testExport = testExport;
+  (window as unknown as { testExport: typeof testExport }).testExport = testExport;
   console.log('Export test function available as window.testExport()');
 }

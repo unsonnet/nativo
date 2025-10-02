@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  const { user, loading, signInWithDummy, signIn } = useAuth();
+  const { user, signInWithDummy, signIn } = useAuth();
   const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
   const [credentials, setCredentials] = useState({ username: "", password: "" });

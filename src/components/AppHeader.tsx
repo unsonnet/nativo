@@ -3,7 +3,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { reportsApi } from "@/lib/api/reports";
 
 export function AppHeader() {
   const { user, loading, signOut } = useAuth();

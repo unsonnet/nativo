@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileText, Plus } from "lucide-react";
 import { ReportCard } from "./ReportCard";
 import { listReports } from "@/lib/api/reports";
-import type { ProductImage, ProductIndex, Product, ReportPreview, Report } from '@/types/report';
+import type { ProductImage, ProductIndex, ReportPreview, Report } from '@/types/report';
 
 export function ReportsGrid() {
   const [reports, setReports] = useState<Report<ProductIndex>[]>([]);
@@ -101,7 +101,7 @@ export function ReportsGrid() {
           <FileText className="w-12 h-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No reports yet</h3>
           <p className="text-gray-600 mb-6 text-center max-w-md">
-            Get started by creating your first report. Upload an image and we'll help you find similar products.
+            Get started by creating your first report. Upload an image and we&apos;ll help you find similar products.
           </p>
           <button 
             onClick={handleCreateReport}

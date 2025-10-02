@@ -177,7 +177,6 @@ export async function removeFromFavorites(reportId: string, productId: string): 
     if (typeof window === 'undefined') return;
     
     const favorites = getSessionFavorites(reportId);
-    const originalProduct = favorites.find(f => f.id === productId);
     const updatedFavorites = favorites.filter(f => f.id !== productId);
     const favoriteIds = updatedFavorites.map(f => f.id);
     

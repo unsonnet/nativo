@@ -3,7 +3,7 @@
  */
 
 import JSZip from 'jszip';
-import type { Product, ProductImage } from '@/types/report';
+import type { Product } from '@/types/report';
 
 /**
  * Download an image from a URL and return as Blob
@@ -23,7 +23,7 @@ async function downloadImage(url: string): Promise<Blob> {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
     return await response.blob();
-  } catch (corsError) {
+  } catch (_error) {
     // If CORS fails, try no-cors mode (this will work but gives an opaque response)
     try {
       console.warn('CORS failed, trying no-cors mode for image:', url);
@@ -105,7 +105,7 @@ async function resizeImage(imageBlob: Blob, maxWidth: number = 800, maxHeight: n
  * Generate CSV rows for a product - one row per format/vendor combination
  * Each row contains the full product info plus one specific format/vendor pair
  */
-export function generateProductCSVRows(product: Product, rowIndex: number, type: 'REFERENCE' | 'FAVORITE'): Record<string, any>[] {
+export function generateProductCSVRows(product: Product, rowIndex: number, type: 'REFERENCE' | 'FAVORITE'): Record<string, string | number | boolean>[] {
   const baseProductInfo = {
     row_index: rowIndex,
     type: type,
@@ -120,7 +120,7 @@ export function generateProductCSVRows(product: Product, rowIndex: number, type:
     category_edge: product.category.edge || '',
   };
 
-  const rows: Record<string, any>[] = [];
+  const rows: Record<string, string | number | boolean>[] = [];
 
   // If no formats, create one row with just product info
   if (product.formats.length === 0) {
@@ -191,7 +191,7 @@ export function generateProductCSVRows(product: Product, rowIndex: number, type:
 /**
  * Convert an array of objects to CSV string with row_index as first column
  */
-function objectArrayToCSV(data: Record<string, any>[]): string {
+function objectArrayToCSV(data: Record<string, string | number | boolean>[]): string {
   if (data.length === 0) return '';
 
   // Get all unique keys from all objects
@@ -272,7 +272,7 @@ export async function exportFavoritesAsZip(
   }
 
   const zip = new JSZip();
-  const csvData: Record<string, any>[] = [];
+  const csvData: Record<string, string | number | boolean>[] = [];
   
   // Calculate total steps for progress reporting
   const totalProducts = favoriteProducts.length + (includeReference ? 1 : 0);
