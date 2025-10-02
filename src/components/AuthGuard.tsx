@@ -35,10 +35,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
+        width: '100vw',
+        position: 'fixed',
+        top: 0,
+        left: 0,
         fontSize: '1.1rem',
-        color: 'var(--text-muted)'
+        color: 'var(--text-muted)',
+        overflow: 'hidden'
       }}>
-        Loading... or something
+        Authenticating...
       </div>
     );
   }
@@ -51,8 +56,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
+        width: '100vw',
+        position: 'fixed',
+        top: 0,
+        left: 0,
         fontSize: '1.1rem',
-        color: 'var(--text-muted)'
+        color: 'var(--text-muted)',
+        overflow: 'hidden'
       }}>
         Redirecting...
       </div>

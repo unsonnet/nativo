@@ -59,7 +59,8 @@ export function ReportsGrid() {
   if (isLoading) {
     return (
       <section className="reports-grid">
-        <div className="reports-grid__loading">
+        <div className="report-page__loading">
+          <div className="loading-spinner"></div>
           <p>Loading reports...</p>
         </div>
       </section>
