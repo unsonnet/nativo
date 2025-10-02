@@ -116,17 +116,87 @@ function capitalize(str: string): string {
 }
 
 /**
+ * Convert centimeters to inches and round to 1 decimal place
+ */
+function cmToInches(cm: number): number {
+  return Math.round((cm / 2.54) * 10) / 10;
+}
+
+/**
+ * Convert inches to centimeters
+ */
+function inchesToCm(inches: number): number {
+  return Math.round((inches * 2.54) * 10) / 10;
+}
+
+/**
+ * Convert dimensions from React app units (inches for length/width, mm for thickness)
+ * to original API expected units (cm for length/width, mm for thickness)
+ */
+function convertDimensionsToOriginalApi(reactDimensions: {
+  length?: { val: number; unit: string } | undefined;
+  width?: { val: number; unit: string } | undefined;
+  thickness?: { val: number; unit: string } | undefined;
+}) {
+  return {
+    length: reactDimensions.length?.val ? inchesToCm(reactDimensions.length.val) : undefined,
+    width: reactDimensions.width?.val ? inchesToCm(reactDimensions.width.val) : undefined,
+    thickness: reactDimensions.thickness?.val || undefined, // mm stays as mm
+  };
+}
+
+/**
+ * Convert dimensions from reference material (inches for length/width, mm for thickness)
+ * to React app expected units (inches for length/width, mm for thickness)
+ * Reference materials are already in the correct units!
+ */
+function convertReferenceDimensions(referenceDimensions: {
+  length?: number | null;
+  width?: number | null;
+  thickness?: number | null;
+}) {
+  return {
+    length: referenceDimensions.length ? { val: referenceDimensions.length, unit: 'in' as const } : undefined,
+    width: referenceDimensions.width ? { val: referenceDimensions.width, unit: 'in' as const } : undefined,
+    thickness: referenceDimensions.thickness ? { val: referenceDimensions.thickness, unit: 'mm' as const } : undefined,
+  };
+}
+
+/**
+ * Convert dimensions from original API units (cm for length/width, mm for thickness)
+ * to React app expected units (inches for length/width, mm for thickness)
+ */
+function convertDimensions(originalDimensions: {
+  length?: number | null;
+  width?: number | null;
+  thickness?: number | null;
+}) {
+  return {
+    length: originalDimensions.length ? { val: cmToInches(originalDimensions.length), unit: 'in' as const } : undefined,
+    width: originalDimensions.width ? { val: cmToInches(originalDimensions.width), unit: 'in' as const } : undefined,
+    thickness: originalDimensions.thickness ? { val: originalDimensions.thickness, unit: 'mm' as const } : undefined,
+  };
+}
+
+/**
  * Transform Product reference from React app format to original API format
  */
 function transformProductToOriginalFormat(product: Product): OriginalApiMaterial {
   const primaryFormat = product.formats[0];
   
+  // Convert dimensions from React app units to original API units
+  const convertedDimensions = convertDimensionsToOriginalApi({
+    length: primaryFormat?.length,
+    width: primaryFormat?.width,
+    thickness: primaryFormat?.thickness
+  });
+  
   return {
     type: product.category.type || 'tile',
     material: product.category.material || 'ceramic',
-    length: primaryFormat?.length?.val || 24,
-    width: primaryFormat?.width?.val || 12,
-    thickness: primaryFormat?.thickness?.val || null,
+    length: convertedDimensions.length || 24, // fallback to 24cm if not provided
+    width: convertedDimensions.width || 12,   // fallback to 12cm if not provided
+    thickness: convertedDimensions.thickness || null,
     images: product.images.map(img => {
       // Extract filename from URL for original API
       if (img.url.startsWith('data:') || img.url.startsWith('blob:')) {
@@ -201,6 +271,12 @@ function transformSearchResultToFullProduct(result: OriginalApiSearchResult): Pr
     url: imageUrl
   }));
 
+  const dimensions = convertDimensions({
+    length: result.description?.length,
+    width: result.description?.width,
+    thickness: result.description?.thickness
+  });
+
   return {
     id: result.id,
     brand: result.description?.store || 'Unknown',
@@ -211,9 +287,9 @@ function transformSearchResultToFullProduct(result: OriginalApiSearchResult): Pr
       material: capitalize(result.description?.material || 'ceramic'),
     },
     formats: [{
-      length: result.description?.length ? { val: result.description.length, unit: 'in' as const } : undefined,
-      width: result.description?.width ? { val: result.description.width, unit: 'in' as const } : undefined,
-      thickness: result.description?.thickness ? { val: result.description.thickness, unit: 'mm' as const } : undefined,
+      length: dimensions.length,
+      width: dimensions.width,
+      thickness: dimensions.thickness,
       vendors: [{
         sku: `${result.id}-001`,
         store: result.description?.store || 'Unknown',
@@ -269,6 +345,12 @@ function transformFavoriteToProduct(favorite: OriginalApiFavoriteProduct): Produ
     url: imageUrl
   }));
 
+  const dimensions = convertDimensions({
+    length: favorite.description.length,
+    width: favorite.description.width,
+    thickness: favorite.description.thickness
+  });
+
   return {
     id: favorite.id,
     brand: favorite.description.store || 'Unknown',
@@ -279,9 +361,9 @@ function transformFavoriteToProduct(favorite: OriginalApiFavoriteProduct): Produ
       material: capitalize(favorite.description.material),
     },
     formats: [{
-      length: favorite.description.length ? { val: favorite.description.length, unit: 'in' as const } : undefined,
-      width: favorite.description.width ? { val: favorite.description.width, unit: 'in' as const } : undefined,
-      thickness: favorite.description.thickness ? { val: favorite.description.thickness, unit: 'mm' as const } : undefined,
+      length: dimensions.length,
+      width: dimensions.width,
+      thickness: dimensions.thickness,
       vendors: [{
         sku: `${favorite.id}-001`,
         store: favorite.description.store,
@@ -302,6 +384,13 @@ function createFullProductFromOriginal(
     url: imageUrl
   }));
 
+  // Reference materials have length/width in inches already, thickness in mm
+  const dimensions = convertReferenceDimensions({
+    length: material.length,
+    width: material.width,
+    thickness: material.thickness
+  });
+
   return {
     id: materialId,
     brand: 'Unknown', // Original API doesn't provide brand
@@ -312,9 +401,9 @@ function createFullProductFromOriginal(
       material: capitalize(material.material),
     },
     formats: [{
-      length: material.length ? { val: material.length, unit: 'in' as const } : undefined,
-      width: material.width ? { val: material.width, unit: 'in' as const } : undefined,
-      thickness: material.thickness ? { val: material.thickness, unit: 'mm' as const } : undefined,
+      length: dimensions.length,
+      width: dimensions.width,
+      thickness: dimensions.thickness,
       vendors: [{
         sku: `${materialId}-001`,
         store: 'Material Database',

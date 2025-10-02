@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Home, ExternalLink, Info, Images } from 'lucide-react';
+import { Home, ExternalLink, Info, Images, Copy } from 'lucide-react';
 import { Product, Report, ProductImage } from '@/types/report';
 import { ReportInfoHeader } from '@/components/report';
 
@@ -17,6 +17,7 @@ interface ProductInfoPanelProps {
 function ProductInfoPanel({ product }: ProductInfoPanelProps) {
   const [activeTab, setActiveTab] = useState<'specs' | 'buy' | 'analysis'>('specs');
   const [expandedFormats, setExpandedFormats] = useState<{ [key: number]: boolean }>({});
+  const [copiedSku, setCopiedSku] = useState<string | null>(null);
 
   const toggleFormat = (formatIndex: number) => {
     setExpandedFormats(prev => {
@@ -35,6 +36,23 @@ function ProductInfoPanel({ product }: ProductInfoPanelProps) {
     setActiveTab(newTab);
   };
 
+  const copyToClipboard = async (sku: string, event: React.MouseEvent) => {
+    event.preventDefault(); // Prevent link navigation
+    event.stopPropagation();
+    
+    try {
+      await navigator.clipboard.writeText(sku);
+      setCopiedSku(sku);
+      setTimeout(() => setCopiedSku(null), 2000); // Clear after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy SKU:', err);
+    }
+  };
+
+  const truncateSku = (sku: string, maxLength: number = 20) => {
+    return sku.length > maxLength ? `${sku.substring(0, maxLength)}...` : sku;
+  };
+
   return (
     <div className="search-filters">
       <div className="search-filters__header search-filters__header--strip-top">
@@ -47,7 +65,7 @@ function ProductInfoPanel({ product }: ProductInfoPanelProps) {
       <div className="search-filters__header">
         <div className="product-info__header">
           <h3 className="product-info__brand-series">
-            {product.brand} • {product.series}
+            {[product.brand, product.series].filter(Boolean).join(' • ')}
           </h3>
           <h2 className="product-info__model">
             {product.model}
@@ -137,51 +155,66 @@ function ProductInfoPanel({ product }: ProductInfoPanelProps) {
                     <div className="product-info__size-details">
                       <div className="product-info__vendor-list">
                         {format.vendors.map((vendor, vendorIndex) => (
-                          <a 
-                            key={vendorIndex} 
-                            href={vendor.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="product-info__vendor product-info__vendor--link"
-                          >
-                            <ExternalLink className="product-info__vendor-icon" />
-                            <div className="product-info__vendor-content">
-                              <div className="product-info__vendor-main-row">
-                                <div className="product-info__vendor-left-info">
-                                  <div className="product-info__vendor-name">{vendor.store}</div>
-                                  <div className="product-info__vendor-sku">SKU: {vendor.sku}</div>
-                                </div>
-                                <div className="product-info__vendor-right-info">
-                                  <div className="product-info__vendor-pricing">
-                                    {vendor.price ? (
-                                      <>
-                                        <span className="product-info__price">${vendor.price.val.toFixed(2)}</span>
-                                        <span className="product-info__price-unit">/sqft</span>
-                                      </>
-                                    ) : (
-                                      <span className="product-info__price">Contact Store</span>
-                                    )}
+                          <div key={vendorIndex} className="product-info__vendor-wrapper">
+                            <a 
+                              href={vendor.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="product-info__vendor product-info__vendor--link"
+                            >
+                              <ExternalLink className="product-info__vendor-icon" />
+                              <div className="product-info__vendor-content">
+                                <div className="product-info__vendor-main-row">
+                                  <div className="product-info__vendor-left-info">
+                                    <div className="product-info__vendor-name">{vendor.store}</div>
                                   </div>
-                                  <div className="product-info__vendor-status-row">
-                                    <span className={`product-info__vendor-status ${
-                                      vendor.discontinued === true 
-                                        ? 'product-info__vendor-status--out' 
-                                        : vendor.discontinued === false 
-                                        ? 'product-info__vendor-status--in-stock'
-                                        : 'product-info__vendor-status--unknown'
-                                    }`}>
-                                      {vendor.discontinued === true 
-                                        ? 'Discontinued' 
-                                        : vendor.discontinued === false 
-                                        ? 'Available'
-                                        : 'Contact Store'
-                                      }
-                                    </span>
+                                  <div className="product-info__vendor-right-info">
+                                    <div className="product-info__vendor-pricing">
+                                      {vendor.price ? (
+                                        <>
+                                          <span className="product-info__price">${vendor.price.val.toFixed(2)}</span>
+                                          <span className="product-info__price-unit">/sqft</span>
+                                        </>
+                                      ) : (
+                                        <span className="product-info__price">Contact Store</span>
+                                      )}
+                                    </div>
+                                    <div className="product-info__vendor-status-row">
+                                      <span className={`product-info__vendor-status ${
+                                        vendor.discontinued === true 
+                                          ? 'product-info__vendor-status--out' 
+                                          : vendor.discontinued === false 
+                                          ? 'product-info__vendor-status--in-stock'
+                                          : 'product-info__vendor-status--unknown'
+                                      }`}>
+                                        {vendor.discontinued === true 
+                                          ? 'Discontinued' 
+                                          : vendor.discontinued === false 
+                                          ? 'Available'
+                                          : 'Contact Store'
+                                        }
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          </a>
+                            </a>
+                            
+                            {/* SKU copy button completely outside the link, positioned to align with store name */}
+                            <button
+                              type="button"
+                              className="product-info__vendor-sku-copy-button"
+                              onClick={(e) => copyToClipboard(vendor.sku, e)}
+                              title={copiedSku === vendor.sku ? "Copied!" : "Copy SKU"}
+                              aria-label="Copy SKU to clipboard"
+                            >
+                              <span className="product-info__vendor-sku-label">SKU: </span>
+                              <span className="product-info__vendor-sku-value" title={vendor.sku}>
+                                {truncateSku(vendor.sku)}
+                              </span>
+                              <Copy className={`product-info__vendor-sku-copy-icon ${copiedSku === vendor.sku ? 'copied' : ''}`} />
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>
