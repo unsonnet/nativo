@@ -9,12 +9,13 @@ export type ThumbnailListProps = {
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
   onAdd: () => void;
+  isReportSubmitting?: boolean;
 };
 
 /**
  * Renders a row of thumbnails plus an "add" button.
  */
-export function ThumbnailList({ images, selectedId, onSelect, onRemove, onAdd }: ThumbnailListProps) {
+export function ThumbnailList({ images, selectedId, onSelect, onRemove, onAdd, isReportSubmitting = false }: ThumbnailListProps) {
   return (
     <ul className="image-workspace__thumbs" role="list">
       {images.map((img) => (
@@ -23,7 +24,13 @@ export function ThumbnailList({ images, selectedId, onSelect, onRemove, onAdd }:
         </li>
       ))}
       <li>
-        <button type="button" className="image-workspace__thumb image-workspace__thumb--add" onClick={onAdd} aria-label="Add new image">
+        <button 
+          type="button" 
+          className={`image-workspace__thumb image-workspace__thumb--add${isReportSubmitting ? ' image-workspace__thumb--disabled' : ''}`} 
+          onClick={isReportSubmitting ? undefined : onAdd} 
+          disabled={isReportSubmitting}
+          aria-label={isReportSubmitting ? 'Adding images disabled during report creation' : 'Add new image'}
+        >
           <span aria-hidden className="image-workspace__thumb-add">+</span>
         </button>
       </li>

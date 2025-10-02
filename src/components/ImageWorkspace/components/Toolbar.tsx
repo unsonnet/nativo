@@ -48,6 +48,7 @@ type ToolbarProps = {
   gridEnabled?: boolean;
   selectionVisible?: boolean;
   onToggleSelectionVisible?: (v: boolean) => void;
+  isReportSubmitting?: boolean;
 };
 
 const ToolbarButton = ({
@@ -91,6 +92,7 @@ export function Toolbar({
   gridEnabled = true,
   selectionVisible = true,
   onToggleSelectionVisible,
+  isReportSubmitting = false,
 }: ToolbarProps) {
   const handleChange = (tool: WorkspaceTool) => {
     if (tool === activeTool) {
@@ -120,9 +122,9 @@ export function Toolbar({
             key={id}
             icon={icon}
             active={tempActiveTool ? tempActiveTool === id : !modifierActive && activeTool === id}
-            disabled={!gridEnabled}
-            onClick={() => gridEnabled && handleChange(id)}
-            title={description}
+            disabled={!gridEnabled || isReportSubmitting}
+            onClick={() => gridEnabled && !isReportSubmitting && handleChange(id)}
+            title={isReportSubmitting ? 'Disabled during report creation' : description}
           />
         ))}
         <ToolbarButton
@@ -143,8 +145,9 @@ export function Toolbar({
             key={id}
             icon={icon}
             active={tempActiveTool ? tempActiveTool === id : !modifierActive && activeTool === id}
-            onClick={() => handleChange(id)}
-            title={description}
+            disabled={isReportSubmitting}
+            onClick={() => !isReportSubmitting && handleChange(id)}
+            title={isReportSubmitting ? 'Disabled during report creation' : description}
           />
         ))}
         <ToolbarButton
@@ -158,8 +161,18 @@ export function Toolbar({
 
       {/* Undo + Reset */}
       <div className="toolbar__group">
-        <ToolbarButton icon={Undo2} disabled={!canUndo} onClick={onUndo} title="Undo" />
-        <ToolbarButton icon={Home} disabled={!canResetViewport} onClick={onResetViewport} title="Reset viewport" />
+        <ToolbarButton 
+          icon={Undo2} 
+          disabled={!canUndo || isReportSubmitting} 
+          onClick={onUndo} 
+          title={isReportSubmitting ? 'Disabled during report creation' : 'Undo'} 
+        />
+        <ToolbarButton 
+          icon={Home} 
+          disabled={!canResetViewport} 
+          onClick={onResetViewport} 
+          title="Reset viewport" 
+        />
       </div>
 
       <div className="toolbar__status">{DESCRIPTIONS[activeTool]}</div>

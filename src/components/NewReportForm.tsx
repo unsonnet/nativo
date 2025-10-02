@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { FileText } from 'lucide-react';
 import type { FormEvent } from 'react';
@@ -16,6 +16,10 @@ type NewReportFormProps = {
   onDimensionsChange?: (enabled: boolean) => void;
   onDimensionsValues?: (vals: { length: number | null; width: number | null; thickness: number | null }) => void;
   imageCount?: number;
+  // Expose ref to complete progress when API call finishes
+  onProgressComplete?: (completeFunction: () => void) => void;
+  // Callback to notify parent about submission state
+  onSubmissionStateChange?: (isSubmitting: boolean) => void;
 };
 
 type NewReportFormState = {
@@ -59,14 +63,16 @@ const INITIAL_TOUCHED_STATE = {
   reportName: false,
 };
 
-export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues, imageCount = 0 }: NewReportFormProps) {
+export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues, imageCount = 0, onProgressComplete, onSubmissionStateChange }: NewReportFormProps) {
   const [form, setForm] = useState<NewReportFormState>(INITIAL_FORM_STATE);
   const { user } = useAuth();
   const [touched, setTouched] = useState(INITIAL_TOUCHED_STATE);
   const [isReportNameFocused, setIsReportNameFocused] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
   const reportNameRef = useRef<HTMLInputElement>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const selectedFlooring = useMemo(
     () => FLOORING_OPTIONS.find((option) => option.value === form.flooringType),
@@ -134,6 +140,41 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
     }
   }, [imageCount, errorMessage]);
 
+  // Cleanup progress interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  // Function to complete progress when API call finishes (to be called from parent)
+  const completeProgress = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    // Quickly complete to 100%
+    setProgress(100);
+    // Hide overlay after brief completion animation
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setProgress(0);
+    }, 500);
+  }, []);
+
+  // Provide completeProgress function to parent
+  useEffect(() => {
+    onProgressComplete?.(completeProgress);
+  }, [completeProgress]); // Now completeProgress is stable thanks to useCallback
+
+  // Notify parent of submission state changes
+  useEffect(() => {
+    onSubmissionStateChange?.(isSubmitting);
+  }, [isSubmitting]); // Remove onSubmissionStateChange from dependencies - setState functions are stable
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (form.reportName.trim() === '') {
@@ -154,15 +195,37 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
 
     setIsSubmitting(true);
     setErrorMessage(null);
+    setProgress(0);
+    
+    // Start progress bar animation (30-40 second duration)
+    const totalDuration = 35000; // 35 seconds
+    const intervalMs = 100; // Update every 100ms
+    const increment = 100 / (totalDuration / intervalMs);
+    
+    progressIntervalRef.current = setInterval(() => {
+      setProgress(prev => {
+        const next = prev + increment;
+        // Slow down as it approaches 90% to leave buffer for completion
+        if (next >= 90) {
+          return Math.min(90, prev + increment * 0.1); // Slow down significantly
+        }
+        return next;
+      });
+    }, intervalMs);
+    
     try {
       // attach author from current auth state if available
       const author = user?.id ?? 'guest';
       onSubmit?.({ ...form, author });
     } catch {
       setErrorMessage('Failed to create report. Please try again.');
-    } finally {
-      // leave loading state briefly to show spinner; real API should control this
-      setTimeout(() => setIsSubmitting(false), 600);
+      // Clean up progress on error
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      setIsSubmitting(false);
+      setProgress(0);
     }
   };
 
@@ -491,6 +554,40 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
         </button>
         </form>
       </div>
+
+      {/* Loading Overlay */}
+      {isSubmitting && (
+        <div className="report-creation-overlay">
+          <div className="report-creation-modal">
+            <div className="report-creation-content">
+              <div className="report-creation-icon">
+                <FileText size={48} />
+              </div>
+              <h3 className="report-creation-title">Creating Your Report</h3>
+              <p className="report-creation-message">
+                We're analyzing your images and preparing your material matches. This may take up to 30 seconds.
+              </p>
+              
+              {/* Progress Bar */}
+              <div className="progress-container">
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+                <div className="progress-text">
+                  {Math.round(progress)}%
+                </div>
+              </div>
+              
+              <p className="report-creation-subtitle">
+                Please don't close this window or navigate away.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

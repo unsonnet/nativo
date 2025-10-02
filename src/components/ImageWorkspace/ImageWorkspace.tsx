@@ -31,9 +31,10 @@ type ImageWorkspaceProps = {
   dimensions?: { length: number | null; width: number | null; thickness: number | null };
   onImagesChange?: (count: number) => void;
   onImages?: (images: { id: string; name: string; url: string; mask?: string; selection?: ProductImage['selection'] }[]) => void;
+  isReportSubmitting?: boolean; // Disable tools and hide add images during report submission
 };
 
-export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange, onImages }: ImageWorkspaceProps) {
+export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange, onImages, isReportSubmitting = false }: ImageWorkspaceProps) {
   const {
     library,
     activeTool,
@@ -264,7 +265,7 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
         onChange={library.handleFileInputChange}
       />
 
-      {!hasImages ? (
+      {!hasImages && !isReportSubmitting ? (
         <Dropzone
           isDragging={library.isDragging}
           onChooseClick={library.handleChooseClick}
@@ -272,7 +273,7 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
           onDragLeave={library.handleDragLeave}
           onDrop={library.handleDrop}
         />
-      ) : (
+      ) : hasImages ? (
         <div className="image-workspace__workspace">
           <Toolbar
             activeTool={activeTool}
@@ -288,6 +289,7 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
             canUndo={canUndo()}
             onResetViewport={resetViewport}
             canResetViewport={!isViewportDefault}
+            isReportSubmitting={isReportSubmitting}
           />
 
           <PreviewCanvas
@@ -311,10 +313,11 @@ export function ImageWorkspace({ gridEnabled = false, dimensions, onImagesChange
               onSelect={library.setSelectedId}
               onRemove={library.removeImage}
               onAdd={library.handleChooseClick}
+              isReportSubmitting={isReportSubmitting}
             />
           </PreviewCanvas>
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

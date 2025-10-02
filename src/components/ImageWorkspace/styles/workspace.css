@@ -387,6 +387,18 @@
   border-color: rgba(226, 232, 240, 0.38);
 }
 
+.image-workspace__thumb--add:disabled,
+.image-workspace__thumb--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+.image-workspace__thumb--add:disabled:hover,
+.image-workspace__thumb--disabled:hover {
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
 .image-workspace__thumb-add {
   font-size: 1.5rem;
   color: rgba(226, 232, 240, 0.78);

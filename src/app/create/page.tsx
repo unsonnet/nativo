@@ -18,6 +18,8 @@ export default function CreatePage() {
   });
   const [imageCount, setImageCount] = useState(0);
   const [images, setImages] = useState<{ id: string; name: string; url: string; mask?: string; selection?: ProductImage['selection'] }[]>([]);
+  const [isReportSubmitting, setIsReportSubmitting] = useState(false);
+  const [completeProgressFunction, setCompleteProgressFunction] = useState<(() => void) | null>(null);
 
   const handleDimensionsChange = useCallback((v: boolean) => setGridEnabled(v), []);
   const handleDimensionsValues = useCallback(
@@ -33,13 +35,23 @@ export default function CreatePage() {
             onDimensionsChange={handleDimensionsChange}
             onDimensionsValues={handleDimensionsValues}
             imageCount={imageCount}
+            onProgressComplete={setCompleteProgressFunction}
+            onSubmissionStateChange={setIsReportSubmitting}
             onSubmit={async (form) => {
               try {
                 const createdReport = await packageAndCreateReport(form, images);
-                // Redirect to the new report page instead of dashboard
-                router.push(`/fetch?report=${createdReport.id || 'new'}`);
+                // Complete the progress when API finishes
+                setTimeout(() => {
+                  completeProgressFunction?.();
+                  // Redirect to the new report page instead of dashboard
+                  router.push(`/fetch?report=${createdReport.id || 'new'}`);
+                }, 0);
               } catch (err) {
                 console.error('Failed to create report', err);
+                // Complete progress on error too
+                setTimeout(() => {
+                  completeProgressFunction?.();
+                }, 0);
               }
             }}
           />
@@ -51,6 +63,7 @@ export default function CreatePage() {
         dimensions={dimensions}
         onImagesChange={setImageCount}
         onImages={setImages}
+        isReportSubmitting={isReportSubmitting}
       />
     </div>
   );
