@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ImageWorkspace } from '@/components/ImageWorkspace';
 import { NewReportForm } from '@/components/NewReportForm';
 import { packageAndCreateReport } from '@/lib/reports/service';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { ProductImage } from '@/types/report';
 
 export default function CreatePage() {
@@ -19,7 +19,7 @@ export default function CreatePage() {
   const [imageCount, setImageCount] = useState(0);
   const [images, setImages] = useState<{ id: string; name: string; url: string; mask?: string; selection?: ProductImage['selection'] }[]>([]);
   const [isReportSubmitting, setIsReportSubmitting] = useState(false);
-  const [completeProgressFunction, setCompleteProgressFunction] = useState<(() => void) | null>(null);
+  const completeProgressRef = useRef<(() => void) | null>(null);
 
   const handleDimensionsChange = useCallback((v: boolean) => setGridEnabled(v), []);
   const handleDimensionsValues = useCallback(
@@ -35,14 +35,14 @@ export default function CreatePage() {
             onDimensionsChange={handleDimensionsChange}
             onDimensionsValues={handleDimensionsValues}
             imageCount={imageCount}
-            onProgressComplete={setCompleteProgressFunction}
+            onProgressComplete={(fn) => { completeProgressRef.current = fn; }}
             onSubmissionStateChange={setIsReportSubmitting}
             onSubmit={async (form) => {
               try {
                 const createdReport = await packageAndCreateReport(form, images);
                 // Complete the progress when API finishes
                 setTimeout(() => {
-                  completeProgressFunction?.();
+                  completeProgressRef.current?.();
                   // Redirect to the new report page instead of dashboard
                   router.push(`/fetch?report=${createdReport.id || 'new'}`);
                 }, 0);
@@ -50,7 +50,7 @@ export default function CreatePage() {
                 console.error('Failed to create report', err);
                 // Complete progress on error too
                 setTimeout(() => {
-                  completeProgressFunction?.();
+                  completeProgressRef.current?.();
                 }, 0);
               }
             }}

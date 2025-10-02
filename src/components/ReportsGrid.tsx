@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { FileText, Plus } from "lucide-react";
 import { ReportCard } from "./ReportCard";
 import { listReports } from "@/lib/api/reports";
 import type { ProductImage, ProductIndex, Product, ReportPreview, Report } from '@/types/report';
@@ -13,6 +15,7 @@ export function ReportsGrid() {
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const hasLoadedRef = useRef(false);
+  const router = useRouter();
 
   // Load initial reports
   useEffect(() => {
@@ -64,6 +67,10 @@ export function ReportsGrid() {
     return { ...r, reference: pi } as ReportPreview;
   });
 
+  const handleCreateReport = () => {
+    router.push('/create');
+  };
+
   if (isLoading) {
     return (
       <section className="reports-grid">
@@ -81,6 +88,28 @@ export function ReportsGrid() {
         <div className="reports-grid__error">
           <p>Error: {error}</p>
           <button onClick={() => window.location.reload()}>Retry</button>
+        </div>
+      </section>
+    );
+  }
+
+  // Show empty state when no reports
+  if (reports.length === 0) {
+    return (
+      <section className="reports-grid">
+        <div className="reports-grid__empty">
+          <FileText className="w-12 h-12 text-gray-400 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No reports yet</h3>
+          <p className="text-gray-600 mb-6 text-center max-w-md">
+            Get started by creating your first report. Upload an image and we'll help you find similar products.
+          </p>
+          <button 
+            onClick={handleCreateReport}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Create Report
+          </button>
         </div>
       </section>
     );

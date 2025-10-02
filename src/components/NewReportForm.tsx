@@ -165,15 +165,15 @@ export function NewReportForm({ onSubmit, onDimensionsChange, onDimensionsValues
     }, 500);
   }, []);
 
-  // Provide completeProgress function to parent
+  // Provide the completion function to parent
   useEffect(() => {
     onProgressComplete?.(completeProgress);
-  }, [completeProgress]); // Now completeProgress is stable thanks to useCallback
+  }, [onProgressComplete, completeProgress]);
 
   // Notify parent of submission state changes
   useEffect(() => {
     onSubmissionStateChange?.(isSubmitting);
-  }, [isSubmitting]); // Remove onSubmissionStateChange from dependencies - setState functions are stable
+  }, [isSubmitting, onSubmissionStateChange]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
