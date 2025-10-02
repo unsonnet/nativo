@@ -106,7 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [isMounted]);
 
   async function signIn(username: string, password: string) {
-    setState((s) => ({ ...s, loading: true }));
     const res = await authLogin(username, password);
     if (res.status === 200) {
       // successful login — read idToken for user
@@ -128,7 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // handle reset or denied
-    setState((s) => ({ ...s, loading: false }));
     return { ok: false, status: res.status };
   }
 

@@ -27,8 +27,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [user, loading, pathname, router]);
 
-  // Show loading state while checking auth
-  if (loading) {
+  // Show loading state while checking auth, but NOT on the login page
+  if (loading && pathname !== "/" && pathname !== "") {
     return (
       <div style={{
         display: 'flex',
@@ -38,7 +38,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
         fontSize: '1.1rem',
         color: 'var(--text-muted)'
       }}>
-        Loading...
+        Loading... or something
       </div>
     );
   }

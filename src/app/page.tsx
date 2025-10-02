@@ -20,10 +20,10 @@ export default function Home() {
 
   // Redirect to dashboard if user is logged in
   useEffect(() => {
-    if (mounted && !loading && user) {
+    if (mounted && user) {
       router.push("/dashboard");
     }
-  }, [user, loading, router, mounted]);
+  }, [user, router, mounted]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,15 +35,14 @@ export default function Home() {
       if (credentials.username === "Demo" && credentials.password === "Password") {
         // Use dummy login for demo
         signInWithDummy();
-        router.push("/dashboard");
+        // Let useEffect handle redirect when user state changes
       } else {
         // Try real authentication
         const result = await signIn(credentials.username, credentials.password);
-        if (result.ok) {
-          router.push("/dashboard");
-        } else {
+        if (!result.ok) {
           setLoginError("Invalid username or password. Try Demo/Password for demo access.");
         }
+        // Let useEffect handle redirect when user state changes
       }
     } catch {
       setLoginError("Login failed. Please try again.");
@@ -52,8 +51,8 @@ export default function Home() {
     }
   };
 
-  // Show loading while checking auth state or before mount
-  if (!mounted || loading) {
+  // Show loading while before mount (hydration)
+  if (!mounted) {
     return (
       <div className="landing-page">
         <div className="landing-page__container">
