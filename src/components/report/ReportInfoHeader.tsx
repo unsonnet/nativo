@@ -3,6 +3,14 @@
 import { Info } from "lucide-react";
 import type { Report, Product } from "@/types/report";
 
+/**
+ * Capitalize first letter of a string
+ */
+function capitalize(str: string | undefined): string {
+  if (!str) return str || '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
 interface ReportInfoHeaderProps {
   report: Report<Product>;
 }
@@ -47,12 +55,12 @@ export function ReportInfoHeader({ report }: ReportInfoHeaderProps) {
   // Helper to get all categories in preferred order, including unset ones
   const getAllCategories = () => {
     return [
-      { label: "Type", value: reference.category.type },
-      { label: "Material", value: reference.category.material },
-      { label: "Look", value: reference.category.look },
-      { label: "Texture", value: reference.category.texture },
-      { label: "Finish", value: reference.category.finish },
-      { label: "Edge", value: reference.category.edge }
+      { label: "Type", value: capitalize(reference.category.type) },
+      { label: "Material", value: capitalize(reference.category.material) },
+      { label: "Look", value: capitalize(reference.category.look) },
+      { label: "Texture", value: capitalize(reference.category.texture) },
+      { label: "Finish", value: capitalize(reference.category.finish) },
+      { label: "Edge", value: capitalize(reference.category.edge) }
     ];
   };
 

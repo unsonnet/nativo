@@ -93,6 +93,14 @@ interface OriginalApiFavoriteProduct {
 }
 
 /**
+ * Capitalize first letter of a string
+ */
+function capitalize(str: string): string {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+/**
  * Transform Product reference from React app format to original API format
  */
 function transformProductToOriginalFormat(product: Product): OriginalApiMaterial {
@@ -203,8 +211,8 @@ function transformFavoriteToProduct(favorite: OriginalApiFavoriteProduct): Produ
     model: favorite.description.name || `Material ${favorite.id}`,
     images: productImages,
     category: {
-      type: 'tile', // Default type
-      material: favorite.description.material,
+      type: 'Tile', // Default type, capitalized
+      material: capitalize(favorite.description.material),
     },
     formats: [{
       length: favorite.description.length ? { val: favorite.description.length, unit: 'in' as const } : undefined,
@@ -233,11 +241,11 @@ function createFullProductFromOriginal(
   return {
     id: materialId,
     brand: 'Unknown', // Original API doesn't provide brand
-    model: `${material.type} ${material.material}`,
+    model: `${capitalize(material.type)} ${capitalize(material.material)}`,
     images: productImages,
     category: {
-      type: material.type,
-      material: material.material,
+      type: capitalize(material.type),
+      material: capitalize(material.material),
     },
     formats: [{
       length: material.length ? { val: material.length, unit: 'in' as const } : undefined,
@@ -246,7 +254,7 @@ function createFullProductFromOriginal(
       vendors: [{
         sku: `${materialId}-001`,
         store: 'Material Database',
-        name: `${material.type} ${material.material}`,
+        name: `${capitalize(material.type)} ${capitalize(material.material)}`,
         url: '#',
         discontinued: false
       }]

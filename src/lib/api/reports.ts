@@ -115,6 +115,23 @@ export async function getReport<T extends Product | ProductIndex = Product | Pro
 
 // Helper function to transform ProductIndex to full Product for detail view
 export async function getFullReport(id: string): Promise<Report<Product> | undefined> {
+  if (USE_REAL_API) {
+    try {
+      const response = await reportsApiService.getReport(id);
+      if (response.status === 200) {
+        return response.body;
+      }
+      if (response.status === 404) {
+        return undefined;
+      }
+      throw new Error(response.error || 'Failed to get report');
+    } catch (error) {
+      console.error('[API] Error getting full report:', error);
+      console.log('[API] Falling back to mock implementation');
+    }
+  }
+
+  // Mock implementation
   await new Promise((r) => setTimeout(r, 60));
   const foundReport = store.find((r) => r.id === id);
   

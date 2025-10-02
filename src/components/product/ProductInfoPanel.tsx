@@ -4,6 +4,14 @@ import { useState } from 'react';
 import { Product } from '@/types/report';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
+/**
+ * Capitalize first letter of a string
+ */
+function capitalize(str: string | undefined): string {
+  if (!str) return str || '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
 interface ProductInfoPanelProps {
   product: Product;
   referenceProduct: Product;
@@ -250,19 +258,19 @@ export function ProductInfoPanel({ product, referenceProduct }: ProductInfoPanel
           <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
             <div>
               <span className="font-medium text-gray-500">Type:</span>
-              <p className="text-gray-900">{referenceProduct.category.type}</p>
+              <p className="text-gray-900">{capitalize(referenceProduct.category.type)}</p>
             </div>
             <div>
               <span className="font-medium text-gray-500">Material:</span>
-              <p className="text-gray-900">{referenceProduct.category.material}</p>
+              <p className="text-gray-900">{capitalize(referenceProduct.category.material)}</p>
             </div>
             <div>
               <span className="font-medium text-gray-500">Finish:</span>
-              <p className="text-gray-900">{referenceProduct.category.finish}</p>
+              <p className="text-gray-900">{capitalize(referenceProduct.category.finish)}</p>
             </div>
             <div>
               <span className="font-medium text-gray-500">Edge:</span>
-              <p className="text-gray-900">{referenceProduct.category.edge}</p>
+              <p className="text-gray-900">{capitalize(referenceProduct.category.edge)}</p>
             </div>
           </div>
         </div>

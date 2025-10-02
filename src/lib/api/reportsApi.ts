@@ -7,7 +7,7 @@
 
 import { apiClient } from './client';
 import { OriginalApiAdapter, transformSearchResultToProduct, createFullProductFromOriginal, transformJobToReport, transformFavoriteToProduct } from './adapters/originalApiAdapter';
-import { decodeReportId } from '@/lib/utils/jobIdentifiers';
+import { decodeReportId, encodeReportTitle } from '@/lib/utils/jobIdentifiers';
 import type { Report, Product, ProductIndex } from '@/types/report';
 import type { K9Response } from '@/lib/auth/types';
 
@@ -191,10 +191,39 @@ export class ReportsApiService {
     const response = await OriginalApiAdapter.listAllReports();
     
     if (response.status === 200) {
-      // Find the specific job in the list
-      const job = response.body.find(j => j.job === reportId);
+      // Debug: log what we're looking for vs what we have
+      console.log('[API] Looking for reportId:', reportId);
+      console.log('[API] Available jobs:', response.body.map(j => j.job));
+      
+      // Try to find the job with exact match first
+      let job = response.body.find(j => j.job === reportId);
+      
+      // If not found, try with URL encoding/decoding
+      if (!job) {
+        job = response.body.find(j => j.job === encodeReportTitle(reportId));
+      }
+      
+      // If still not found, try with decoding the reportId
+      if (!job) {
+        try {
+          const decodedReportId = decodeURIComponent(reportId);
+          job = response.body.find(j => j.job === decodedReportId);
+        } catch (e) {
+          // Ignore decode errors
+        }
+      }
+      
+      // If still not found, try partial matching (case-insensitive)
+      if (!job) {
+        job = response.body.find(j => 
+          j.job.toLowerCase() === reportId.toLowerCase() ||
+          j.job.toLowerCase().includes(reportId.toLowerCase()) ||
+          reportId.toLowerCase().includes(j.job.toLowerCase())
+        );
+      }
       
       if (job) {
+        console.log('[API] Found job:', job.job);
         const report = transformJobToReport(job);
         return {
           status: 200,
@@ -202,6 +231,7 @@ export class ReportsApiService {
           error: undefined
         };
       } else {
+        console.error('[API] Job not found for reportId:', reportId);
         return {
           status: 404,
           body: null as any,
