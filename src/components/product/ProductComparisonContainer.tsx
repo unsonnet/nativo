@@ -545,10 +545,17 @@ function ImageComparisonPanel({ selectedProductImages, referenceProductImages, s
                 <Image 
                   src={selectedProductImages[selectedImageIndex]?.url || selectedProductImages[0].url} 
                   alt={selectedProductName}
-                  width={400}
-                  height={400}
-                  className="max-w-full max-h-full object-contain pointer-events-none"
-                  style={getTransformStyle(selectedProductImages[selectedImageIndex]?.id || 'sel-default')}
+                  width={0}
+                  height={0}
+                  className="pointer-events-none"
+                  style={{
+                    width: 'auto',
+                    height: 'auto',
+                    maxWidth: '400px',
+                    maxHeight: '400px',
+                    objectFit: 'contain',
+                    ...getTransformStyle(selectedProductImages[selectedImageIndex]?.id || 'sel-default')
+                  }}
                   unoptimized
                 />
               ) : (
@@ -620,10 +627,17 @@ function ImageComparisonPanel({ selectedProductImages, referenceProductImages, s
                 <Image 
                   src={referenceProductImages[referenceImageIndex]?.url || referenceProductImages[0].url} 
                   alt={referenceProductName}
-                  width={400}
-                  height={400}
-                  className="max-w-full max-h-full object-contain pointer-events-none"
-                  style={getTransformStyle(referenceProductImages[referenceImageIndex]?.id || 'ref-default')}
+                  width={0}
+                  height={0}
+                  className="pointer-events-none"
+                  style={{
+                    width: 'auto',
+                    height: 'auto',
+                    maxWidth: '400px',
+                    maxHeight: '400px',
+                    objectFit: 'contain',
+                    ...getTransformStyle(referenceProductImages[referenceImageIndex]?.id || 'ref-default')
+                  }}
                   unoptimized
                 />
               ) : (
