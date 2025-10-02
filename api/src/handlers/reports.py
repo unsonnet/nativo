@@ -8,7 +8,7 @@ EXACTLY matching the React app API specifications from src/lib/api/reportsApi.ts
 import logging
 from typing import Dict, Any
 
-from shared.utils import (
+from src.shared.utils import (
     success_response,
     error_response,
     parse_json_body,
@@ -21,20 +21,12 @@ from shared.utils import (
     invoke_lambda_async,
     AWSConfig,
 )
-from shared.auth import require_auth
-from shared.models import (
-    Report,
-    Product,
-    ProductIndex,
-    ProductImage,
-    CreateReportRequest,
-    CreateReportResponse,
-    ListReportsResponse,
-    SearchProductsRequest,
-    SearchProductsResponse,
-    DBReport,
-)
-from shared.database import ReportRepository
+from src.shared.auth import require_auth
+from src.shared.models.database import Report, Product, Image
+from src.shared.models.response import ReportList
+from src.shared.models import request
+
+from src.shared.database import repository
 
 
 logger = logging.getLogger()
@@ -44,48 +36,28 @@ logger.setLevel(logging.INFO)
 @require_auth
 def list_reports(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
-    GET /reports?page=1&limit=20
+    GET /reports?limit=20&cursor=abc123
     List user reports
 
-    EXACT match for ReportsApiService.listReports() in src/lib/api/reportsApi.ts
+    Note: Uses DynamoDB cursor-based pagination
+    Intended for ReportsApiService.listReports() in src/lib/api/reportsApi.ts
     """
     try:
         user = get_user_from_event(event)
-        user_id = user["user_id"]
-
-        # Get pagination parameters
-        page = int(get_query_parameter(event, "page", "1"))
-        limit = int(get_query_parameter(event, "limit", "20"))
-
-        # Calculate offset
-        offset = (page - 1) * limit
-
-        # Get reports from database
-        db_reports = ReportRepository.list_reports(user_id, limit=limit, offset=offset)
-        total_count = ReportRepository.count_reports(user_id)
-
-        # Convert DB reports to API format
-        reports = []
-        for db_report in db_reports:
-            # Create Report with ProductIndex reference for list view
-            report = Report(
-                id=db_report.id,
-                title=db_report.title,
-                author=db_report.author,
-                date=db_report.date,
-                reference=db_report.reference,  # This should be ProductIndex in list view
-                favorites=db_report.favorites,
-            )
-            reports.append(report.model_dump())
-
-        response = ListReportsResponse(
-            reports=reports, total=total_count, page=page, limit=limit
+        limit = int(str(get_query_parameter(event, "limit", "20")))
+        cursor = get_query_parameter(event, "cursor", None)
+        reports, next_cursor = repository.Report.list(
+            user.id, limit=limit, last_key=cursor
         )
-
+        response = ReportList(
+            reports=[report.to_api(basic=True) for report in reports],
+            total=repository.Report.count(user.id),
+            limit=limit,
+            next_cursor=next_cursor,
+            has_more=next_cursor is not None,
+        )
         return success_response(response.model_dump())
 
-    except ValueError as e:
-        return error_response(str(e), 400)
     except Exception as e:
         logger.error(f"Error listing reports: {e}")
         return error_response("Failed to list reports", 500)
@@ -97,52 +69,43 @@ def create_report(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     POST /reports
     Create a new report
 
-    EXACT match for ReportsApiService.createReport() in src/lib/api/reportsApi.ts
+    Intended for ReportsApiService.createReport() in src/lib/api/reportsApi.ts
     """
     try:
         user = get_user_from_event(event)
-        user_id = user["user_id"]
+        report = request.Report(**parse_json_body(event))
 
         # Parse request body
-        body = parse_json_body(event)
-        create_request = CreateReportRequest(**body)
+        report = parse_json_body(event)
+        reference = report.pop("reference")
 
-        # Generate report ID and timestamps
-        report_id = generate_id()
-        timestamp = current_timestamp()
+        images = [Image(**img) for img in reference.pop("images")]
+        reference = Product(**reference, images=[img.id for img in images])
+        report = Report(**report, reference=reference.id)
 
-        # Create DB report
-        db_report = DBReport(
-            id=report_id,
-            title=create_request.title,
-            author=user.get("name", user.get("username", "Unknown User")),
-            date=timestamp.split("T")[0],  # Just the date part (YYYY-MM-DD)
-            user_id=user_id,
-            reference=create_request.reference.model_dump(),
-            favorites=[],
-        )
-
-        # Save to database
-        success = ReportRepository.create_report(db_report)
-        if not success:
+        if not ImageRepository.create_batch(images, reference.id):
+            return error_response("Failed to upload images", 500)
+        if not ProductRepository.create(reference):
+            ImageRepository.delete_batch(images, reference.id)
+            return error_response("Failed to create reference", 500)
+        if not ReportRepository.create(report, user.id):
+            ProductRepository.delete(reference.id)
+            ImageRepository.delete_batch(images, reference.id)
             return error_response("Failed to create report", 500)
 
-        # If the reference product has an ID, trigger embedding computation
-        if hasattr(create_request.reference, "id") and create_request.reference.id:
-            try:
-                # Invoke embeddings Lambda asynchronously
-                embeddings_function = AWSConfig.get_embeddings_function_name()
-                payload = {
-                    "action": "compute_similarity_matrix",
-                    "reference_product_id": create_request.reference.id,
-                }
-                invoke_lambda_async(embeddings_function, payload)
-                logger.info(
-                    f"Triggered embedding computation for product {create_request.reference.id}"
-                )
-            except Exception as e:
-                logger.warning(f"Failed to trigger embedding computation: {e}")
-                # Don't fail report creation if embedding computation fails
+        # Trigger embedding computation for the stored product
+        try:
+            # Invoke embeddings Lambda asynchronously
+            embeddings_function = AWSConfig.get_embeddings_function_name()
+            payload = {
+                "action": "compute_similarity_matrix",
+                "product": reference.id,
+            }
+            invoke_lambda_async(embeddings_function, payload)
+            logger.info(f"Triggered embedding computation for product {reference.id}")
+        except Exception as e:
+            logger.warning(f"Failed to trigger embedding computation: {e}")
+            # Don't fail report creation if embedding computation fails
 
         # Return created report response
         response = CreateReportResponse(
@@ -174,20 +137,12 @@ def get_report(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         user_id = user["user_id"]
         report_id = get_path_parameter(event, "reportId")
 
-        # Get report from database
-        db_report = ReportRepository.get_report(report_id, user_id)
-        if not db_report:
-            return error_response("Report not found", 404)
-
-        # Convert to API format with full Product reference
-        report = Report(
-            id=db_report.id,
-            title=db_report.title,
-            author=db_report.author,
-            date=db_report.date,
-            reference=db_report.reference,  # Full Product object for detail view
-            favorites=db_report.favorites,
+        # Get report with populated product reference (full Product for detail view)
+        report = ReportRepository.get_report_with_product(
+            report_id, user_id, as_product_index=False
         )
+        if not report:
+            return error_response("Report not found", 404)
 
         return success_response(report.model_dump())
 

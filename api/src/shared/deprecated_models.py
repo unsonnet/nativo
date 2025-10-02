@@ -178,12 +178,13 @@ class CreateReportResponse(BaseEntity):
 
 
 class ListReportsResponse(BaseEntity):
-    """From src/lib/api/reportsApi.ts"""
+    """From src/lib/api/reportsApi.ts - Updated for DynamoDB cursor pagination"""
 
     reports: List[Report]  # Report<ProductIndex>[]
     total: int
-    page: int
     limit: int
+    next_cursor: Optional[str] = None  # DynamoDB pagination cursor
+    has_more: bool = False  # Whether there are more results
 
 
 class SearchFilters(BaseEntity):
@@ -260,7 +261,7 @@ class K9Response(BaseEntity):
     error: Optional[str] = None
 
 
-# Database Models (for DuckDB storage)
+# Database Models
 
 
 class DBUser(BaseEntity):
@@ -276,23 +277,44 @@ class DBUser(BaseEntity):
 
 
 class DBReport(BaseEntity):
-    """Report model for DuckDB storage"""
+    """Report model for DynamoDB storage"""
 
     id: str
     title: str
     author: str
     date: str
     user_id: str = Field(..., description="Owner user ID")
-    reference: Dict[str, Any] = Field(
-        ..., description="JSON serialized reference product"
+    reference_product_id: str = Field(
+        ..., description="Product ID reference instead of embedded product"
     )
     favorites: List[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class DBProduct(BaseEntity):
+    """Product model for DynamoDB storage"""
+
+    id: str
+    brand: str
+    series: Optional[str] = None
+    model: str
+    images: List[Dict[str, Any]] = Field(
+        default_factory=list, description="JSON serialized ProductImage objects"
+    )
+    category: Dict[str, Any] = Field(..., description="JSON serialized ProductCategory")
+    formats: List[Dict[str, Any]] = Field(
+        default_factory=list, description="JSON serialized ProductFormat objects"
+    )
+    analysis: Optional[Dict[str, Any]] = Field(
+        None, description="JSON serialized ProductAnalysis"
+    )
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class DBProductEmbedding(BaseEntity):
-    """Product embedding storage for DuckDB"""
+    """Product embedding storage for DynamoDB"""
 
     product_id: str
     embedding_vector: List[float]

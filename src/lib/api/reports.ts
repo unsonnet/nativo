@@ -54,21 +54,37 @@ export async function createReport<T extends Product | ProductIndex = Product | 
   return newReportBase as unknown as Report<T>;
 }
 
-export async function listReports<T extends Product | ProductIndex = Product | ProductIndex>(): Promise<Report<T>[]> {
+export async function listReports<T extends Product | ProductIndex = Product | ProductIndex>(
+  limit: number = 20, 
+  cursor?: string
+): Promise<{ reports: Report<T>[]; nextCursor?: string; hasMore: boolean }> {
   if (USE_REAL_API) {
-    // TODO: Use real API
-    // const response = await reportsApiService.listReports();
+    // TODO: Use real API with cursor pagination
+    // const response = await reportsApiService.listReports(limit, cursor);
     // if (response.status === 200) {
-    //   return response.body.reports as Report<T>[];
+    //   return {
+    //     reports: response.body.reports as Report<T>[],
+    //     nextCursor: response.body.next_cursor || undefined,
+    //     hasMore: response.body.has_more
+    //   };
     // }
     // throw new Error(response.error || 'Failed to list reports');
     
     console.log('[API] Real API enabled but not implemented yet, using mock');
   }
 
-  // Mock implementation
+  // Mock implementation - simulate cursor pagination
   await new Promise((r) => setTimeout(r, 60));
-  return store.slice() as Report<T>[];
+  const allReports = store.slice() as Report<T>[];
+  
+  // Simple cursor simulation for mock
+  const startIndex = cursor ? parseInt(cursor) || 0 : 0;
+  const endIndex = startIndex + limit;
+  const reports = allReports.slice(startIndex, endIndex);
+  const hasMore = endIndex < allReports.length;
+  const nextCursor = hasMore ? endIndex.toString() : undefined;
+  
+  return { reports, nextCursor, hasMore };
 }
 
 export async function getReport<T extends Product | ProductIndex = Product | ProductIndex>(

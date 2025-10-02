@@ -5,10 +5,12 @@ Shared utilities for K9 API Lambda functions
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 import boto3
 from botocore.exceptions import ClientError
+
+from .models import request
 
 
 # Configure logging
@@ -26,8 +28,8 @@ def generate_id() -> str:
 
 
 def current_timestamp() -> str:
-    """Get current timestamp in ISO format"""
-    return datetime.utcnow().isoformat() + "Z"
+    """Get current UTC time"""
+    return datetime.now(timezone.utc).isoformat()
 
 
 def lambda_response(
@@ -105,7 +107,7 @@ def get_query_parameter(
     return query_params.get(param_name, default)
 
 
-def get_user_from_event(event: Dict[str, Any]) -> Dict[str, Any]:
+def get_user_from_event(event: Dict[str, Any]) -> request.User:
     """Extract user information from authenticated Lambda event"""
     # After API Gateway Cognito authorization, user info is available in requestContext
     request_context = event.get("requestContext", {})
@@ -113,12 +115,12 @@ def get_user_from_event(event: Dict[str, Any]) -> Dict[str, Any]:
 
     if "claims" in authorizer:
         claims = authorizer["claims"]
-        return {
-            "user_id": claims.get("sub"),
-            "username": claims.get("cognito:username"),
-            "email": claims.get("email"),
-            "name": claims.get("name"),
-        }
+        return request.User(
+            id=claims.get("sub"),
+            username=claims.get("cognito:username"),
+            email=claims.get("email"),
+            name=claims.get("name"),
+        )
 
     raise ValueError("User information not found in request context")
 
@@ -174,7 +176,7 @@ def download_from_s3(bucket: str, key: str) -> bytes:
         response = s3_client.get_object(Bucket=bucket, Key=key)
         return response["Body"].read()
     except ClientError as e:
-        if e.response["Error"]["Code"] == "NoSuchKey":
+        if e.response.get("Error", {}).get("Code") == "NoSuchKey":
             raise FileNotFoundError(f"Object not found: s3://{bucket}/{key}")
         logger.error(f"Failed to download from S3: {e}")
         raise
@@ -182,11 +184,7 @@ def download_from_s3(bucket: str, key: str) -> bytes:
 
 def validate_required_fields(data: Dict[str, Any], required_fields: list) -> None:
     """Validate that required fields are present in data"""
-    missing_fields = []
-    for field in required_fields:
-        if field not in data or data[field] is None:
-            missing_fields.append(field)
-
+    missing_fields = [field for field in required_fields if data.get(field) is None]
     if missing_fields:
         raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
 

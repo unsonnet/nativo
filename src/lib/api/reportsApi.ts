@@ -22,8 +22,9 @@ export interface CreateReportResponse {
 export interface ListReportsResponse {
   reports: Report<ProductIndex>[];
   total: number;
-  page: number;
   limit: number;
+  next_cursor: string | null;  // DynamoDB pagination cursor
+  has_more: boolean;          // Whether there are more results
 }
 
 export interface SearchFilters {
@@ -61,13 +62,18 @@ export interface SearchProductsResponse {
 export class ReportsApiService {
   /**
    * 1. Get list of reports associated with the current user
-   * GET /api/reports
+   * GET /api/reports?limit=20&cursor=abc123
    */
-  static async listReports(page: number = 1, limit: number = 20): Promise<K9Response<ListReportsResponse>> {
-    return apiClient.get<ListReportsResponse>('/reports', {
-      page: page.toString(),
+  static async listReports(limit: number = 20, cursor?: string): Promise<K9Response<ListReportsResponse>> {
+    const params: Record<string, string> = {
       limit: limit.toString(),
-    });
+    };
+    
+    if (cursor) {
+      params.cursor = cursor;
+    }
+
+    return apiClient.get<ListReportsResponse>('/reports', params);
   }
 
   /**

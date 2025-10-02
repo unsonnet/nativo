@@ -122,7 +122,7 @@ Content-Type: application/json
 
 #### List User Reports
 ```
-GET /reports?page=1&limit=20
+GET /reports?limit=20&cursor=abc123
 Authorization: Bearer <token>
 
 Response:
@@ -138,15 +138,22 @@ Response:
     }
   ],
   "total": number,
-  "page": number,
-  "limit": number
+  "limit": number,
+  "next_cursor": string | null,
+  "has_more": boolean
 }
 ```
 
+**Cursor Pagination**: 
+- Use `limit` to control page size (default: 20)
+- Use `cursor` from previous response's `next_cursor` to get next page
+- `has_more` indicates if there are additional results
+- `total` shows the total count of all user reports
+
 **Current Implementation**: 
-- **API Service**: `src/lib/api/reportsApi.ts` - `ReportsApiService.listReports()`
-- **Bridge**: `src/lib/api/reports.ts` - `listReports()` (currently mock)
-- **Usage**: Dashboard page, reports grid
+- **API Service**: `src/lib/api/reportsApi.ts` - `ReportsApiService.listReports(limit, cursor)`
+- **Bridge**: `src/lib/api/reports.ts` - `listReports(limit, cursor)` with cursor pagination
+- **Usage**: Dashboard page, reports grid with infinite scroll
 
 **Implementation Needed**:
 - Set `NEXT_PUBLIC_USE_REAL_API=true` in environment
