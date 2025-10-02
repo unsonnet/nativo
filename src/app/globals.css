@@ -332,6 +332,16 @@ body::before {
   background: var(--button-secondary);
 }
 
+.app-header-universal__user-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--text-muted);
+}
+
+.app-header-universal__user-menu-item:disabled:hover {
+  background: transparent;
+}
+
 .app-header-universal__user-menu-item--danger {
   color: var(--accent-primary);
 }

@@ -190,11 +190,13 @@ export function AppHeader() {
                   </div>
                   <hr className="app-header-universal__user-menu-divider" />
                   <button
+                    disabled
                     onClick={() => {
                       // TODO: Navigate to settings
                       setShowUserMenu(false);
                     }}
                     className="app-header-universal__user-menu-item"
+                    title="Settings (Coming Soon)"
                   >
                     Settings
                   </button>
