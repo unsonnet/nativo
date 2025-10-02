@@ -68,6 +68,15 @@ interface OriginalApiSearchResult {
       tertiary: number | null;
     };
   };
+  description?: {
+    store: string;
+    name: string;
+    url: string;
+    material: string;
+    length: number | null;
+    width: number | null;
+    thickness: number | null;
+  };
 }
 
 // New types for /report endpoints
@@ -142,8 +151,8 @@ function transformProductToOriginalFormat(product: Product): OriginalApiMaterial
 function transformSearchResultToProduct(result: OriginalApiSearchResult): ProductIndex {
   return {
     id: result.id,
-    brand: 'Unknown', // Original API doesn't provide brand info
-    model: `Material ${result.id}`,
+    brand: result.description?.store || 'Unknown',
+    model: result.description?.name || `Material ${result.id}`,
     image: result.images[0] || '',
     analysis: {
       color: {

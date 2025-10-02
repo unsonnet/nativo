@@ -299,6 +299,15 @@ Fetches matching materials based on thresholds and filters.
         "secondary": 0.76,
         "tertiary": 0.69
       }
+    },
+    "description": {
+      "store": "HomeDepot",
+      "name": "Mesa Sand Brown",
+      "url": "https://store.com/product",
+      "material": "porcelain",
+      "length": 61.0,
+      "width": 30.0,
+      "thickness": 9.0
     }
   }
 ]
