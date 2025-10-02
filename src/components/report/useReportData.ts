@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { Report, Product, ProductIndex } from "@/types/report";
 import { reportsApi } from "@/lib/api/reports";
 import { simulateApiDelay } from "@/data/mockSearchResults";
@@ -39,6 +39,7 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFiltersType | null>(null);
+  const isLoadingReportRef = useRef(false); // Use ref to prevent infinite loop
 
   // Load persisted data from sessionStorage
   useEffect(() => {
@@ -90,9 +91,15 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
 
   useEffect(() => {
     const loadReport = async () => {
+      // Prevent multiple concurrent calls
+      if (isLoadingReportRef.current || !reportId) return;
+      
       try {
+        isLoadingReportRef.current = true;
         setIsLoading(true);
         setError(null);
+        
+        console.log(`[useReportData] Loading report: ${reportId}`);
         
         // Use the new getFullReport function
         const foundReport = await reportsApi.getFullReport(reportId, 'useReportData');
@@ -103,16 +110,16 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
         }
 
         setReport(foundReport);
+        console.log(`[useReportData] Successfully loaded report: ${reportId}`);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load report");
       } finally {
         setIsLoading(false);
+        isLoadingReportRef.current = false;
       }
     };
 
-    if (reportId) {
-      loadReport();
-    }
+    loadReport();
   }, [reportId]);
 
   const updateSearchFilters = (filters: SearchFiltersType) => {

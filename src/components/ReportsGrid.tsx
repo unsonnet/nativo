@@ -6,7 +6,7 @@ import { listReports } from "@/lib/api/reports";
 import type { ProductImage, ProductIndex, Product, ReportPreview, Report } from '@/types/report';
 
 export function ReportsGrid() {
-  const [reports, setReports] = useState<Report<ProductIndex | Product>[]>([]);
+  const [reports, setReports] = useState<Report<ProductIndex>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -18,9 +18,9 @@ export function ReportsGrid() {
     const loadReports = async () => {
       try {
         setIsLoading(true);
-        const result = await listReports<ProductIndex | Product>(20);
+        const result = await listReports(20);
         setReports(result.reports);
-        setCursor(result.nextCursor);
+        setCursor(result.nextCursor || undefined);
         setHasMore(result.hasMore);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load reports');
@@ -38,9 +38,9 @@ export function ReportsGrid() {
 
     try {
       setIsLoadingMore(true);
-      const result = await listReports<ProductIndex | Product>(20, cursor);
+      const result = await listReports(20, cursor);
       setReports(prev => [...prev, ...result.reports]);
-      setCursor(result.nextCursor);
+      setCursor(result.nextCursor || undefined);
       setHasMore(result.hasMore);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load more reports');
@@ -51,20 +51,9 @@ export function ReportsGrid() {
 
   // Convert reports for dashboard view
   const dashboardReports: ReportPreview[] = reports.map((r) => {
-    const ref = r.reference as ProductIndex | Product;
-    // If it's a ProductIndex with an `image` string, build a ProductImage
-    if ('image' in ref && typeof ref.image === 'string') {
-      const pi: ProductImage = { id: ref.id, url: ref.image };
-      return { ...r, reference: pi } as ReportPreview;
-    }
-
-    // If it's a Product, prefer the first image when available
-    if ('images' in ref && Array.isArray(ref.images) && ref.images.length > 0) {
-      return { ...r, reference: ref.images[0] } as ReportPreview;
-    }
-
-    // Fallback empty image
-    return { ...r, reference: { id: ref.id, url: '' } } as ReportPreview;
+    const ref = r.reference; // ProductIndex with image property
+    const pi: ProductImage = { id: ref.id, url: ref.image };
+    return { ...r, reference: pi } as ReportPreview;
   });
 
   if (isLoading) {

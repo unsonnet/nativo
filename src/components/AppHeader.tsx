@@ -39,26 +39,20 @@ export function AppHeader() {
   // Fetch report title when on fetch page
   useEffect(() => {
     if (pathname.startsWith('/fetch')) {
-      const getReportTitle = async () => {
-        try {
-          // Get report ID from search params
-          const reportParam = searchParams.get('report');
-          const idParam = searchParams.get('id');
-          
-          // Use report param first, then id param as fallback
-          const reportId = reportParam || idParam;
-          
-          if (reportId) {
-            const report = await reportsApi.getFullReport(reportId, 'AppHeader');
-            setReportTitle(report?.title || null);
-          }
-        } catch (error) {
-          console.error('Failed to fetch report title:', error);
-          setReportTitle(null);
-        }
-      };
+      // Get report ID from search params
+      const reportParam = searchParams.get('report');
+      const idParam = searchParams.get('id');
       
-      getReportTitle();
+      // Use report param first, then id param as fallback
+      const reportId = reportParam || idParam;
+      
+      if (reportId) {
+        // Just use the reportId as the title - no API call needed
+        // The main component (useReportData) will load the full data
+        setReportTitle(reportId);
+      } else {
+        setReportTitle(null);
+      }
     } else {
       setReportTitle(null);
     }
