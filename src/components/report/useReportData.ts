@@ -132,27 +132,56 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
       }
 
       // Check if real API should be used
-      const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API === 'true';
+      const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API !== 'false';
       
       if (USE_REAL_API) {
-        // TODO: Use real API
-        // const { reportsApiService } = await import("@/lib/api/reportsApi");
-        // const response = await reportsApiService.searchProducts(report.id, {
-        //   filters,
-        //   page: 1,
-        //   limit: 50,
-        // });
-        // 
-        // if (response.status === 200) {
-        //   setSearchResults(response.body.products);
-        // } else {
-        //   console.error("Search failed:", response.error);
-        // }
-        
-        console.log('[API] Real API enabled but not implemented yet, using mock');
+        try {
+          console.log('[API] Starting search for reportId:', report.id);
+          console.log('[API] Search filters:', filters);
+          
+          const { reportsApiService } = await import("@/lib/api/reportsApi");
+          
+          // Transform component SearchFilters to API SearchFilters format
+          const apiFilters = {
+            category: {
+              type: filters.categories.type?.[0], // Take first type if multiple
+              material: filters.categories.material?.[0], // Take first material if multiple
+              look: filters.categories.look?.[0],
+              texture: filters.categories.texture?.[0],
+              finish: filters.categories.finish?.[0],
+              edge: filters.categories.edge?.[0],
+            },
+            similarity: {
+              threshold: filters.colorPrimarySimilarity || 0.8 // Use color similarity as overall threshold
+            }
+          };
+          
+          console.log('[API] Transformed API filters:', apiFilters);
+          
+          const response = await reportsApiService.searchProducts(report.id, {
+            filters: apiFilters,
+            page: 1,
+            limit: 50,
+          });
+          
+          console.log('[API] Search response status:', response.status);
+          console.log('[API] Search response:', response);
+          
+          if (response.status === 200) {
+            console.log('[API] Search successful, found', response.body.products.length, 'products');
+            setSearchResults(response.body.products);
+            return; // Exit early on success
+          } else {
+            console.error("Search failed:", response.error);
+            throw new Error(response.error || 'Search failed');
+          }
+        } catch (error) {
+          console.error('[API] Error during search:', error);
+          console.log('[API] Falling back to mock implementation');
+        }
       }
 
-      // Mock search results - in real implementation, this would call your search API
+      // Mock search results - fallback when real API fails or is disabled
       await simulateApiDelay(1000); // Simulate API call
       
       // Get search results specific to this report and its reference product

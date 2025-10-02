@@ -329,7 +329,7 @@ export class OriginalApiAdapter {
     filters?: any,
     start: number = 0
   ): Promise<K9Response<OriginalApiSearchResult[]>> {
-    // Default search thresholds - these can be made configurable later
+    // Build search thresholds from filters or use defaults
     const searchRequest: OriginalApiSearchRequest = {
       type_: {
         type: 0.8,
@@ -343,7 +343,7 @@ export class OriginalApiAdapter {
         missing: true
       },
       color: {
-        primary: 0.8,
+        primary: filters?.similarity?.threshold || 0.8,
         secondary: 0.7,
         tertiary: 0.6,
         missing: true
@@ -356,9 +356,12 @@ export class OriginalApiAdapter {
       }
     };
 
-    const params = start > 0 ? { start: start.toString() } : undefined;
-    
-    return apiClient.post<OriginalApiSearchResult[]>(`/fetch/${reportId}`, searchRequest);
+    // Include start parameter in the request if provided
+    if (start > 0) {
+      return apiClient.post<OriginalApiSearchResult[]>(`/fetch/${reportId}?start=${start}`, searchRequest);
+    } else {
+      return apiClient.post<OriginalApiSearchResult[]>(`/fetch/${reportId}`, searchRequest);
+    }
   }
 
   /**
