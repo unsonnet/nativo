@@ -7,6 +7,7 @@
  */
 
 import { apiClient } from '../client';
+import { withAuthHeaders } from '@/lib/auth/auth';
 import type { K9Response } from '@/lib/auth/types';
 import type { Report, Product, ProductIndex, ProductImage } from '@/types/report';
 import { encodeReportTitle, decodeReportId, sanitizeFilename } from '@/lib/utils/jobIdentifiers';
@@ -28,21 +29,21 @@ interface OriginalApiSearchRequest {
     missing: boolean;
   };
   shape: {
-    length: number;
-    width: number;
-    thickness: number;
+    length?: number;
+    width?: number;
+    thickness?: number;
     missing: boolean;
   };
   color: {
-    primary: number;
-    secondary: number;
-    tertiary: number;
+    primary?: number;
+    secondary?: number;
+    tertiary?: number;
     missing: boolean;
   };
   pattern: {
-    primary: number;
-    secondary: number;
-    tertiary: number;
+    primary?: number;
+    secondary?: number;
+    tertiary?: number;
     missing: boolean;
   };
 }
@@ -131,7 +132,8 @@ function inchesToCm(inches: number): number {
 
 /**
  * Convert dimensions from React app units (inches for length/width, mm for thickness)
- * to original API expected units (cm for length/width, mm for thickness)
+ * to original API expected units (inches for length/width, mm for thickness)
+ * Note: The original API expects dimensions in inches, NOT cm
  */
 function convertDimensionsToOriginalApi(reactDimensions: {
   length?: { val: number; unit: string } | undefined;
@@ -139,8 +141,8 @@ function convertDimensionsToOriginalApi(reactDimensions: {
   thickness?: { val: number; unit: string } | undefined;
 }) {
   return {
-    length: reactDimensions.length?.val ? inchesToCm(reactDimensions.length.val) : undefined,
-    width: reactDimensions.width?.val ? inchesToCm(reactDimensions.width.val) : undefined,
+    length: reactDimensions.length?.val || undefined,  // Keep inches as inches
+    width: reactDimensions.width?.val || undefined,    // Keep inches as inches
     thickness: reactDimensions.thickness?.val || undefined, // mm stays as mm
   };
 }
@@ -192,10 +194,10 @@ function transformProductToOriginalFormat(product: Product): OriginalApiMaterial
   });
   
   return {
-    type: product.category.type || 'tile',
-    material: product.category.material || 'ceramic',
-    length: convertedDimensions.length || 24, // fallback to 24cm if not provided
-    width: convertedDimensions.width || 12,   // fallback to 12cm if not provided
+    type: (product.category.type || 'tile').toLowerCase(),
+    material: (product.category.material || 'ceramic').toLowerCase(),
+    length: convertedDimensions.length || 12, // fallback to 12 inches if not provided
+    width: convertedDimensions.width || 6,    // fallback to 6 inches if not provided
     thickness: convertedDimensions.thickness || null,
     images: product.images.map(img => {
       // Extract filename from URL for original API
@@ -424,18 +426,78 @@ export class OriginalApiAdapter {
     // Encode the title to use as job identifier
     const jobId = encodeReportTitle(title);
     
-    // Transform product to original API format
-    const materialData = transformProductToOriginalFormat(reference);
-    
     try {
-      // First, upload images to album if they exist
-      for (const image of reference.images) {
+      // First, upload images to album and collect their filenames
+      const uploadedImages: string[] = [];
+      
+      console.log(`[API] Creating job with ID: ${jobId}`);
+      console.log(`[API] Need to upload ${reference.images.length} images`);
+      
+      for (const [index, image] of reference.images.entries()) {
         if (image.url.startsWith('data:') || image.url.startsWith('blob:')) {
-          // Handle base64 or blob URLs - need to upload to album
-          // For now, skip actual upload since we don't have the image data
-          console.warn('Image upload not implemented for blob/data URLs');
+          // Convert data URL or blob URL to actual image data
+          try {
+            console.log(`[API] Processing image ${index + 1}/${reference.images.length}: ${image.id}`);
+            const response = await fetch(image.url);
+            const imageBlob = await response.blob();
+            
+            // Generate a unique filename for this image (only the actual image, not mask)
+            let extension = 'jpg'; // default extension
+            if (imageBlob.type) {
+              const mimeType = imageBlob.type.toLowerCase();
+              if (mimeType.includes('png')) extension = 'png';
+              else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+              else if (mimeType.includes('webp')) extension = 'webp';
+              else if (mimeType.includes('gif')) extension = 'gif';
+            }
+            
+            // Create a simple, clean filename using index - fuck sanitizeFilename
+            const finalFilename = `img${index}.${extension}`;
+            console.log(`[API] Generated filename: "${finalFilename}" from index: ${index} and extension: "${extension}"`);
+            
+            console.log(`[API] Uploading image as: ${finalFilename} (${Math.round(imageBlob.size / 1024)}KB)`);
+            
+            // Upload the image
+            const uploadResponse = await this.uploadImage(jobId, finalFilename, imageBlob);
+            
+            if (uploadResponse.status === 200) {
+              uploadedImages.push(finalFilename);
+              console.log(`[API] Successfully uploaded: ${finalFilename}`);
+            } else {
+              console.warn(`[API] Failed to upload image ${finalFilename}: ${uploadResponse.error}`);
+              console.warn(`[API] Continuing without this image...`);
+              // Continue with other images even if one fails
+              // For now, we'll try to proceed without the failed image
+            }
+          } catch (uploadError) {
+            console.warn(`[API] Error processing image ${index}: ${uploadError}`);
+            console.warn(`[API] Continuing without this image...`);
+            // Continue with other images even if one fails
+          }
+        } else {
+          // For external URLs, use the original URL as-is
+          // The original API might handle external URLs directly
+          console.log(`[API] Using external URL for image ${index}: ${image.url}`);
+          uploadedImages.push(image.url);
         }
       }
+      
+      console.log(`[API] Successfully processed ${uploadedImages.length} images:`, uploadedImages);
+      
+      // Transform product to original API format with uploaded image filenames
+      const materialData = transformProductToOriginalFormat(reference);
+      
+      // Update the material data with the uploaded image filenames
+      if (materialData.images && uploadedImages.length > 0) {
+        materialData.images = uploadedImages;
+        console.log(`[API] Updated material data with ${uploadedImages.length} image filenames`);
+      } else {
+        console.warn(`[API] No images were successfully uploaded. Proceeding with original image URLs.`);
+        // If no images were uploaded, keep the original URLs as fallback
+        // The original API might be able to handle external URLs or we might need to handle this differently
+      }
+      
+      console.log(`[API] Creating job with material data:`, JSON.stringify(materialData, null, 2));
       
       // Create the job with material data
       const response = await apiClient.put<string>(`/fetch/${jobId}`, materialData);
@@ -483,31 +545,51 @@ export class OriginalApiAdapter {
     start: number = 0
   ): Promise<K9Response<OriginalApiSearchResult[]>> {
     // Build search thresholds from filters or use defaults
+    // These are distance metrics where lower values mean more similar
+    // For example: 90% similarity = 0.1 threshold, 80% similarity = 0.2 threshold
     const searchRequest: OriginalApiSearchRequest = {
       type_: {
-        type: 0.8,
-        material: 0.8,
+        type: 0.2,  // 80% similarity for type matching
+        material: 0.2,  // 80% similarity for material matching
         missing: true
       },
       shape: {
-        length: 0.7,
-        width: 0.7,
-        thickness: 0.8,
         missing: true
       },
       color: {
-        primary: filters?.similarity?.threshold || 0.8,
-        secondary: 0.7,
-        tertiary: 0.6,
         missing: true
       },
       pattern: {
-        primary: 0.9,
-        secondary: 0.8,
-        tertiary: 0.7,
         missing: true
       }
     };
+
+    // Add shape properties only if they have values
+    if (filters?.shape?.length) {
+      searchRequest.shape.length = filters.shape.length;
+    }
+    if (filters?.shape?.width) {
+      searchRequest.shape.width = filters.shape.width;
+    }
+    if (filters?.shape?.thickness) {
+      searchRequest.shape.thickness = filters.shape.thickness;
+    }
+
+    // Add color properties only if they have values
+    if (filters?.similarity?.threshold !== undefined) {
+      searchRequest.color.primary = filters.similarity.threshold;
+    }
+    if (filters?.similarity?.colorSecondary !== undefined) {
+      searchRequest.color.secondary = filters.similarity.colorSecondary;
+    }
+
+    // Add pattern properties only if they have values
+    if (filters?.similarity?.patternPrimary !== undefined) {
+      searchRequest.pattern.primary = filters.similarity.patternPrimary;
+    }
+    if (filters?.similarity?.patternSecondary !== undefined) {
+      searchRequest.pattern.secondary = filters.similarity.patternSecondary;
+    }
 
     // Include start parameter in the request if provided
     if (start > 0) {
@@ -526,38 +608,69 @@ export class OriginalApiAdapter {
     filename: string, 
     imageData: Blob | ArrayBuffer
   ): Promise<K9Response<void>> {
-    try {
-      // Get the base URL from environment or use the client's base URL
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://824xuvy567.execute-api.us-east-2.amazonaws.com/securek9';
-      
-      const response = await fetch(`${baseUrl}/fetch/${reportId}/album/${filename}`, {
-        method: 'PUT',
-        body: imageData,
-        headers: {
+    return withAuthHeaders(async (authHeaders) => {
+      try {
+        // Get the base URL from environment or use the client's base URL
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://824xuvy567.execute-api.us-east-2.amazonaws.com/securek9';
+        const uploadUrl = `${baseUrl}/fetch/${reportId}/album/${filename}`;
+        
+        console.log(`[API] Uploading to: ${uploadUrl}`);
+        console.log(`[API] Auth headers:`, JSON.stringify(authHeaders, null, 2));
+        console.log(`[API] Content-Type: ${imageData instanceof Blob ? imageData.type : 'application/octet-stream'}`);
+        console.log(`[API] Data size: ${imageData instanceof Blob ? imageData.size : imageData.byteLength} bytes`);
+        console.log(`[API] Filename: ${filename}`);
+        
+        const requestHeaders = {
+          ...authHeaders, // Include authentication headers
           'Content-Type': imageData instanceof Blob ? imageData.type : 'application/octet-stream'
-        }
-      });
+        };
+        
+        console.log(`[API] Final request headers:`, JSON.stringify(requestHeaders, null, 2));
+        
+        const response = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: imageData,
+          headers: requestHeaders
+        });
 
-      if (response.ok) {
+        console.log(`[API] Upload response status: ${response.status} ${response.statusText}`);
+
+        if (response.ok) {
+          return {
+            status: 200,
+            body: undefined,
+            error: undefined
+          };
+        }
+
+        // Try to get more detailed error information from the response body
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const responseText = await response.text();
+          if (responseText) {
+            errorMessage += ` - ${responseText}`;
+          }
+        } catch (e) {
+          // Ignore errors reading response body
+        }
+
+        console.error(`[API] Upload failed: ${errorMessage}`);
+
         return {
-          status: 200,
+          status: response.status,
           body: undefined,
-          error: undefined
+          error: errorMessage
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+        console.error(`[API] Upload exception:`, error);
+        return {
+          status: 500,
+          body: undefined,
+          error: errorMessage
         };
       }
-
-      return {
-        status: response.status,
-        body: undefined,
-        error: `Failed to upload image: ${response.statusText}`
-      };
-    } catch (error) {
-      return {
-        status: 500,
-        body: undefined,
-        error: error instanceof Error ? error.message : 'Upload failed'
-      };
-    }
+    });
   }
 
   /**
@@ -581,7 +694,7 @@ export class OriginalApiAdapter {
 
     return {
       id: jobListing.job,
-      title: jobListing.job,
+      title: decodeReportId(jobListing.job), // Decode the title from the job ID
       author: 'current-user', // We don't have author in the listing
       date: new Date(jobListing.created).toISOString(),
       reference: referenceMaterial,

@@ -47,6 +47,14 @@ export interface SearchFilters {
   };
   similarity?: {
     threshold?: number;
+    colorSecondary?: number;
+    patternPrimary?: number;
+    patternSecondary?: number;
+  };
+  shape?: {
+    length?: number;
+    width?: number;
+    thickness?: number;
   };
 }
 
@@ -158,7 +166,7 @@ export class ReportsApiService {
       
       const report: Report<Product> = {
         id: reportId,
-        title: reportId,
+        title: decodeReportId(reportId), // Decode the title from the report ID
         author: 'current-user',
         date: currentDate,
         reference: product,

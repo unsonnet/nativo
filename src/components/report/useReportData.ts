@@ -159,7 +159,17 @@ export function useReportData({ reportId }: UseReportDataProps): UseReportDataRe
               edge: filters.categories.edge?.[0],
             },
             similarity: {
-              threshold: filters.colorPrimarySimilarity || 0.8 // Use color similarity as overall threshold
+              // Convert similarity percentage (0-100) to distance threshold (0-1)
+              // 90% similarity = 0.1 threshold, 50% similarity = 0.5 threshold
+              threshold: filters.colorPrimarySimilarity ? (100 - filters.colorPrimarySimilarity) / 100 : undefined,
+              colorSecondary: filters.colorSecondarySimilarity ? (100 - filters.colorSecondarySimilarity) / 100 : undefined,
+              patternPrimary: filters.patternPrimarySimilarity ? (100 - filters.patternPrimarySimilarity) / 100 : undefined,
+              patternSecondary: filters.patternSecondarySimilarity ? (100 - filters.patternSecondarySimilarity) / 100 : undefined,
+            },
+            shape: {
+              length: filters.maxLengthDiff,
+              width: filters.maxWidthDiff,
+              thickness: filters.maxThicknessDiff,
             }
           };
           

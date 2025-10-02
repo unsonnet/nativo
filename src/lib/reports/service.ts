@@ -111,5 +111,11 @@ export async function packageAndCreateReport(
     reference: productRef,
   };
 
-  return createReport(payload);
+  const reportId = await createReport(payload.title, payload.reference);
+  
+  return {
+    id: reportId,
+    date: new Date().toISOString(),
+    ...payload,
+  };
 }

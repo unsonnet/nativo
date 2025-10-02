@@ -57,7 +57,8 @@ export function SearchFilters({ referenceProduct, onSearch, isSearching, filters
   const getDefaultFilters = (): SearchFilters => ({
     maxLengthDiff: 1,
     maxWidthDiff: 1,
-    maxThicknessDiff: 1,
+    // Only include thickness default if reference product has thickness
+    maxThicknessDiff: hasThickness ? 1 : undefined,
     aspectRatioTolerance: 2,
     colorPrimarySimilarity: 50,
     colorSecondarySimilarity: 50,

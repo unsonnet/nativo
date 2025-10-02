@@ -46,11 +46,22 @@ export async function getFullReport(id: string, caller?: string): Promise<Report
 // Create report function
 export async function createReport(title: string, reference: Product): Promise<string> {
   if (USE_REAL_API) {
+    console.log('[API] Creating report with title:', title);
+    console.log('[API] Reference product:', reference.id, reference.model);
+    console.log('[API] Images to upload:', reference.images.length);
+    
     const response = await ReportsApiService.createReport({ title, reference });
+    
+    console.log('[API] Create report response status:', response.status);
+    if (response.error) {
+      console.error('[API] Create report error:', response.error);
+    }
+    
     if (response.status === 201) {
+      console.log('[API] Report created successfully with ID:', response.body.id);
       return response.body.id;
     }
-    throw new Error(response.error || 'Failed to create report');
+    throw new Error(`HTTP ${response.status}: ${response.error || 'Failed to create report'}`);
   }
   
   // Mock implementation
