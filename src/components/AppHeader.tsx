@@ -12,6 +12,7 @@ export function AppHeader() {
   const searchParams = useSearchParams();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [reportTitle, setReportTitle] = useState<string | null>(null);
+  const [productTitle, setProductTitle] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -42,19 +43,29 @@ export function AppHeader() {
       // Get report ID from search params
       const reportParam = searchParams.get('report');
       const idParam = searchParams.get('id');
+      const productParam = searchParams.get('product');
       
       // Use report param first, then id param as fallback
       const reportId = reportParam || idParam;
       
       if (reportId) {
         // Just use the reportId as the title - no API call needed
-        // The main component (useReportData) will load the full data
         setReportTitle(reportId);
+        
+        // For product comparison, just use the product ID as title for now
+        // The actual product name will be loaded by the main component
+        if (productParam) {
+          setProductTitle(productParam);
+        } else {
+          setProductTitle(null);
+        }
       } else {
         setReportTitle(null);
+        setProductTitle(null);
       }
     } else {
       setReportTitle(null);
+      setProductTitle(null);
     }
   }, [pathname, searchParams]);
 
@@ -103,10 +114,10 @@ export function AppHeader() {
     if (pathname.startsWith('/fetch')) {
       const productParam = searchParams.get('product');
       if (productParam) {
-        return reportTitle ? (
+        return productTitle ? (
           <>
             <span>Compare:</span>
-            <span className="app-header-universal__subtitle">{reportTitle}</span>
+            <span className="app-header-universal__subtitle">{productTitle}</span>
           </>
         ) : 'Compare';
       }

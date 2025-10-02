@@ -6,7 +6,7 @@
  */
 
 import { apiClient } from './client';
-import { OriginalApiAdapter, transformSearchResultToProduct, createFullProductFromOriginal, transformFavoriteToProduct } from './adapters/originalApiAdapter';
+import { OriginalApiAdapter, transformSearchResultToProduct, transformSearchResultToFullProduct, createFullProductFromOriginal, transformFavoriteToProduct } from './adapters/originalApiAdapter';
 import { decodeReportId, encodeReportTitle } from '@/lib/utils/jobIdentifiers';
 import type { Report, Product, ProductIndex } from '@/types/report';
 import type { K9Response } from '@/lib/auth/types';
@@ -225,35 +225,44 @@ export class ReportsApiService {
 
   /**
    * 5. Get full product details given report ID and product ID
-   * Now uses original API: GET /report/{job}/favorites (and filters for specific product)
+   * Uses the new efficient product endpoint, with fallback to favorites
    */
   static async getProduct(reportId: string, productId: string): Promise<K9Response<Product>> {
-    const response = await OriginalApiAdapter.getFavorites(reportId);
+    console.log(`[API] Getting product ${productId} from report ${reportId}`);
     
-    if (response.status === 200) {
-      // Find the specific product in the favorites
-      const favoriteProduct = response.body.find(fav => fav.id === productId);
+    // First, try the new efficient product endpoint
+    const productResponse = await OriginalApiAdapter.getProductById(reportId, productId);
+    
+    if (productResponse.status === 200) {
+      console.log(`[API] Product ${productId} found via product endpoint`);
+      return productResponse;
+    }
+    
+    if (productResponse.status === 404) {
+      // If not found via product endpoint, try favorites as fallback
+      console.log(`[API] Product ${productId} not found via product endpoint, trying favorites...`);
+      const favoritesResponse = await OriginalApiAdapter.getFavorites(reportId);
       
-      if (favoriteProduct) {
-        const product = transformFavoriteToProduct(favoriteProduct);
-        return {
-          status: 200,
-          body: product,
-          error: undefined
-        };
-      } else {
-        return {
-          status: 404,
-          body: null as any,
-          error: 'Product not found in favorites'
-        };
+      if (favoritesResponse.status === 200) {
+        const favoriteProduct = favoritesResponse.body.find(fav => fav.id === productId);
+        
+        if (favoriteProduct) {
+          console.log(`[API] Product ${productId} found in favorites`);
+          const product = transformFavoriteToProduct(favoriteProduct);
+          return {
+            status: 200,
+            body: product,
+            error: undefined
+          };
+        }
       }
     }
     
+    console.log(`[API] Product ${productId} not found anywhere`);
     return {
-      status: response.status,
+      status: 404,
       body: null as any,
-      error: response.error
+      error: 'Product not found'
     };
   }
 

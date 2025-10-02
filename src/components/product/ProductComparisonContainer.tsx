@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { Home, ExternalLink, Info, Images } from 'lucide-react';
 import { Product, Report, ProductImage } from '@/types/report';
@@ -647,14 +647,20 @@ export function ProductComparisonContainer({ reportId, productId }: ProductCompa
     loading: true,
     error: null,
   });
+  
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     const loadProductData = async () => {
+      // Prevent duplicate calls (React Strict Mode protection)
+      if (loadingRef.current) {
+        return;
+      }
+      loadingRef.current = true;
+      
       try {
         setState(prev => ({ ...prev, loading: true, error: null }));
 
-        // Use the new mock database system
-        const { getProductWithAnalysis } = await import('@/data/mockDatabase');
         const { reportsApi } = await import('@/lib/api/reports');
         
         // Load the reference report first to get the reference product
@@ -663,10 +669,29 @@ export function ProductComparisonContainer({ reportId, productId }: ProductCompa
           throw new Error(`Report ${reportId} not found`);
         }
 
-        // Load the selected product using the new database system
-        const selectedProduct = getProductWithAnalysis(productId, reportId);
-        if (!selectedProduct) {
-          throw new Error(`Product ${productId} not found`);
+        // Check if we should use real API
+        const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API === 'true';
+        
+        let selectedProduct: Product;
+        
+        if (USE_REAL_API) {
+          // Use the real API to get the selected product
+          const { ReportsApiService } = await import('@/lib/api/reportsApi');
+          const productResponse = await ReportsApiService.getProduct(reportId, productId);
+          
+          if (productResponse.status === 200) {
+            selectedProduct = productResponse.body;
+          } else {
+            throw new Error(productResponse.error || `Product ${productId} not found`);
+          }
+        } else {
+          // Use the mock database system for development
+          const { getProductWithAnalysis } = await import('@/data/mockDatabase');
+          const mockProduct = getProductWithAnalysis(productId, reportId);
+          if (!mockProduct) {
+            throw new Error(`Product ${productId} not found`);
+          }
+          selectedProduct = mockProduct;
         }
 
         setState({
@@ -681,6 +706,8 @@ export function ProductComparisonContainer({ reportId, productId }: ProductCompa
           loading: false,
           error: error instanceof Error ? error.message : 'An error occurred'
         }));
+      } finally {
+        loadingRef.current = false;
       }
     };
 

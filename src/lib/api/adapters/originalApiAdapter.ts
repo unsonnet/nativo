@@ -193,6 +193,74 @@ function transformSearchResultToProduct(result: OriginalApiSearchResult): Produc
 }
 
 /**
+ * Transform original API search result to full React app Product format
+ */
+function transformSearchResultToFullProduct(result: OriginalApiSearchResult): Product {
+  const productImages: ProductImage[] = result.images.map((imageUrl, index) => ({
+    id: `${result.id}_img${index + 1}`,
+    url: imageUrl
+  }));
+
+  return {
+    id: result.id,
+    brand: result.description?.store || 'Unknown',
+    model: result.description?.name || `Material ${result.id}`,
+    images: productImages,
+    category: {
+      type: 'Tile', // Default type, capitalized
+      material: capitalize(result.description?.material || 'ceramic'),
+    },
+    formats: [{
+      length: result.description?.length ? { val: result.description.length, unit: 'in' as const } : undefined,
+      width: result.description?.width ? { val: result.description.width, unit: 'in' as const } : undefined,
+      thickness: result.description?.thickness ? { val: result.description.thickness, unit: 'mm' as const } : undefined,
+      vendors: [{
+        sku: `${result.id}-001`,
+        store: result.description?.store || 'Unknown',
+        name: result.description?.name || `Material ${result.id}`,
+        url: result.description?.url || '#',
+        discontinued: false
+      }]
+    }],
+    analysis: {
+      color: {
+        primary: {
+          vector: [
+            result.scores.color.primary || 0,
+            result.scores.color.secondary || 0
+          ],
+          similarity: result.scores.color.primary || 0
+        },
+        secondary: {
+          vector: [
+            result.scores.color.secondary || 0,
+            result.scores.color.tertiary || 0
+          ],
+          similarity: result.scores.color.secondary || 0
+        }
+      },
+      pattern: {
+        primary: {
+          vector: [
+            result.scores.pattern.primary || 0,
+            result.scores.pattern.secondary || 0
+          ],
+          similarity: result.scores.pattern.primary || 0
+        },
+        secondary: {
+          vector: [
+            result.scores.pattern.secondary || 0,
+            result.scores.pattern.tertiary || 0
+          ],
+          similarity: result.scores.pattern.secondary || 0
+        }
+      },
+      similarity: result.match
+    }
+  };
+}
+
+/**
  * Transform original API favorite product to React app Product format
  */
 function transformFavoriteToProduct(favorite: OriginalApiFavoriteProduct): Product {
@@ -459,11 +527,95 @@ export class OriginalApiAdapter {
       product_id: productId
     });
   }
+
+  /**
+   * Get a single product by ID from the new product endpoint
+   * This corresponds to GET /fetch/{job}/product/{id} in the original API
+   */
+  static async getProductById(reportId: string, productId: string): Promise<K9Response<Product>> {
+    try {
+      const response = await apiClient.get<OriginalApiSearchResult>(`/fetch/${reportId}/product/${productId}`);
+      
+      if (response.status === 200) {
+        const product = transformSearchResultToFullProduct(response.body);
+        return {
+          status: 200,
+          body: product,
+          error: undefined
+        };
+      }
+      
+      return {
+        status: response.status,
+        body: null as any,
+        error: response.error || 'Product not found'
+      };
+    } catch (error) {
+      return {
+        status: 500,
+        body: null as any,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Get a single product by ID from search results
+   * Since the original API doesn't have a direct "get product by ID" endpoint,
+   * this searches all results to find the specific product
+   * @deprecated Use getProductById instead - this method is expensive
+   */
+  static async getProductFromSearch(reportId: string, productId: string): Promise<K9Response<Product>> {
+    // Search with very permissive filters to get all results
+    const searchRequest: OriginalApiSearchRequest = {
+      type_: { type: 0.1, material: 0.1, missing: true },
+      shape: { length: 0.1, width: 0.1, thickness: 0.1, missing: true },
+      color: { primary: 0.1, secondary: 0.1, tertiary: 0.1, missing: true },
+      pattern: { primary: 0.1, secondary: 0.1, tertiary: 0.1, missing: true }
+    };
+
+    try {
+      const response = await apiClient.post<OriginalApiSearchResult[]>(`/fetch/${reportId}`, searchRequest);
+      
+      if (response.status === 200) {
+        // Find the specific product in the search results
+        const searchResult = response.body.find(result => result.id === productId);
+        
+        if (searchResult) {
+          const product = transformSearchResultToFullProduct(searchResult);
+          return {
+            status: 200,
+            body: product,
+            error: undefined
+          };
+        } else {
+          return {
+            status: 404,
+            body: null as any,
+            error: 'Product not found in search results'
+          };
+        }
+      }
+      
+      return {
+        status: response.status,
+        body: null as any,
+        error: response.error || 'Failed to search for product'
+      };
+    } catch (error) {
+      return {
+        status: 500,
+        body: null as any,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
 }
 
 export { 
   transformProductToOriginalFormat, 
   transformSearchResultToProduct, 
+  transformSearchResultToFullProduct,
   createFullProductFromOriginal,
   transformFavoriteToProduct
 };
