@@ -366,18 +366,57 @@ export class ReportsApiService {
 
   /**
    * 9. Export favorited products as ZIP file
-   * NOTE: Original API doesn't have export functionality
-   * TODO: Implement export functionality in backend
+   * Client-side implementation using favorites data
    */
-  static async exportFavorites(reportId: string): Promise<K9Response<Blob>> {
-    // TODO: Implement export functionality in backend
-    console.warn('[API] exportFavorites not implemented - need backend export functionality');
-    
-    return {
-      status: 501,
-      body: null as any,
-      error: 'Export functionality not implemented'
-    };
+  static async exportFavorites(
+    reportId: string, 
+    onProgress?: (current: number, total: number, message: string) => void
+  ): Promise<K9Response<{ blob: Blob; reportTitle: string }>> {
+    try {
+      // Get favorites as full Product objects
+      const favoritesResponse = await this.getFavorites(reportId);
+      if (favoritesResponse.status !== 200) {
+        return {
+          status: favoritesResponse.status,
+          body: null as any,
+          error: favoritesResponse.error || 'Failed to fetch favorites'
+        };
+      }
+
+      // Get report for reference product
+      const reportResponse = await this.getReport(reportId);
+      if (reportResponse.status !== 200) {
+        return {
+          status: reportResponse.status,
+          body: null as any,
+          error: reportResponse.error || 'Failed to fetch report'
+        };
+      }
+
+      // Use favorites directly as Product objects
+      const { exportFavoritesAsZip } = await import('@/lib/utils/export');
+      const zipBlob = await exportFavoritesAsZip(
+        favoritesResponse.body, // Already Product[] objects
+        reportResponse.body.reference,
+        reportResponse.body.title,
+        {
+          onProgress // Pass through the progress callback
+        }
+      );
+
+      return {
+        status: 200,
+        body: { blob: zipBlob, reportTitle: reportResponse.body.title },
+        error: undefined
+      };
+    } catch (error) {
+      console.error('[API] Export failed:', error);
+      return {
+        status: 500,
+        body: null as any,
+        error: error instanceof Error ? error.message : 'Export failed'
+      };
+    }
   }
 
   /**

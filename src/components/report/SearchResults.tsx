@@ -24,6 +24,7 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode["type"]>("grid");
   const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState<{ current: number; total: number; message: string } | null>(null);
   const { favorites, isFavorited, toggleFavorite } = useFavorites(reportId, {
     autoClear: true
   });
@@ -126,42 +127,43 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
     }
 
     setIsExporting(true);
+    setExportProgress({ current: 0, total: 1, message: 'Initializing export...' });
+    
     try {
-      // Get the IDs of all favorite products
-      const favoriteIds = favorites.map(fav => fav.id);
+      console.log(`Starting export of ${favorites.length} favorite products...`);
       
-      // For GitHub Pages deployment, we'll use the external API service
-      // You can replace this with your actual API endpoint
-      const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API === 'true';
-      
-      if (USE_REAL_API) {
-        // Use the real API service
-        const { reportsApiService } = await import('@/lib/api/reportsApi');
-        const response = await reportsApiService.exportFavorites(reportId);
-        
-        if (response.status === 200) {
-          // Create download link for the blob
-          const url = window.URL.createObjectURL(response.body);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `favorites-report-${reportId}.zip`;
-          document.body.appendChild(link);
-          link.click();
-          
-          // Cleanup
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-        } else {
-          throw new Error(response.error || 'Export failed');
+      // Use the real API service for export with progress callback
+      const { reportsApiService } = await import('@/lib/api/reportsApi');
+      const response = await reportsApiService.exportFavorites(
+        reportId,
+        (current: number, total: number, message: string) => {
+          setExportProgress({ current, total, message });
         }
+      );
+      
+      if (response.status === 200) {
+        // Create download link for the blob
+        setExportProgress({ current: 1, total: 1, message: 'Download starting...' });
+        
+        const { downloadBlob, createExportFilename } = await import('@/lib/utils/export');
+        const filename = createExportFilename(response.body.reportTitle);
+        
+        downloadBlob(response.body.blob, filename);
+        
+        console.log(`Export completed successfully: ${filename}`);
+        setExportProgress({ current: 1, total: 1, message: 'Export complete!' });
+        
+        // Clear progress after a short delay
+        setTimeout(() => setExportProgress(null), 2000);
       } else {
-        // Mock implementation for development/demo
-        alert(`Export feature ready for integration!\n\nWould export ${favoriteIds.length} favorite products:\n${favoriteIds.join(', ')}\n\nTo enable real export:\n1. Set NEXT_PUBLIC_USE_REAL_API=true\n2. Implement the export endpoint on your backend`);
+        throw new Error(response.error || 'Export failed');
       }
       
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Export failed';
+      alert(`Export failed: ${errorMessage}. Please try again.`);
+      setExportProgress(null);
     } finally {
       setIsExporting(false);
     }
@@ -323,11 +325,13 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
                   ? "No favorites to export" 
                   : isLoading 
                   ? "Cannot export while searching" 
+                  : isExporting
+                  ? (exportProgress ? `${exportProgress.message} (${exportProgress.current}/${exportProgress.total})` : "Exporting...")
                   : "Export favorites as ZIP"
               }
             >
               <Download className="w-4 h-4" />
-              {isExporting ? "Exporting..." : "Export"}
+              {isExporting ? (exportProgress ? `${Math.round((exportProgress.current / exportProgress.total) * 100)}%` : "Exporting...") : "Export"}
             </button>
             
             <div className="search-results__view-controls">
@@ -405,12 +409,14 @@ export function SearchResults({ results, isLoading, hasSearched, reportId, initi
               favorites.length === 0 
                 ? "No favorites to export" 
                 : isLoading 
-                ? "Cannot export while searching" 
+                ? "Cannot export while searching"
+                : isExporting
+                ? (exportProgress ? `${exportProgress.message} (${exportProgress.current}/${exportProgress.total})` : "Exporting...")
                 : "Export favorites as ZIP"
             }
           >
             <Download className="w-4 h-4" />
-            {isExporting ? "Exporting..." : "Export"}
+            {isExporting ? (exportProgress ? `${Math.round((exportProgress.current / exportProgress.total) * 100)}%` : "Exporting...") : "Export"}
           </button>
           
           <div className="search-results__view-controls">
