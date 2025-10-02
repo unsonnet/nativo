@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ReportCard } from "./ReportCard";
 import { listReports } from "@/lib/api/reports";
 import type { ProductImage, ProductIndex, Product, ReportPreview, Report } from '@/types/report';
@@ -12,17 +12,25 @@ export function ReportsGrid() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const hasLoadedRef = useRef(false);
 
   // Load initial reports
   useEffect(() => {
     const loadReports = async () => {
+      // Prevent duplicate calls in Strict Mode
+      if (hasLoadedRef.current) {
+        return;
+      }
+      
       try {
+        hasLoadedRef.current = true;
         setIsLoading(true);
         const result = await listReports(20);
         setReports(result.reports);
         setCursor(result.nextCursor || undefined);
         setHasMore(result.hasMore);
       } catch (err) {
+        hasLoadedRef.current = false; // Reset on error so it can retry
         setError(err instanceof Error ? err.message : 'Failed to load reports');
       } finally {
         setIsLoading(false);
